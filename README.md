@@ -1,6 +1,10 @@
-# General Chat - AI-Powered Chat Platform
+# Voice Chat - AI-Powered Chat Platform
 
-A comprehensive multi-platform AI chat application featuring web, mobile, and intelligent agent capabilities. Built with modern technologies and designed for scalable, real-time AI conversations with support for multiple AI models.
+![alt text](bird.jpg)
+
+A comprehensive multi-platform AI chat application with a main focus on VOICE. Featuring web, mobile, and intelligent agent capabilities. Built with modern technologies and designed for scalable, real-time AI conversations with support for multiple AI models.
+
+Try it out: https://gcf.nikolanikolovski.com/chat
 
 ## 🚀 Features
 
