@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown'; 
+import ReactMarkdown from 'react-markdown';
 import type { Message } from './ChatView';
-import AudioPlayer from './AudioPlayer';
-import MessageToggle from './MessageToggle';
+import AudioPlayer from '../ui/AudioPlayer';
+import MessageToggle from '../ui/MessageToggle';
 import { Bot, Trash2 } from 'lucide-react';
 
 interface MessagesContainerProps {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import './AuthModal.css';
+import React, { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import "./AuthModal.css";
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -8,20 +8,24 @@ interface RegisterModalProps {
   onSwitchToLogin: () => void;
 }
 
-const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitchToLogin }) => {
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [error, setError] = useState('');
+const RegisterModal: React.FC<RegisterModalProps> = ({
+  isOpen,
+  onClose,
+  onSwitchToLogin,
+}) => {
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
@@ -32,20 +36,24 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
         onSwitchToLogin();
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setError('');
+    setError("");
     setSuccess(false);
-    setEmail('');
-    setUsername('');
-    setPassword('');
-    setName('');
-    setSurname('');
+    setEmail("");
+    setUsername("");
+    setPassword("");
+    setName("");
+    setSurname("");
     onClose();
   };
 
@@ -53,14 +61,21 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content auth-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>Create Account</h2>
-          <button className="modal-close-btn" onClick={handleClose}>×</button>
+          <button className="modal-close-btn" onClick={handleClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
-          <p className="modal-description">Create a new account to get started</p>
+          <p className="modal-description">
+            Create a new account to get started
+          </p>
 
           {error && (
             <div className="modal-error">
@@ -154,11 +169,15 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
               disabled={isLoading || success}
               className="auth-button primary"
             >
-              {isLoading ? 'Creating account...' : success ? 'Account created!' : 'Create Account'}
+              {isLoading
+                ? "Creating account..."
+                : success
+                ? "Account created!"
+                : "Create Account"}
             </button>
 
             <div className="auth-switch">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <button
                 type="button"
                 className="auth-link"

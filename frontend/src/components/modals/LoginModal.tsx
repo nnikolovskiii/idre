@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import './AuthModal.css';
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import "./AuthModal.css";
 
 // Google API type declarations
 declare global {
@@ -12,12 +12,15 @@ declare global {
             client_id: string;
             callback: (response: { credential: string }) => void;
           }) => void;
-          renderButton: (element: HTMLElement, config: {
-            theme?: string;
-            size?: string;
-            text?: string;
-            shape?: string;
-          }) => void;
+          renderButton: (
+            element: HTMLElement,
+            config: {
+              theme?: string;
+              size?: string;
+              text?: string;
+              shape?: string;
+            }
+          ) => void;
         };
       };
     };
@@ -30,11 +33,15 @@ interface LoginModalProps {
   onSwitchToRegister: () => void;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegister }) => {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+const LoginModal: React.FC<LoginModalProps> = ({
+  isOpen,
+  onClose,
+  onSwitchToRegister,
+}) => {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
@@ -48,10 +55,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
       });
 
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: 'outline',
-        size: 'large',
-        text: 'continue_with',
-        shape: 'rectangular',
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "rectangular",
       });
     }
   }, [isOpen]);
@@ -59,11 +66,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
   const handleGoogleResponse = async (response: any) => {
     try {
       setIsGoogleLoading(true);
-      setError('');
+      setError("");
       await googleLogin(response.credential);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google login failed. Please try again.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Google login failed. Please try again."
+      );
     } finally {
       setIsGoogleLoading(false);
     }
@@ -71,23 +82,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
       await login(identifier, password, rememberMe);
       onClose(); // Close modal on successful login
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      setError(
+        err instanceof Error ? err.message : "Login failed. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setError('');
-    setIdentifier('');
-    setPassword('');
+    setError("");
+    setIdentifier("");
+    setPassword("");
     setRememberMe(false);
     onClose();
   };
@@ -96,14 +109,21 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content auth-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>Welcome Back</h2>
-          <button className="modal-close-btn" onClick={handleClose}>×</button>
+          <button className="modal-close-btn" onClick={handleClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
-          <p className="modal-description">Sign in to your account to continue</p>
+          <p className="modal-description">
+            Sign in to your account to continue
+          </p>
 
           {error && (
             <div className="modal-error">
@@ -159,7 +179,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
               disabled={isLoading}
               className="auth-button primary"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
 
             <div className="auth-divider">
@@ -170,7 +190,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
               <div
                 ref={googleButtonRef}
                 className="google-signin-button"
-                style={{ display: isGoogleLoading ? 'none' : 'block' }}
+                style={{ display: isGoogleLoading ? "none" : "block" }}
               ></div>
               {isGoogleLoading && (
                 <div className="google-loading">
@@ -180,7 +200,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
             </div>
 
             <div className="auth-switch">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <button
                 type="button"
                 className="auth-link"

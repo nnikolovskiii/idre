@@ -66,7 +66,7 @@ async def get_openrouter_models():
         )
 
 
-@router.get("/free", response_model=List[Dict[str, Any]])
+@router.get("/free", response_model=List[str])
 async def get_free_openrouter_models():
     """
     Get free models from OpenRouter API (pricing 0 for prompt and completion).

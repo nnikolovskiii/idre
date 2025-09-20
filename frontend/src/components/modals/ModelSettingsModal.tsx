@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { defaultAIModelsService } from '../lib/defaultAIModelsService';
-import { openrouterModelsService } from '../lib/openrouterModelsService';
-import type { UpdateDefaultAIModelsRequest } from '../lib/defaultAIModelsService';
-import type { ModelName } from '../lib/openrouterModelsService';
-import './DefaultModelsModal.css';
+import React, { useState, useEffect } from "react";
+import { defaultAIModelsService } from "../../lib/defaultAIModelsService";
+import { chatsService } from "../../lib/chatsService";
+import { openrouterModelsService } from "../../lib/openrouterModelsService";
+import type { UpdateDefaultAIModelsRequest } from "../../lib/defaultAIModelsService";
+import type { UpdateAIModelsRequest } from "../../lib/chatsService";
+import type { ModelName } from "../../lib/openrouterModelsService";
+import "../../pages/DefaultModels.css";
 
-interface DefaultModelsModalProps {
+interface ModelSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isGlobal: boolean;
+  chatId?: string;
 }
 
-const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose }) => {
-  const [lightModel, setLightModel] = useState('');
-  const [heavyModel, setHeavyModel] = useState('');
+const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
+  isOpen,
+  onClose,
+  isGlobal,
+  chatId,
+}) => {
+  const [lightModel, setLightModel] = useState("");
+  const [heavyModel, setHeavyModel] = useState("");
   const [availableModels, setAvailableModels] = useState<ModelName[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,23 +29,33 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Load current default AI models and available models when modal opens
+  const title = isGlobal ? "Default AI Models Settings" : "AI Models Settings";
+  const description = isGlobal
+    ? "Configure the default AI models that will be used for new chats"
+    : "Configure the AI models that will be used for this chat";
+
   useEffect(() => {
     if (isOpen) {
-      loadDefaultAIModels();
+      loadModels();
       loadAvailableModels();
     }
   }, [isOpen]);
 
-  const loadDefaultAIModels = async () => {
+  const loadModels = async () => {
     setLoading(true);
     setError(null);
     try {
-      const models = await defaultAIModelsService.getDefaultAIModels();
-      setLightModel(models.light_model || '');
-      setHeavyModel(models.heavy_model || '');
+      if (isGlobal) {
+        const models = await defaultAIModelsService.getDefaultAIModels();
+        setLightModel(models.light_model || "");
+        setHeavyModel(models.heavy_model || "");
+      } else if (chatId) {
+        const models = await chatsService.getChatAIModels(chatId);
+        setLightModel(models.light_model || "");
+        setHeavyModel(models.heavy_model || "");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load default AI models');
+      setError(err instanceof Error ? err.message : "Failed to load AI models");
     } finally {
       setLoading(false);
     }
@@ -48,8 +67,7 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
       const models = await openrouterModelsService.getModelNames();
       setAvailableModels(models);
     } catch (err) {
-      // If models fail to load, we'll show text inputs as fallback
-      console.warn('Failed to load available models:', err);
+      console.warn("Failed to load available models:", err);
       setAvailableModels([]);
     } finally {
       setModelsLoading(false);
@@ -58,7 +76,7 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
 
   const handleSave = async () => {
     if (!lightModel.trim() || !heavyModel.trim()) {
-      setError('Both light and heavy model names are required');
+      setError("Both light and heavy model names are required");
       return;
     }
 
@@ -67,27 +85,30 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
     setSuccess(false);
 
     try {
-      const updateRequest: UpdateDefaultAIModelsRequest = {
+      const updateRequest: UpdateDefaultAIModelsRequest &
+        UpdateAIModelsRequest = {
         light_model: lightModel.trim(),
-        heavy_model: heavyModel.trim()
+        heavy_model: heavyModel.trim(),
       };
 
-      await defaultAIModelsService.updateDefaultAIModels(updateRequest);
+      if (isGlobal) {
+        await defaultAIModelsService.updateDefaultAIModels(updateRequest);
+      } else if (chatId) {
+        await chatsService.updateChatAIModels(chatId, updateRequest);
+      }
       setSuccess(true);
-
-      // Auto-hide success message after 3 seconds
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update default AI models');
+      setError(
+        err instanceof Error ? err.message : "Failed to update AI models"
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handleReset = () => {
-    loadDefaultAIModels();
+    loadModels();
     setError(null);
     setSuccess(false);
   };
@@ -102,22 +123,19 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content default-models-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content default-models-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <h2>Default AI Models Settings</h2>
-          <button className="modal-close-btn" onClick={handleClose}>×</button>
+          <h2>{title}</h2>
+          <p>{description}</p>
+          <button className="modal-close-btn" onClick={handleClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-body">
-          <p className="modal-description">Configure the default AI models that will be used for new chats</p>
-
-          {!loading && !lightModel && !heavyModel && (
-            <div className="first-time-notice">
-              <span className="info-icon">ℹ️</span>
-              No default models are currently set. Please configure them below.
-            </div>
-          )}
-
           {loading ? (
             <div className="modal-loading">
               <div className="loading-spinner"></div>
@@ -129,7 +147,9 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                 <div className="model-field">
                   <label htmlFor="light-model">Light Model</label>
                   {modelsLoading ? (
-                    <div className="model-loading">Loading available models...</div>
+                    <div className="model-loading">
+                      Loading available models...
+                    </div>
                   ) : availableModels.length > 0 ? (
                     <select
                       id="light-model"
@@ -139,7 +159,6 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                       className="model-input"
                     >
                       <option value="">Select a light model...</option>
-                      {/* Include current model if not in available models */}
                       {lightModel && !availableModels.includes(lightModel) && (
                         <option key={lightModel} value={lightModel}>
                           {lightModel} (current)
@@ -163,14 +182,17 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                     />
                   )}
                   <small className="model-description">
-                    Used for quick responses and simple tasks. Should be a fast, cost-effective model.
+                    Used for quick responses and simple tasks. Should be a fast,
+                    cost-effective model.
                   </small>
                 </div>
 
                 <div className="model-field">
                   <label htmlFor="heavy-model">Heavy Model</label>
                   {modelsLoading ? (
-                    <div className="model-loading">Loading available models...</div>
+                    <div className="model-loading">
+                      Loading available models...
+                    </div>
                   ) : availableModels.length > 0 ? (
                     <select
                       id="heavy-model"
@@ -180,7 +202,6 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                       className="model-input"
                     >
                       <option value="">Select a heavy model...</option>
-                      {/* Include current model if not in available models */}
                       {heavyModel && !availableModels.includes(heavyModel) && (
                         <option key={heavyModel} value={heavyModel}>
                           {heavyModel} (current)
@@ -204,7 +225,8 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                     />
                   )}
                   <small className="model-description">
-                    Used for complex reasoning and detailed analysis. Should be a powerful, high-capability model.
+                    Used for complex reasoning and detailed analysis. Should be
+                    a powerful, high-capability model.
                   </small>
                 </div>
               </div>
@@ -219,7 +241,7 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
               {success && (
                 <div className="modal-success">
                   <span className="success-icon">✅</span>
-                  Default AI models updated successfully!
+                  AI models updated successfully!
                 </div>
               )}
 
@@ -242,7 +264,7 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
                       Saving...
                     </>
                   ) : (
-                    'Save Changes'
+                    "Save Changes"
                   )}
                 </button>
               </div>
@@ -254,4 +276,4 @@ const DefaultModelsModal: React.FC<DefaultModelsModalProps> = ({ isOpen, onClose
   );
 };
 
-export default DefaultModelsModal;
+export default ModelSettingsModal;

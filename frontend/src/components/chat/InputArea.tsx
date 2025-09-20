@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { uploadService } from '../lib/filesService';
+import { uploadService } from '../../lib/filesService';
 import { Mic, Send } from 'lucide-react';
 import './InputArea.css';
 

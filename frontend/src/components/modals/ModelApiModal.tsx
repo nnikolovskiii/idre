@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { modelApiService } from '../lib/modelApiService';
+import { modelApiService } from '../../lib/modelApiService';
 import './ModelApiModal.css';
 
 // --- Icon Components (for a cleaner look than emojis) ---
