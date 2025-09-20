@@ -1,5 +1,5 @@
-import subprocess
 import os
+import subprocess
 
 
 class InteractiveCMDExecutor:
@@ -7,8 +7,7 @@ class InteractiveCMDExecutor:
         self.current_dir = initial_dir or os.getcwd()
 
     def execute(self, command: str):
-        """
-        Executes a command like in CMD, supports 'cd' to change directory.
+        """Executes a command like in CMD, supports 'cd' to change directory.
         """
         command = command.strip()
         if not command:

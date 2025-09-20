@@ -1,9 +1,10 @@
-from dotenv import load_dotenv
-from langchain_core.tools import tool
 import os
 
-from agent.core.ai_models import gpt5
+from dotenv import load_dotenv
+from langchain_core.tools import tool
+
 from agent.bash_client.client import bash_executor
+from agent.core.ai_models import gpt5
 
 load_dotenv()
 
@@ -13,9 +14,9 @@ def str_replace(old_str: str, new_str: str, file_path: str) -> str:
     """Replaces text in a file with new text.
 
     Notes for using the `str_replace` command:
-* The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
-* If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique
-* The `new_str` parameter should contain the edited lines that should replace the `old_str`
+    * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
+    * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique
+    * The `new_str` parameter should contain the edited lines that should replace the `old_str`
 
     Args:
         old_str: The exact text to be replaced in the file
@@ -26,7 +27,7 @@ def str_replace(old_str: str, new_str: str, file_path: str) -> str:
         A message indicating success or failure of the operation
     """
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             content = f.read()
     except FileNotFoundError:
         return f"Error: The file '{file_path}' was not found."
@@ -110,7 +111,7 @@ def view_file(file_path: str) -> str:
         The content of the file as a string, or an error message if the file cannot be read
     """
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             return f.read()
     except FileNotFoundError:
         return f"Error: The file '{file_path}' was not found."

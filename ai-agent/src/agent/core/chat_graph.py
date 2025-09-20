@@ -3,23 +3,23 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import tempfile
 import uuid
 
+import requests
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
-from .chat_graph_state import ChatGraphState
 from ..containers import container
-from ..prompts.chat_grap_prompts import generate_answer_instruction, get_conclusion_instruction
+from ..prompts.chat_grap_prompts import (
+    generate_answer_instruction,
+    get_conclusion_instruction,
+)
+from ..tools.audio_utils import transcribe_audio
 from ..tools.kokoroko_utils import text_to_speech_upload_file
 from ..tools.utils import remove_markdown
-
-import requests
-import tempfile
-
-from langchain_core.messages import HumanMessage
-from ..tools.audio_utils import transcribe_audio
-
+from .chat_graph_state import ChatGraphState
 
 load_dotenv()
 file_service_url = os.getenv("FILE_SERVICE_URL")
@@ -30,19 +30,18 @@ class RestructuredText(BaseModel):
     text: str = Field(..., description="Restructured text")
 
 
-
 class Conclusion(BaseModel):
     text: str = Field(description="Conclusion text")
 
+
 def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> str:
-    """
-    Helper to chain transcription and enhancement.
+    """Helper to chain transcription and enhancement.
     Handles both local file paths and remote URLs.
     """
     local_audio_path = audio_path
     temp_file_handle = None
 
-    if audio_path.startswith(('http://', 'https://')):
+    if audio_path.startswith(("http://", "https://")):
         print(f"   > URL detected. Downloading audio from {audio_path}...")
         try:
             response = requests.get(audio_path, stream=True)
@@ -58,7 +57,9 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
             print(f"   > Audio downloaded to temporary file: {local_audio_path}")
 
         except requests.exceptions.RequestException as e:
-            raise ConnectionError(f"Failed to download audio from {audio_path}. Error: {e}")
+            raise ConnectionError(
+                f"Failed to download audio from {audio_path}. Error: {e}"
+            )
 
     try:
         if not os.path.exists(local_audio_path):
@@ -91,8 +92,7 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
 
 
 def prepare_inputs_node(state: ChatGraphState):
-    """
-    Prepares the final input string by processing audio and/or text.
+    """Prepares the final input string by processing audio and/or text.
     This node handles all three cases: audio-only, text-only, and both.
     """
     print("---NODE: Preparing Inputs---")
@@ -103,7 +103,6 @@ def prepare_inputs_node(state: ChatGraphState):
     encrypt_api_key = state.get("api_key")
     fernet_service = container.fernet_service()
     api_key = fernet_service.decrypt_data(encrypt_api_key)
-
 
     if light_model is None:
         light_model = "google/gemini-flash-1.5"
@@ -120,16 +119,15 @@ def prepare_inputs_node(state: ChatGraphState):
 
     if audio_path:
         print("   > Audio path detected. Processing audio...")
-        enhanced_transcript = _transcribe_and_enhance_audio(audio_path, light_model, api_key)
+        enhanced_transcript = _transcribe_and_enhance_audio(
+            audio_path, light_model, api_key
+        )
         processed_parts.append(f"{enhanced_transcript}")
 
     final_input = "\n\n".join(processed_parts)
     print(f"   > Final Processed Input: '{final_input[:150]}...'")
 
-    return {
-        "processed_input": final_input,
-        "enhanced_transcript": enhanced_transcript
-    }
+    return {"processed_input": final_input, "enhanced_transcript": enhanced_transcript}
 
 
 def generate_answer_node(state: ChatGraphState):
@@ -164,7 +162,6 @@ def generate_answer_node(state: ChatGraphState):
     result = open_router_model.invoke(instruction)
     print("   > LLM response received.")
 
-
     if audio_path:
         audio_path = audio_path.replace(file_service_docker_url, file_service_url)
 
@@ -172,23 +169,18 @@ def generate_answer_node(state: ChatGraphState):
     if audio_path:
         human_message_kwargs["file_url"] = audio_path
 
-    human_msg = HumanMessage(
-        content=user_task,
-        additional_kwargs=human_message_kwargs
-    )
+    human_msg = HumanMessage(content=user_task, additional_kwargs=human_message_kwargs)
 
     result.content = result.content.split("</think>")[-1]
-    result.content = re.sub(r'\n{2,}', '\n', result.content).strip()
+    result.content = re.sub(r"\n{2,}", "\n", result.content).strip()
     print(f"   > Cleaned Answer Content: '{result.content[:150]}...'")
-
 
     print("   > Generating text-to-speech audio for the answer...")
 
     light_open_router = container.openrouter_model(api_key=api_key, model=light_model)
 
     conclusion_instruction = get_conclusion_instruction.format(
-        user_task=user_task,
-        ai_message=result.content
+        user_task=user_task, ai_message=result.content
     )
 
     structured_model = light_open_router.with_structured_output(Conclusion)
@@ -196,15 +188,13 @@ def generate_answer_node(state: ChatGraphState):
     conclusion = structured_model.invoke(conclusion_instruction)
 
     no_markdown_text = remove_markdown(conclusion.text)
-    output_audio_file = asyncio.run( text_to_speech_upload_file(no_markdown_text))
+    output_audio_file = asyncio.run(text_to_speech_upload_file(no_markdown_text))
     print(f"   > Text-to-speech audio file saved to: {output_audio_file}")
 
-    output_audio_file = file_service_url+"/test/download/"+ f"{output_audio_file}"
+    output_audio_file = file_service_url + "/test/download/" + f"{output_audio_file}"
     result.additional_kwargs["file_url"] = output_audio_file
     human_msg.id = str(uuid.uuid4())
     result.id = str(uuid.uuid4())
-
-
 
     return {
         "messages": [human_msg, result],

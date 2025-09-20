@@ -139,13 +139,11 @@
 .message-bubble {
     padding: 0.75rem 1.25rem;
     border-radius: 1.25rem;
-    background-color: white;
-    box-shadow: var(--shadow-sm);
     border: 1px solid var(--border);
 }
 
 .message.user .message-bubble {
-    background-color: hsl(var(--primary));
+    background-color: gray;
     color: hsl(var(--primary-foreground));
     border-bottom-right-radius: 0.5rem;
     border-color: transparent;

@@ -1,12 +1,12 @@
-import tempfile
 import os
-from pathlib import Path
-from openai import OpenAI
-from dotenv import load_dotenv
+import tempfile
 import time
 import uuid
-from aiohttp import ClientTimeout
+
 import aiohttp
+from aiohttp import ClientTimeout
+from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 api_key = os.getenv("DEEPINFRA_API_KEY")
@@ -29,8 +29,7 @@ def text_to_speech(text_input: str, speech_file_path: str):
 
 
 def generate_unique_filename(original_filename: str) -> str:
-    """
-    Generate a unique filename for storage while preserving the file extension.
+    """Generate a unique filename for storage while preserving the file extension.
 
     Args:
         original_filename: The original filename provided by the user
@@ -57,8 +56,7 @@ def generate_unique_filename(original_filename: str) -> str:
 
 
 class TempFile:
-    """
-    A class to simulate file-like object behavior for the upload function.
+    """A class to simulate file-like object behavior for the upload function.
     This allows us to work with the existing upload_file function without modification.
     """
 
@@ -79,8 +77,7 @@ class TempFile:
 
 
 async def upload_file(file):
-    """
-    Upload a file to the external file service and save the metadata to the database.
+    """Upload a file to the external file service and save the metadata to the database.
 
     Args:
         file: A file-like object with filename, content_type, read(), and seek() methods
@@ -122,8 +119,7 @@ async def upload_file(file):
 
 
 async def text_to_speech_upload_file(text_input: str):
-    """
-    Convert text to speech, upload the audio file, and clean up temporary files.
+    """Convert text to speech, upload the audio file, and clean up temporary files.
 
     Args:
         text_input: The text to convert to speech

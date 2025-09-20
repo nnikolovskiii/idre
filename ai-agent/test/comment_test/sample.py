@@ -1,15 +1,11 @@
 
-import os
-import sys  
 
-"""
-This is a docstring that should be preserved.
+"""This is a docstring that should be preserved.
 It contains multiple lines and # characters that should not be removed.
 """
 
 def hello_world():
     """This is a function docstring that should be preserved."""
-    
     print("Hello, World!")  
     
     

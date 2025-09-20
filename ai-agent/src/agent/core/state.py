@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Annotated, TypedDict, List, Dict, Union, Any
+from typing import Annotated, Any, Dict, List, TypedDict, Union
+
 from langchain_core.messages import BaseMessage
 
 from ..models.task_models import Task
@@ -9,8 +10,7 @@ from ..models.task_models import Task
 def manage_messages(
         left: List[BaseMessage], right: Union[List[BaseMessage], Dict[str, Any]]
 ) -> List[BaseMessage]:
-    """
-    A custom reducer for the `messages` state.
+    """A custom reducer for the `messages` state.
     - If `right` is a list, it appends messages (like `add_messages`).
     - If `right` is a dict with a key `"$replace"`, it replaces the entire list.
     """

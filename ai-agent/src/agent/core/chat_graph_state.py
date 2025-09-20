@@ -1,13 +1,14 @@
 from __future__ import annotations
-from typing import Optional, Annotated, TypedDict
+
+from typing import Annotated, Optional, TypedDict
+
 from langchain_core.messages import BaseMessage
 
 from agent.core.state import manage_messages
 
 
 class ChatGraphState(TypedDict):
-    """
-    Represents the state of our graph, handling text, audio, or both.
+    """Represents the state of our graph, handling text, audio, or both.
 
     Attributes:
         messages: The list of messages in the conversation.

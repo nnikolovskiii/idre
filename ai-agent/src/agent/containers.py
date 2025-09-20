@@ -1,8 +1,8 @@
 import os
 
 from cryptography.fernet import Fernet
-from dotenv import load_dotenv
 from dependency_injector import containers, providers
+from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
 from agent.services.fernet_service import FernetService

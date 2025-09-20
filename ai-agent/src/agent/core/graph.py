@@ -6,22 +6,31 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
-from .ai_models import kimi_llm, gemini_flash_lite, open_router_model, gpt5
-from .state import State
-from ..prompts.prompts import final_context_instruction, make_plan_instruction, input_type_determination_prompt, \
-    answer_question_prompt, commit_message_instruction
-from ..tools.file_utils import get_project_structure_as_string, concat_files_in_str, concat_agent_metadata
 from ..models.models import FileReflectionList, SearchFilePathsList
-from ..prompts.prompts import file_planner_instructions, file_reflection_instructions
+from ..prompts.prompts import (
+    answer_question_prompt,
+    commit_message_instruction,
+    file_planner_instructions,
+    file_reflection_instructions,
+    final_context_instruction,
+    input_type_determination_prompt,
+    make_plan_instruction,
+)
+from ..tools.file_utils import (
+    concat_agent_metadata,
+    concat_files_in_str,
+    get_project_structure_as_string,
+)
 from ..utils.git_tools import git_commit_push
+from .ai_models import gemini_flash_lite, gpt5, kimi_llm
+from .state import State
 
 load_dotenv()
 
 
 
 def llm_file_explore(state: State):
-    """
-    Transcribes audio, then uses the text to find relevant files.
+    """Transcribes audio, then uses the text to find relevant files.
     """
     user_task = state["user_task"]
     project_path = state["project_path"]

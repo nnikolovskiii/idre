@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import os
 from typing import Literal
 
-from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
-from langgraph.constants import END
+from langchain_core.messages import ToolMessage
 
-from .state import State
-from ..tools.llm_tools import llm_with_tools, tools_by_name
+from ..models.step_models import StepList
 from ..prompts.prompts import agent_instruction
-from .ai_models import kimi_llm, gpt5
-from ..models.step_models import Step, StepList
+from ..tools.llm_tools import llm_with_tools, tools_by_name
+from .ai_models import gpt5
+from .state import State
 
 
 def segment_into_steps(state: State):
-    """
-    Segment the plan into steps.
+    """Segment the plan into steps.
     """
     plan = state["plan"]
     agent_metadata = state.get("agent_metadata", "")
@@ -39,7 +36,6 @@ def segment_into_steps(state: State):
 
 def llm_call(state: State):
     """LLM decides whether to call a tool or not using agent_instruction"""
-
     # Get the current step and previous steps
     steps = state.get("steps", [])
     current_step_index = state.get("current_step_index", 0)
@@ -76,7 +72,6 @@ def llm_call(state: State):
 
 def should_continue(state: State) -> Literal["environment", "next_step", "push_to_git"]:
     """Decide if we should continue the loop or stop based upon whether the LLM made a tool call"""
-
     messages = state["messages"]
     last_message = messages[-1]
     if last_message.tool_calls:
@@ -97,7 +92,6 @@ def should_continue(state: State) -> Literal["environment", "next_step", "push_t
 
 def tool_node(state: dict):
     """Performs the tool call"""
-
     result = []
     for tool_call in state["messages"][-1].tool_calls:
         tool = tools_by_name[tool_call["name"]]
@@ -108,7 +102,6 @@ def tool_node(state: dict):
 
 def next_step(state: State):
     """Move to the next step"""
-
     current_step_index = state.get("current_step_index", 0)
     next_step_index = current_step_index + 1
 

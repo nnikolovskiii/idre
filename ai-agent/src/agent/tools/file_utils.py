@@ -9,8 +9,7 @@ DEFAULT_IGNORE_PATTERNS = {'.git', '.venv', ".idea", ".pytest_cache",
 
 
 def get_project_structure_as_string(folder_path, ignore_patterns=None):
-    """
-    Generates a tree-like string representation of the project structure for the given folder path,
+    """Generates a tree-like string representation of the project structure for the given folder path,
     excluding files and folders that match the ignore patterns by their basename.
 
     How to use `ignore_patterns`:
@@ -31,7 +30,6 @@ def get_project_structure_as_string(folder_path, ignore_patterns=None):
         str: A formatted tree-like string representation of the project structure.
              Returns an error message if folder_path does not exist or is not a directory.
     """
-
     final_ignore_patterns = DEFAULT_IGNORE_PATTERNS if ignore_patterns is None else ignore_patterns
 
     if not os.path.exists(folder_path):
@@ -87,14 +85,13 @@ def get_project_structure_as_string(folder_path, ignore_patterns=None):
     return "\n".join(output_lines)
 
 
-from pathlib import Path
-from typing import List
 import re
+
 from pypdf import PdfReader
 
+
 def read_file(file_path: str) -> str | None:
-    """
-    Read contents of a file.
+    """Read contents of a file.
 
     Args:
         file_path (str): Path to the file.
@@ -113,15 +110,14 @@ def read_file(file_path: str) -> str | None:
         return None
 
     try:
-        with open(path, 'r', encoding='utf-8') as file:
+        with open(path, encoding='utf-8') as file:
             return file.read()
     except Exception as e:
         print(f"Error reading text file {path}: {str(e)}")
         return None
 
 def read_pdf(file_path: str) -> str | None:
-    """
-    Read contents of a PDF file.
+    """Read contents of a PDF file.
 
     Args:
         file_path (str): Path to the PDF file.
@@ -153,8 +149,7 @@ def read_pdf(file_path: str) -> str | None:
         return None
 
 def concat_files_in_str(file_paths: List[str]) -> str:
-    """
-    Concatenates the contents of specified files (text or PDF) into a single string,
+    """Concatenates the contents of specified files (text or PDF) into a single string,
     with titles for each file.
 
     Args:
@@ -198,8 +193,7 @@ FILE: {file_path}
 
 
 def concat_folder_to_file(folder_path: str, output_file: str = "concatenated_output.txt", ignore_patterns=None, binary_extensions=None):
-    """
-    Concatenates all files in a folder (and its subfolders) into a single output file,
+    """Concatenates all files in a folder (and its subfolders) into a single output file,
     excluding files and folders that match the ignore patterns.
 
     Args:
@@ -268,8 +262,7 @@ def concat_folder_to_file(folder_path: str, output_file: str = "concatenated_out
 
 
 def remove_python_comments(folder_path: str, ignore_patterns=None, clean_empty_lines=True):
-    """
-    Recursively removes all comments from Python files in the specified folder.
+    """Recursively removes all comments from Python files in the specified folder.
 
     This function:
     1. Finds all .py files in the given folder and its subfolders
@@ -320,7 +313,7 @@ def remove_python_comments(folder_path: str, ignore_patterns=None, clean_empty_l
     for file_path in python_files:
         try:
             # Read the file content
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
 
             # Remove comments while preserving docstrings
@@ -351,8 +344,7 @@ def remove_python_comments(folder_path: str, ignore_patterns=None, clean_empty_l
 
 
 def remove_comments_from_python_code(code: str) -> str:
-    """
-    Removes comments from Python code while preserving docstrings.
+    """Removes comments from Python code while preserving docstrings.
 
     Args:
         code (str): The Python code to process
@@ -417,8 +409,7 @@ def remove_comments_from_python_code(code: str) -> str:
     return ''.join(result)
 
 def concat_agent_metadata(folder_path: str) -> str:
-    """
-    Finds all 'agent_metadata.md' files within a folder and its subfolders,
+    """Finds all 'agent_metadata.md' files within a folder and its subfolders,
     concatenates their contents into a single string, each prefixed by its path.
 
     Args:
@@ -431,7 +422,6 @@ def concat_agent_metadata(folder_path: str) -> str:
              each preceded by its file path, or an empty string if none are found
              or errors occur.
     """
-
     # Validate folder path
     if not os.path.exists(folder_path):
         print(f"Error: The path '{folder_path}' does not exist.")
@@ -456,7 +446,7 @@ def concat_agent_metadata(folder_path: str) -> str:
 
                 # Attempt to read the file content
                 try:
-                    with open(full_file_path, 'r', encoding='utf-8') as f:
+                    with open(full_file_path, encoding='utf-8') as f:
                         content = f.read()
                     # Combine path prefix and content in a single string
                     result_lines.append(f"{file_path}: {content}")

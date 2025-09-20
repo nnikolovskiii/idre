@@ -1,9 +1,6 @@
 # This is a comment at the beginning of the file
-import os
-import sys  # This is an inline comment
 
-"""
-This is a docstring that should be preserved.
+"""This is a docstring that should be preserved.
 It contains multiple lines and # characters that should not be removed.
 """
 

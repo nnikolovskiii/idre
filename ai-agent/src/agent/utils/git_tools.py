@@ -1,11 +1,9 @@
-import subprocess
-import sys
 import os
+import subprocess
 
 
 def git_commit_push(repo_path, commit_message):
-    """
-    Stages all changes, commits with the given message, and pushes to remote in specified repository.
+    """Stages all changes, commits with the given message, and pushes to remote in specified repository.
 
     Args:
         repo_path (str): Path to the Git repository

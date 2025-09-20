@@ -27,7 +27,10 @@ dependencies = [
     "asyncpg (>=0.30.0,<0.31.0)",
     "google-auth (>=2.17.3,<3.0.0)",
     "requests (>=2.31.0,<3.0.0)",
-    "pandas (>=2.3.2,<3.0.0)"
+    "pandas (>=2.3.2,<3.0.0)",
+    "matplotlib (>=3.10.6,<4.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "pymongo (>=4.15.1,<5.0.0)"
 ]
 
 [tool.poetry]

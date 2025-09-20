@@ -1,15 +1,14 @@
-import asyncio
 import os
 
 from langgraph_sdk import get_client
+
 langgraph_url = os.getenv("LANGGRAPH_URL")
 
 
 client = get_client(url=langgraph_url)
 
 async def delete_message_from_thread(client, thread_id: str, message_id_to_delete: str):
-    """
-    Deletes a message from a thread by updating the thread's state.
+    """Deletes a message from a thread by updating the thread's state.
     """
     print(f"Attempting to delete message '{message_id_to_delete}' from thread '{thread_id}'...")
 

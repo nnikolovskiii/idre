@@ -1,7 +1,5 @@
-// Path: frontend/src/components/MessagesContainer.tsx
-
 import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown'; // <-- Import the library
+import ReactMarkdown from 'react-markdown'; 
 import type { Message } from './ChatView';
 import AudioPlayer from './AudioPlayer';
 import MessageToggle from './MessageToggle';
@@ -86,32 +84,37 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({ messages, isTypin
           {messages.map(message => (
             <div key={message.id} className={`message ${message.type === 'human' ? 'user' : 'ai'}`}>
               {message.type === 'human' ? (
+                  <div>
+
                 <div className="message-bubble message-with-delete">
                   <MessageBody message={message} />
-                  <button
-                    className="delete-message-btn"
-                    onClick={() => onDeleteMessage(message.id)}
-                    title="Delete message"
-                  >
-                    <Trash2 size={14} />
-                  </button>
                 </div>
-              ) : (
-                <>
-                  <div className="ai-message-header">
-                    <Bot size={16} />
-                    <span>AI Assistant</span>
                     <button
-                      className="delete-message-btn"
-                      onClick={() => onDeleteMessage(message.id)}
-                      title="Delete message"
+                        className="delete-message-btn"
+                        onClick={() => onDeleteMessage(message.id)}
+                        title="Delete message"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
+              ) : (
+                <>
+                  <div className="ai-message-header">
+                    <Bot size={16} />
+                    <span>I-DY</span>
+
+                  </div>
                   <div className="message-bubble">
                     <MessageBody message={message} />
+
                   </div>
+                  <button
+                      className="delete-message-btn"
+                      onClick={() => onDeleteMessage(message.id)}
+                      title="Delete message"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </>
               )}
             </div>

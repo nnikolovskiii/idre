@@ -35,11 +35,11 @@ gemini_flash_lite = ChatGoogleGenerativeAI(
     api_key=api_key,
 )
 
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain.chains import LLMChain
 from os import getenv
+
 from dotenv import load_dotenv
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
