@@ -1,4 +1,3 @@
-# backend/repositories/chat_model_repository.py
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select

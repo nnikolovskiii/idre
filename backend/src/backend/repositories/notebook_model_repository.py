@@ -1,5 +1,3 @@
-# backend/repositories/notebook_model_repository.py
-
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

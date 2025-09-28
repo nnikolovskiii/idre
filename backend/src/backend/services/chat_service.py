@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.chat import Chat
 from backend.models.dtos.chat import SendMessageRequest
 from backend.models.notebook_model import NotebookModel
-from backend.services.ai_model_service import AIModelService
 from backend.services.model_api_service import ModelApiService
 from backend.services.notebook_model_service import NotebookModelService
 from backend.services.chat_model_service import ChatModelService
@@ -35,7 +34,6 @@ class ChatService:
             session: AsyncSession,
             chat_repository: ChatRepository,
             thread_repository: ThreadRepository,
-            ai_model_service: AIModelService,
             model_api_service: ModelApiService,
             notebook_model_service: NotebookModelService,
             chat_model_service: ChatModelService,
@@ -55,7 +53,6 @@ class ChatService:
         self.session = session
         self.chat_repo = chat_repository
         self.thread_repo = thread_repository
-        self.ai_model_service = ai_model_service
         self.model_api_service = model_api_service
         self.notebook_model_service = notebook_model_service
         self.chat_model_service = chat_model_service
