@@ -4,12 +4,11 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, UploadFile, File as FastAPIFile, HTTPException
 
+from backend.api.dependencies import get_file_service
 from backend.models import User
 from backend.api.routes.auth import get_current_user
-from backend.databases.postgres_db import get_session
-from backend.services.file_service import FileService, format_file_size
+from backend.services.file_service import FileService
 
-file_service = FileService()
 
 load_dotenv()
 FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL")
@@ -23,7 +22,7 @@ async def upload_file(
         file: UploadFile = FastAPIFile(...),
         notebook_id: str = None,
         current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        file_service: FileService = Depends(get_file_service)
 ):
     if not FILE_SERVICE_URL or not UPLOAD_PASSWORD:
         raise HTTPException(
@@ -55,7 +54,6 @@ async def upload_file(
                     )
 
         file_record = await file_service.create_file_record(
-            session=session,
             user_id=current_user.email,
             filename=file.filename,
             unique_filename=unique_filename,
@@ -73,7 +71,7 @@ async def upload_file(
                 "filename": file.filename,
                 "unique_filename": file_record.unique_filename,
                 "url": file_record.url,
-                "file_size": format_file_size(file_record.file_size_bytes) if file_record.file_size_bytes else "0 B",
+                "file_size": file_service.format_file_size(file_record.file_size_bytes) if file_record.file_size_bytes else "0 B",
                 "processing_status": file_record.processing_status
             }
         }
@@ -87,11 +85,10 @@ async def upload_file(
 async def get_user_files(
         current_user: User = Depends(get_current_user),
         notebook_id: str = None,
-        session: AsyncSession = Depends(get_session)
+        file_service: FileService = Depends(get_file_service)
 ):
     try:
         files = await file_service.get_files_for_user(
-            session=session,
             user_id=current_user.email,
             notebook_id=notebook_id
         )
@@ -106,7 +103,7 @@ async def get_user_files(
                     "unique_filename": file.unique_filename,
                     "url": file.url,
                     "content_type": file.content_type,
-                    "file_size": format_file_size(file.file_size_bytes) if file.file_size_bytes else "0 B",
+                    "file_size": file_service.format_file_size(file.file_size_bytes) if file.file_size_bytes else "0 B",
                     "processing_status": file.processing_status,
                     "thread_id": str(file.thread_id) if file.thread_id else None,
                     "run_id": file.run_id,

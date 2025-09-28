@@ -2,9 +2,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.api.dependencies import get_model_api_service
 from backend.models import User
 from backend.api.routes.auth import get_current_user
-from backend.container import container
+from backend.services.model_api_service import ModelApiService
 
 router = APIRouter()
 
@@ -20,19 +21,15 @@ class UpdateModelApiRequest(BaseModel):
 
 @router.get("/", response_model=ModelApiResponse)
 async def get_model_api(
-    current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        model_api_service: ModelApiService = Depends(get_model_api_service)
 ):
     """
     Get the user's model API key information.
     Returns whether the user has an API key and the decrypted key if available.
     """
     try:
-        # Get model API service from container
-        model_api_service = container.model_api_service()
-
-        # Get decrypted API key
         model_api_obj = await model_api_service.get_api_key_by_user_id(str(current_user.user_id))
-
 
         return ModelApiResponse(
             has_api_key=model_api_obj is not None,
@@ -43,17 +40,14 @@ async def get_model_api(
 
 @router.put("/")
 async def update_model_api(
-    request: UpdateModelApiRequest,
-    current_user: User = Depends(get_current_user)
+        request: UpdateModelApiRequest,
+        current_user: User = Depends(get_current_user),
+        model_api_service: ModelApiService = Depends(get_model_api_service)
 ):
     """
     Create or update the user's model API key.
     """
     try:
-        # Get model API service from container
-        model_api_service = container.model_api_service()
-
-        # Upsert the API key
         result = await model_api_service.upsert_api_key(str(current_user.user_id), request.api_key)
 
         return {"status": "success", "message": "API key updated successfully"}
@@ -63,16 +57,13 @@ async def update_model_api(
 
 @router.delete("/")
 async def delete_model_api(
-    current_user: User = Depends(get_current_user)
+        current_user: User = Depends(get_current_user),
+        model_api_service: ModelApiService = Depends(get_model_api_service)
 ):
     """
     Delete the user's model API key.
     """
     try:
-        # Get model API service from container
-        model_api_service = container.model_api_service()
-
-        # Delete the API key
         deleted = await model_api_service.delete_api_key(str(current_user.user_id))
 
         if deleted:

@@ -1,14 +1,12 @@
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_notebook_service
 from backend.models import User
 from backend.api.routes.auth import get_current_user
-from backend.databases.postgres_db import get_session
 from backend.services.notebook_service import NotebookService
 
-notebook_service = NotebookService()
 
 router = APIRouter()
 
@@ -56,7 +54,7 @@ class NotebooksListResponse(BaseModel):
 async def create_notebook(
         notebook_data: NotebookCreate,
         current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
     Create a new notebook.
@@ -66,7 +64,6 @@ async def create_notebook(
     """
     try:
         notebook = await notebook_service.create_notebook(
-            session=session,
             user_id=current_user.email,
             emoji=notebook_data.emoji,
             title=notebook_data.title,
@@ -95,7 +92,7 @@ async def create_notebook(
 @router.get("", response_model=NotebooksListResponse)
 async def get_all_notebooks(
         current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
     Get all notebooks for the current user.
@@ -104,7 +101,7 @@ async def get_all_notebooks(
         List of user's notebooks wrapped in a response object.
     """
     try:
-        notebooks = await notebook_service.get_notebooks_for_user(session=session, user_id=current_user.email)
+        notebooks = await notebook_service.get_notebooks_for_user(user_id=current_user.email)
 
         # First, prepare the list of individual notebook responses
         notebook_responses = [
@@ -132,8 +129,7 @@ async def get_all_notebooks(
 @router.get("/{notebook_id}", response_model=NotebookResponse)
 async def get_notebook(
         notebook_id: str,
-        current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
     Get a specific notebook by ID.
@@ -145,7 +141,7 @@ async def get_notebook(
         The notebook if found
     """
     try:
-        notebook = await notebook_service.get_notebook_by_id(session=session, notebook_id=notebook_id)
+        notebook = await notebook_service.get_notebook_by_id(notebook_id=notebook_id)
         if not notebook:
             raise HTTPException(status_code=404, detail="Notebook not found")
 
@@ -170,8 +166,7 @@ async def get_notebook(
 async def update_notebook(
         notebook_id: str,
         notebook_data: NotebookUpdate,
-        current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
     Update a notebook.
@@ -184,7 +179,6 @@ async def update_notebook(
     """
     try:
         notebook = await notebook_service.update_notebook(
-            session=session,
             notebook_id=notebook_id,
             emoji=notebook_data.emoji,
             title=notebook_data.title,
@@ -217,8 +211,7 @@ async def update_notebook(
 @router.delete("/{notebook_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_notebook(
         notebook_id: str,
-        current_user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session)
+        notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
     Delete a notebook.
@@ -230,7 +223,7 @@ async def delete_notebook(
         Empty response with 204 status code
     """
     try:
-        deleted = await notebook_service.delete_notebook(session=session, notebook_id=notebook_id)
+        deleted = await notebook_service.delete_notebook(notebook_id=notebook_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Notebook not found")
     except HTTPException:

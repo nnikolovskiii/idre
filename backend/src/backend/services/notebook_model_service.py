@@ -5,6 +5,8 @@ from backend.models.app_settings import AppSettings
 from backend.models.generative_model import GenerativeModel
 from backend.models.notebook_model import NotebookModel
 from backend.repositories.notebook_model_repository import NotebookModelRepository
+from backend.services.app_settings_service import AppSettingsService
+from backend.services.generative_model_service import GenerativeModelService
 
 
 class NotebookModelService:
