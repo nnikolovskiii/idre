@@ -100,9 +100,16 @@ def prepare_inputs_node(state: ChatGraphState):
     audio_path = state.get("audio_path")
     light_model = state.get("light_model", "google/gemini-flash-1.5")
 
-    encrypt_api_key = state.get("api_key")
+    encrypt_api_key = state.get("api_key", None)
     fernet_service = container.fernet_service()
-    api_key = fernet_service.decrypt_data(encrypt_api_key)
+    if encrypt_api_key:
+        api_key = fernet_service.decrypt_data(encrypt_api_key)
+    else:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if "free" not in light_model:
+            raise ValueError(
+                "API key is required for non-free models. Please provide a valid API key."
+            )
 
     if light_model is None:
         light_model = "google/gemini-flash-1.5"
@@ -137,20 +144,39 @@ def generate_answer_node(state: ChatGraphState):
     messages = state["messages"]
     heavy_model = state.get("heavy_model", "google/gemini-2.5-pro")
     light_model = state.get("light_model", "google/gemini-2.5-flash")
+    print(f"   > Using heavy model: {heavy_model}" f" and light model: {light_model}")
 
     encrypt_api_key = state.get("api_key")
     fernet_service = container.fernet_service()
-    api_key = fernet_service.decrypt_data(encrypt_api_key)
+    if encrypt_api_key:
+        api_key = fernet_service.decrypt_data(encrypt_api_key)
+    else:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if "free" not in light_model or "free" not in heavy_model:
+            raise ValueError(
+                "API key is required for non-free models. Please provide a valid API key."
+            )
 
     if heavy_model is None:
         heavy_model = "google/gemini-2.5-pro"
 
     audio_path = state.get("audio_path")
 
-    context = "\n".join(
-        f"Human: {m.content}" if isinstance(m, HumanMessage) else f"AI: {m.content}"
-        for m in messages
-    )
+    context_parts = []
+    for m in messages:
+        if hasattr(m, "content"):
+            content = m.content
+            role = "Human" if isinstance(m, HumanMessage) else "AI"
+        elif isinstance(m, dict):
+            content = m.get("content", "")
+            msg_type = m.get("type", "ai").lower()
+            role = "Human" if msg_type == "human" else "AI"
+        else:
+            content = str(m)
+            role = "AI"
+        if content.strip():
+            context_parts.append(f"{role}: {content}")
+    context = "\n".join(context_parts)
 
     instruction = generate_answer_instruction.format(
         user_task=user_task,

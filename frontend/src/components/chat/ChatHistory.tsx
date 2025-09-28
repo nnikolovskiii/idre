@@ -25,7 +25,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   onToggleCollapse,
   isAuthenticated,
 }) => {
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
 
   const handleDeleteChat = async (chatId: string, event: React.MouseEvent) => {
     event.stopPropagation();

@@ -33,7 +33,7 @@ echo "Starting backend..."
 cd backend
 poetry lock
 poetry install
-poetry run python src/accounting_agent/main.py &
+poetry run python src/backend/main.py &
 cd ..
 
 # Stop any process on port 5173

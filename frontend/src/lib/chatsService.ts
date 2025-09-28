@@ -104,10 +104,10 @@ export const chatsService = {
   },
 
   sendMessageToThread: async (
-    threadId: string,
-    message?: string,
-    audioPath?: string,
-    onLoadingUpdate?: (isLoading: boolean) => void
+      threadId: string,
+      message?: string,
+      audioPath?: string,
+      onLoadingUpdate?: (isLoading: boolean) => void
   ): Promise<SendMessageResponse> => {
     const payload: SendMessageRequest = {};
 
@@ -119,7 +119,7 @@ export const chatsService = {
     if (audioPath) {
       payload.audio_path = audioPath;
     }
-    
+
 
     // Signal that processing is starting
     if (onLoadingUpdate) {
@@ -142,12 +142,12 @@ export const chatsService = {
       }
 
       const result = await response.json();
-      
+
       // Signal that processing is complete
       if (onLoadingUpdate) {
         onLoadingUpdate(false);
       }
-      
+
       return result;
     } catch (error) {
       // Make sure to turn off loading indicator on error

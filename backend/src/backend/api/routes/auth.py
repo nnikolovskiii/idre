@@ -4,7 +4,6 @@ import uuid
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Response
-from fastapi.responses import JSONResponse
 from fastapi.params import Depends
 from pydantic import BaseModel, EmailStr
 import jwt
@@ -14,7 +13,6 @@ from google.oauth2 import id_token
 
 from backend.models.user import User
 from backend.container import container
-from backend.auth.services.user import UserService
 
 router = APIRouter()
 

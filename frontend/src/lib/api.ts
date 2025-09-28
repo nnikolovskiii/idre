@@ -46,19 +46,6 @@ export const API_CONFIG = {
     }
 };
 
-// --- START OF REFACTORED CODE ---
-
-// Type definition for the message structure from the LangChain backend
-export interface BackendMessage {
-    id: string;
-    type: 'human' | 'ai' | 'system';
-    content: string;
-    additional_kwargs?: {
-        file_url?: string;
-        [key: string]: any;
-    };
-}
-
 // Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string) => {
     return `${API_CONFIG.getApiUrl()}${endpoint}`;

@@ -126,6 +126,19 @@
   background: #9ca3af;
 }
 
+.upload-btn {
+  background: #10b981;
+  color: white;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.upload-btn:disabled {
+  background: #9ca3af;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .input-area {

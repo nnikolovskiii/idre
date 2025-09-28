@@ -9,7 +9,7 @@ from backend.api.routes.auth import router as auth_router
 from backend.api.routes.files import router as files_router
 from backend.api.routes.webhook import router as webhook_router
 from backend.api.routes.chat import router as chat_router
-from backend.api.routes.default_ai_models import router as default_ai_models_router
+from backend.api.routes.ai_models import router as ai_models_router
 from backend.api.routes.model_api import router as model_api_router
 from backend.api.routes.openrouter_models import router as openrouter_models_router
 from backend.api.routes.notebooks import router as notebooks_router
@@ -63,7 +63,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(files_router, prefix="/files", tags=["Files"])
 app.include_router(webhook_router, prefix="/webhook", tags=["Webhook"])
 app.include_router(chat_router, prefix="/chats", tags=["Chats"])
-app.include_router(default_ai_models_router, prefix="/default-ai-models", tags=["Default AI Models"])
+app.include_router(ai_models_router, prefix="/ai-models", tags=["AI Models"])
 app.include_router(model_api_router, prefix="/model-api", tags=["Model API"])
 app.include_router(openrouter_models_router, prefix="/openrouter-models", tags=["OpenRouter Models"])
 app.include_router(notebooks_router, prefix="/notebooks", tags=["Notebooks"])

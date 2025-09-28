@@ -1,5 +1,3 @@
-# backend/api/routes/upload.py
-
 import os
 import aiohttp
 from dotenv import load_dotenv
@@ -8,13 +6,11 @@ from fastapi import APIRouter, Depends, UploadFile, File as FastAPIFile, HTTPExc
 
 from backend.models import User
 from backend.api.routes.auth import get_current_user
-# CORRECTED: Import the get_session dependency function, not the whole class
 from backend.databases.postgres_db import get_session
 from backend.services.file_service import FileService, format_file_size
 
 file_service = FileService()
 
-# Load environment variables
 load_dotenv()
 FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL")
 UPLOAD_PASSWORD = os.getenv("UPLOAD_PASSWORD")
@@ -25,15 +21,10 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file(
         file: UploadFile = FastAPIFile(...),
+        notebook_id: str = None,
         current_user: User = Depends(get_current_user),
-        # CORRECTED: Inject the session directly using the dependency
         session: AsyncSession = Depends(get_session)
 ):
-    """
-    Upload a file to an external service and save metadata to the database.
-    This endpoint now correctly uses a dependency for session management and
-    streams the file upload for better memory efficiency.
-    """
     if not FILE_SERVICE_URL or not UPLOAD_PASSWORD:
         raise HTTPException(
             status_code=500,
@@ -44,15 +35,11 @@ async def upload_file(
     upload_url = f"{FILE_SERVICE_URL}/test/upload"
     headers = {'password': UPLOAD_PASSWORD}
 
-    # Use a try/except block for the network request and other logic.
-    # The database transaction (commit/rollback) is handled automatically
-    # by the `get_session` dependency.
     try:
-        # IMPROVED: Stream the file upload instead of reading it all into memory.
         form = aiohttp.FormData()
         form.add_field(
             'file',
-            file.file,  # Pass the file-like object directly
+            file.file,
             filename=unique_filename,
             content_type=file.content_type
         )
@@ -74,10 +61,9 @@ async def upload_file(
             unique_filename=unique_filename,
             url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
             content_type=file.content_type,
-            file_size_bytes=file.size
+            file_size_bytes=file.size,
+            notebook_id = notebook_id
         )
-
-        # NOTE: The session.commit() is handled by the `get_session` dependency upon successful exit.
 
         return {
             "status": "success",
@@ -92,29 +78,22 @@ async def upload_file(
             }
         }
     except aiohttp.ClientError as e:
-        # Handle network-specific errors
         raise HTTPException(status_code=502, detail=f"Network error communicating with file service: {e}")
     except Exception as e:
-        # Catch any other unexpected errors.
-        # The `get_session` dependency will have already rolled back the transaction.
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
 @router.get("/files")
 async def get_user_files(
         current_user: User = Depends(get_current_user),
+        notebook_id: str = None,
         session: AsyncSession = Depends(get_session)
 ):
-    """
-    Get all files for the current user.
-
-    Returns:
-        List of file records for the authenticated user
-    """
     try:
         files = await file_service.get_files_for_user(
             session=session,
-            user_id=current_user.email
+            user_id=current_user.email,
+            notebook_id=notebook_id
         )
 
         return {

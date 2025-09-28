@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import type { Message } from './ChatView';
-import AudioPlayer from '../ui/AudioPlayer';
-import MessageToggle from '../ui/MessageToggle';
-import { Bot, Trash2 } from 'lucide-react';
+import React, { useEffect, useRef, useState, createRef } from "react";
+import ReactMarkdown from "react-markdown";
+import type { Message } from "./ChatView";
+import AudioPlayer from "../ui/AudioPlayer";
+import { Bot, Trash2, Copy, Volume2 } from "lucide-react";
+
+interface AudioPlayerHandle {
+  play: () => void;
+}
 
 interface MessagesContainerProps {
   messages: Message[];
@@ -11,9 +14,16 @@ interface MessagesContainerProps {
   onDeleteMessage: (messageId: string) => void;
 }
 
-const MessagesContainer: React.FC<MessagesContainerProps> = ({ messages, isTyping, onDeleteMessage }) => {
+const MessagesContainer: React.FC<MessagesContainerProps> = ({
+  messages,
+  isTyping,
+  onDeleteMessage,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showAudioStates, setShowAudioStates] = useState<Record<string, boolean>>({});
+  const audioRefs = useRef<Record<string, React.RefObject<AudioPlayerHandle>>>(
+    {}
+  );
+  const [copiedMessages, setCopiedMessages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (containerRef.current) {
@@ -22,117 +32,168 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({ messages, isTypin
   }, [messages, isTyping]);
 
   useEffect(() => {
-    const newStates: Record<string, boolean> = {};
-    messages.forEach(message => {
-      if (message.content && message.audioUrl) {
-        if (!(message.id in showAudioStates)) {
-          newStates[message.id] = false;
-        }
+    messages.forEach((message) => {
+      if (message.audioUrl && !audioRefs.current[message.id]) {
+        audioRefs.current[message.id] = createRef<AudioPlayerHandle>();
       }
     });
-    
-    if (Object.keys(newStates).length > 0) {
-      setShowAudioStates(prev => ({ ...prev, ...newStates }));
-    }
-  }, [messages, showAudioStates]);
+  }, [messages]);
 
-  const toggleMessageView = (messageId: string) => {
-    setShowAudioStates(prev => ({
-      ...prev,
-      [messageId]: !prev[messageId]
-    }));
+  const handleCopy = (messageId: string, content: string) => {
+    navigator.clipboard
+      .writeText(content)
+      .then(() => {
+        setCopiedMessages((prev) => new Set([...prev, messageId]));
+        setTimeout(() => {
+          setCopiedMessages((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(messageId);
+            return newSet;
+          });
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+      });
   };
 
   const MessageBody: React.FC<{ message: Message }> = ({ message }) => {
-    const showAudio = showAudioStates[message.id] || false;
-    
-    // Show audio toggle for messages that have both text and audio
-    // The isTyping state is not used here because it only indicates new response generation,
-    // not whether existing messages should show their toggles
-    const shouldShowAudioToggle = message.content && message.audioUrl;
-    
     return (
       <div className="message-content">
-        {shouldShowAudioToggle && (
-          <MessageToggle
-            showAudio={showAudio}
-            onToggle={() => toggleMessageView(message.id)}
-            hasText={!!message.content}
-            hasAudio={!!message.audioUrl}
-          />
-        )}
-
-        {message.content && !(message.audioUrl && showAudio) && (
+        {message.content && (
           // Use ReactMarkdown to render the text content
           <div className="text-content">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}
-        
-        {message.audioUrl && (!message.content || showAudio) && (
-            <div className="audio-content">
-              <AudioPlayer audioUrl={message.audioUrl} />
-            </div>
+
+        {message.audioUrl && (
+          <div className="audio-content hidden">
+            <AudioPlayer
+              ref={audioRefs.current[message.id]}
+              audioUrl={message.audioUrl}
+            />
+          </div>
         )}
       </div>
     );
   };
 
   return (
-      <div className="messages-container" ref={containerRef}>
-        <div className="messages-list">
-          {messages.map(message => (
-            <div key={message.id} className={`message ${message.type === 'human' ? 'user' : 'ai'}`}>
-              {message.type === 'human' ? (
-                  <div>
-
-                <div className="message-bubble message-with-delete">
+    <div className="messages-container" ref={containerRef}>
+      <div className="messages-list">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`message ${message.type === "human" ? "user" : "ai"}`}
+          >
+            {message.type === "human" ? (
+              <div>
+                <div className="message-bubble">
                   <MessageBody message={message} />
                 </div>
+                <div className="message-actions">
+                  {message.content && (
                     <button
-                        className="delete-message-btn"
-                        onClick={() => onDeleteMessage(message.id)}
-                        title="Delete message"
+                      className="copy-message-btn"
+                      onClick={() =>
+                        handleCopy(message.id, message.content || "")
+                      }
+                      title="Copy message"
                     >
-                      <Trash2 size={14} />
+                      <Copy size={14} />
+                      {copiedMessages.has(message.id) && (
+                        <span className="copied-feedback">Copied!</span>
+                      )}
                     </button>
-                  </div>
-              ) : (
-                <>
-                  <div className="ai-message-header">
-                    <Bot size={16} />
-                    <span>I-DY</span>
-
-                  </div>
-                  <div className="message-bubble">
-                    <MessageBody message={message} />
-
-                  </div>
+                  )}
+                  {message.audioUrl && (
+                    <button
+                      className="copy-message-btn"
+                      onClick={() => {
+                        const ref = audioRefs.current[message.id];
+                        if (ref && ref.current) {
+                          ref.current.play();
+                        }
+                      }}
+                      title="Play audio"
+                    >
+                      <Volume2 size={14} />
+                    </button>
+                  )}
                   <button
-                      className="delete-message-btn"
-                      onClick={() => onDeleteMessage(message.id)}
-                      title="Delete message"
+                    className="delete-message-btn"
+                    onClick={() => onDeleteMessage(message.id)}
+                    title="Delete message"
                   >
                     <Trash2 size={14} />
                   </button>
-                </>
-              )}
-            </div>
-          ))}
-
-          {isTyping && (
-            <div className="typing-indicator">
-              <Bot size={16} />
-              <div className="dots">
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
+                </div>
               </div>
-              <span>AI is processing...</span>
+            ) : (
+              <>
+                <div className="ai-message-header">
+                  <Bot size={16} />
+                  <span>I-DY</span>
+                </div>
+                <div className="message-bubble">
+                  <MessageBody message={message} />
+                </div>
+                <div className="message-actions">
+                  {message.content && (
+                    <button
+                      className="copy-message-btn"
+                      onClick={() =>
+                        handleCopy(message.id, message.content || "")
+                      }
+                      title="Copy message"
+                    >
+                      <Copy size={14} />
+                      {copiedMessages.has(message.id) && (
+                        <span className="copied-feedback">Copied!</span>
+                      )}
+                    </button>
+                  )}
+                  {message.audioUrl && (
+                    <button
+                      className="copy-message-btn"
+                      onClick={() => {
+                        const ref = audioRefs.current[message.id];
+                        if (ref && ref.current) {
+                          ref.current.play();
+                        }
+                      }}
+                      title="Play audio"
+                    >
+                      <Volume2 size={14} />
+                    </button>
+                  )}
+                  <button
+                    className="delete-message-btn"
+                    onClick={() => onDeleteMessage(message.id)}
+                    title="Delete message"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+
+        {isTyping && (
+          <div className="typing-indicator">
+            <Bot size={16} />
+            <div className="dots">
+              <div className="dot"></div>
+              <div className="dot"></div>
+              <div className="dot"></div>
             </div>
-          )}
-        </div>
+            <span>AI is processing...</span>
+          </div>
+        )}
       </div>
+    </div>
   );
 };
 

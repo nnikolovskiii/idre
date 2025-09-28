@@ -1,109 +1,86 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from backend.models.file import File
+# backend/services/file_service.py
+
 import uuid
 import time
+from typing import List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
-
-def format_file_size(size_bytes: int) -> str:
-    """
-    Format file size in bytes to human-readable format.
-
-    Args:
-        size_bytes: File size in bytes
-
-    Returns:
-        Human-readable file size string (e.g., "1.2 MB", "500 KB", "2.1 GB")
-    """
-    if size_bytes == 0:
-        return "0 B"
-
-    size_names = ["B", "KB", "MB", "GB", "TB"]
-    size_index = 0
-    size = float(size_bytes)
-
-    while size >= 1024 and size_index < len(size_names) - 1:
-        size /= 1024
-        size_index += 1
-
-    # Format to 1 decimal place, remove trailing zeros
-    formatted_size = f"{size:.1f}".rstrip('0').rstrip('.')
-    return f"{formatted_size} {size_names[size_index]}"
+from backend.models.file import File
+from backend.repositories.file_repository import FileRepository
 
 
 class FileService:
+    """
+    Service for handling file-related business logic, such as filename
+    generation and orchestration of file record creation.
+    """
+    def __init__(self, session: AsyncSession, file_repository: FileRepository):
+        self.session = session
+        self.repo = file_repository
+
+    @staticmethod
+    def format_file_size(size_bytes: int) -> str:
+        """
+        Format file size in bytes to human-readable format.
+        (This is a utility function, making it a static method is good practice).
+        """
+        if size_bytes is None or size_bytes < 0:
+             return "0 B"
+        if size_bytes == 0:
+            return "0 B"
+
+        size_names = ["B", "KB", "MB", "GB", "TB"]
+        size_index = 0
+        size = float(size_bytes)
+
+        while size >= 1024 and size_index < len(size_names) - 1:
+            size /= 1024
+            size_index += 1
+
+        formatted_size = f"{size:.1f}".rstrip('0').rstrip('.')
+        return f"{formatted_size} {size_names[size_index]}"
+
     def generate_unique_filename(self, original_filename: str) -> str:
         """
-        Generate a unique filename for storage while preserving the file extension.
-
-        Args:
-            original_filename: The original filename provided by the user
-
-        Returns:
-            A unique filename that can be safely used in URLs and paths
+        (Business Logic) Generate a unique filename for storage.
         """
-        # Extract the file extension if it exists
+        extension = ""
         if '.' in original_filename:
             extension = original_filename.rsplit('.', 1)[1].lower()
-        else:
-            extension = ""
 
-        # Generate a unique identifier using timestamp and UUID
         unique_id = f"{int(time.time())}_{uuid.uuid4().hex}"
 
-        # Create the unique filename with the original extension
-        if extension:
-            unique_filename = f"{unique_id}.{extension}"
-        else:
-            unique_filename = unique_id
+        return f"{unique_id}.{extension}" if extension else unique_id
 
-        return unique_filename
-
-    async def create_file_record(self, session: AsyncSession, user_id: str, filename: str,
-                                unique_filename: str, url: str, content_type: str = None,
-                                file_size_bytes: int = None) -> File:
+    async def create_file_record(
+        self,
+        user_id: str,
+        filename: str,
+        unique_filename: str,
+        url: str,
+        content_type: Optional[str] = None,
+        file_size_bytes: Optional[int] = None,
+        notebook_id: Optional[str] = None
+    ) -> File:
         """
-        Create and save a file record to the database.
-
-        Args:
-            session: Database session
-            user_id: ID of the user uploading the file
-            filename: Original filename
-            unique_filename: Unique filename for storage
-            url: File URL
-            content_type: MIME type of the file
-            file_size_bytes: File size in bytes
-
-        Returns:
-            The created File object
+        (Orchestration) Create a file record using the repository and commit.
         """
-        file_record = File(
+        file_record = await self.repo.create(
             user_id=user_id,
-            url=url,
             filename=filename,
             unique_filename=unique_filename,
+            url=url,
             content_type=content_type,
-            file_size_bytes=file_size_bytes
+            file_size_bytes=file_size_bytes,
+            notebook_id=notebook_id
         )
-
-        session.add(file_record)
-        await session.commit()
-        await session.refresh(file_record)
+        await self.session.commit()
+        await self.session.refresh(file_record)
 
         return file_record
 
-    async def get_files_for_user(self, session: AsyncSession, user_id: str) -> list[File]:
+    async def get_files_for_user(self, user_id: str, notebook_id: Optional[str] = None) -> List[File]:
         """
-        Retrieve all files for a specific user.
-
-        Args:
-            session: Database session
-            user_id: ID of the user to get files for
-
-        Returns:
-            List of File objects for the user
+        (Delegation) Retrieve all files for a user via the repository.
         """
-        result = await session.execute(
-            select(File).where(File.user_id == user_id).order_by(File.created_at.desc())
-        )
-        return result.scalars().all()
+        return await self.repo.list_by_user_id(user_id=user_id, notebook_id=notebook_id)

@@ -1,124 +1,74 @@
-import uuid
-from typing import Optional
-from sqlalchemy import select
+# backend/services/model_api_service.py
 
-from backend.databases.postgres_db import AsyncPostgreSQLDatabase
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.models.model_api import ModelApi
 from .fernet_service import FernetService
-from ..models.model_api import ModelApi
+from ..repositories.model_api_repository import ModelApiRepository
 
 
 class ModelApiService:
     """
-    Service class for managing ModelApi records in the database.
+    Service class for managing ModelApi records.
     It handles the encryption of API keys before saving and decryption upon retrieval.
     """
 
-    def __init__(self, db: AsyncPostgreSQLDatabase, fernet_service: FernetService):
-        """
-        Initializes the service with a database connection manager and a fernet service.
-
-        Args:
-            db: The async database connection manager.
-            fernet_service: The service responsible for encryption and decryption.
-        """
-        self.db = db
+    def __init__(
+        self,
+        session: AsyncSession,
+        model_api_repository: ModelApiRepository,
+        fernet_service: FernetService
+    ):
+        self.session = session
+        self.repo = model_api_repository
         self.fernet_service = fernet_service
 
     async def upsert_api_key(self, user_id: str, raw_api_key: str) -> ModelApi:
         """
-        Creates or updates an API key for a given user.
-        The provided API key is encrypted before being stored.
-
-        Args:
-            user_id: The ID of the user.
-            raw_api_key: The plaintext API key to be stored.
-
-        Returns:
-            The created or updated ModelApi instance.
+        Encrypts and then creates or updates an API key for a given user.
         """
-        # Encrypt the API key value before doing anything with the database
+        # Business Logic: Encrypt the key
         encrypted_value = self.fernet_service.encrypt_data(raw_api_key)
 
-        async with self.db.get_session() as session:
-            # Check if an entry already exists for this user
-            stmt = select(ModelApi).where(ModelApi.user_id == user_id)
-            result = await session.execute(stmt)
-            model_api = result.scalars().first()
+        # Delegate to repository
+        model_api = await self.repo.upsert(user_id, encrypted_value)
 
-            if model_api:
-                # Update the existing record
-                model_api.value = encrypted_value
-            else:
-                # Create a new record
-                model_api = ModelApi(
-                    user_id=user_id,
-                    value=encrypted_value
-                )
-                session.add(model_api)
+        # Control the transaction
+        await self.session.commit()
+        await self.session.refresh(model_api)
 
-            await session.commit()
-            await session.refresh(model_api)
-            return model_api
+        return model_api
 
     async def get_api_key_by_user_id(self, user_id: str) -> Optional[ModelApi]:
         """
-        Retrieves the ModelApi record for a specific user.
-        Note: The 'value' attribute of the returned object is still encrypted.
-
-        Args:
-            user_id: The ID of the user.
-
-        Returns:
-            The ModelApi instance if found, otherwise None.
+        Retrieves the ModelApi record for a user (value remains encrypted).
         """
-        async with self.db.get_session() as session:
-            stmt = select(ModelApi).where(ModelApi.user_id == user_id)
-            result = await session.execute(stmt)
-            return result.scalars().first()
+        return await self.repo.get_by_user_id(user_id)
 
-    # async def get_decrypted_api_key(self, user_id: str) -> Optional[str]:
-    #     """
-    #     Retrieves and decrypts the API key for a given user.
-    #     This is the primary method to get the usable, plaintext API key.
-    #
-    #     Args:
-    #         user_id: The ID of the user.
-    #
-    #     Returns:
-    #         The decrypted API key as a string if found, otherwise None.
-    #     """
-    #     model_api = await self.get_api_key_by_user_id(user_id)
-    #
-    #     if not model_api:
-    #         return None
-    #
-    #     # Decrypt the value on demand
-    #     try:
-    #         decrypted_value = self.fernet_service.decrypt_data(model_api.value)
-    #         return decrypted_value
-    #     except Exception as e:
-    #         # Handle potential decryption errors (e.g., key mismatch, invalid token)
-    #         print(f"Error decrypting data for user {user_id}: {e}")
-    #         return None
+    async def get_decrypted_api_key_value(self, user_id: str) -> Optional[str]:
+        """
+        Retrieves and decrypts the API key for a given user.
+        """
+        model_api = await self.repo.get_by_user_id(user_id)
+
+        if not model_api or not model_api.value:
+            return None
+
+        # Business Logic: Decrypt the key
+        try:
+            return self.fernet_service.decrypt_data(model_api.value)
+        except Exception as e:
+            # Log this error appropriately in a real application
+            print(f"Error decrypting API key for user {user_id}: {e}")
+            return None
 
     async def delete_api_key(self, user_id: str) -> bool:
         """
-        Deletes the API key record for a given user.
-
-        Args:
-            user_id: The ID of the user.
-
-        Returns:
-            True if the record was deleted, False if it was not found.
+        Deletes the API key record for a given user and commits the transaction.
         """
-        async with self.db.get_session() as session:
-            stmt = select(ModelApi).where(ModelApi.user_id == user_id)
-            result = await session.execute(stmt)
-            model_api = result.scalars().first()
+        was_deleted = await self.repo.delete_by_user_id(user_id)
 
-            if model_api:
-                await session.delete(model_api)
-                await session.commit()
-                return True
+        if was_deleted:
+            await self.session.commit()
 
-            return False
+        return was_deleted
