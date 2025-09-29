@@ -9,7 +9,7 @@ export interface FileUploadResponse {
 const FILE_SERVICE_URL = window.ENV?.VITE_FILE_SERVICE_URL;
 
 // Upload service
-export const uploadService = {
+export const fileService = {
     uploadFile: async (file: File, uploadPassword: string): Promise<FileUploadResponse> => {
         const formData = new FormData();
         formData.append('file', file);

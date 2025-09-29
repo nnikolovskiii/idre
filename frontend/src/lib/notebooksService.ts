@@ -1,34 +1,20 @@
-import {getNotebooksUrl} from "./api";
+// Types matching your Pydantic models
+import {API_CONFIG} from "./api.ts";
 
-export interface Notebook {
-    id: string;
-    emoji: string;
-    title: string;
-    date: string;
-    sourceCount: number;
-    bgColor: string;
-    textColor: string;
-    created_at: string;
-    updated_at: string;
-    requiredFields: string;
-}
-
-export interface CreateNotebookRequest {
+export interface NotebookCreate {
     emoji: string;
     title: string;
     date: string;
     bg_color: string;
     text_color: string;
-    source_count: number;
 }
 
-export interface UpdateNotebookRequest {
+export interface NotebookUpdate {
     emoji?: string;
     title?: string;
     date?: string;
     bg_color?: string;
     text_color?: string;
-    source_count?: number;
 }
 
 export interface NotebookResponse {
@@ -36,7 +22,6 @@ export interface NotebookResponse {
     emoji: string;
     title: string;
     date: string;
-    source_count: number;
     bg_color: string;
     text_color: string;
     created_at: string;
@@ -46,151 +31,73 @@ export interface NotebookResponse {
 export interface NotebooksListResponse {
     status: string;
     message: string;
-    data: BackendNotebookResponse[];
+    data: NotebookResponse[];
 }
 
-interface BackendNotebookResponse {
-    id: string;
-    emoji: string;
-    title: string;
-    date: string;
-    source_count: number;
-    bg_color: string;
-    text_color: string;
-    created_at: string;
-    updated_at: string;
-    requiredFields: string;
-}
+// Base URL — update to match your backend
+const API_BASE_URL = API_CONFIG.URL+"/notebooks"; // adjust path if needed
 
-const transformNotebookData = (
-    backendNotebook: BackendNotebookResponse
-): Notebook => {
-    return {
-        id: backendNotebook.id,
-        emoji: backendNotebook.emoji,
-        title: backendNotebook.title,
-        date: backendNotebook.date,
-        sourceCount: backendNotebook.source_count,
-        bgColor: backendNotebook.bg_color,
-        textColor: backendNotebook.text_color,
-        created_at: backendNotebook.created_at,
-        updated_at: backendNotebook.updated_at,
-        requiredFields: backendNotebook.requiredFields
-    };
+// Helper to get auth token (adjust based on your auth strategy)
+const getAuthToken = (): string | null => {
+    return localStorage.getItem('access_token'); // or however you store it
 };
 
-export const notebooksService = {
-    createNotebook: async (
-        notebookData: CreateNotebookRequest
-    ): Promise<NotebookResponse> => {
-        const createUrl = getNotebooksUrl();
+// Generic fetch wrapper with auth and error handling
+const apiFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+    };
 
-        const response = await fetch(createUrl, {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(notebookData),
+    const response = await fetch(url, { ...options, headers });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData.detail || `HTTP error! status: ${response.status}`;
+        throw new Error(message);
+    }
+
+    return response;
+};
+
+// Notebook Service
+export const NotebookService = {
+    // POST /notebooks
+    async createNotebook(data: NotebookCreate): Promise<NotebookResponse> {
+        const response = await apiFetch(API_BASE_URL, {
+            method: 'POST',
+            body: JSON.stringify(data),
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Failed to create notebook: ${response.status} ${response.statusText} (${errorText})`
-            );
-        }
-
-        const result = await response.json();
-        return result;
+        return response.json();
     },
 
-    getAllNotebooks: async (): Promise<Notebook[]> => {
-        const listUrl = getNotebooksUrl();
-
-        const response = await fetch(listUrl, {
-            method: "GET",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Failed to fetch notebooks: ${response.status} ${response.statusText} (${errorText})`
-            );
-        }
-
-        const result: NotebooksListResponse = await response.json();
-        return result.data.map(transformNotebookData);
+    // GET /notebooks
+    async getAllNotebooks(): Promise<NotebooksListResponse> {
+        const response = await apiFetch(API_BASE_URL);
+        return response.json();
     },
 
-    getNotebookById: async (notebookId: string): Promise<NotebookResponse> => {
-        const getUrl = getNotebooksUrl(notebookId);
-
-        const response = await fetch(getUrl, {
-            method: "GET",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Failed to fetch notebook: ${response.status} ${response.statusText} (${errorText})`
-            );
-        }
-
-        const result = await response.json();
-        return result;
+    // GET /notebooks/{notebook_id}
+    async getNotebookById(id: string): Promise<NotebookResponse> {
+        const response = await apiFetch(`${API_BASE_URL}/${id}`);
+        return response.json();
     },
 
-    updateNotebook: async (
-        notebookId: string,
-        notebookData: UpdateNotebookRequest
-    ): Promise<NotebookResponse> => {
-        const updateUrl = getNotebooksUrl(notebookId);
-
-        const response = await fetch(updateUrl, {
-            method: "PUT",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(notebookData),
+    // PUT /notebooks/{notebook_id}
+    async updateNotebook(id: string, data: NotebookUpdate): Promise<NotebookResponse> {
+        const response = await apiFetch(`${API_BASE_URL}/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Failed to update notebook: ${response.status} ${response.statusText} (${errorText})`
-            );
-        }
-
-        const result = await response.json();
-        return result;
+        return response.json();
     },
 
-    deleteNotebook: async (notebookId: string): Promise<void> => {
-        const deleteUrl = getNotebooksUrl(notebookId);
-
-        const response = await fetch(deleteUrl, {
-            method: "DELETE",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+    // DELETE /notebooks/{notebook_id}
+    async deleteNotebook(id: string): Promise<void> {
+        await apiFetch(`${API_BASE_URL}/${id}`, {
+            method: 'DELETE',
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Failed to delete notebook: ${response.status} ${response.statusText} (${errorText})`
-            );
-        }
     },
 };

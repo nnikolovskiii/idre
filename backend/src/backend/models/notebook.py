@@ -33,9 +33,6 @@ class Notebook(Base):
     # Creation date
     date = Column(String(50), nullable=False)
 
-    # Number of sources associated with this notebook
-    source_count = Column(Integer, nullable=False, default=0)
-
     # Background color for the notebook
     bg_color = Column(String(20), nullable=False)
 

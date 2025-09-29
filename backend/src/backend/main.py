@@ -13,14 +13,10 @@ from backend.api.routes.model_api import router as model_api_router
 from backend.api.routes.openrouter_models import router as openrouter_models_router
 from backend.api.routes.notebooks import router as notebooks_router
 
-# The postgres_db instance is created here, which is fine
-postgres_db = container.postgres_db()
+postgres_db = container.db()
 
 
-# 2. REMOVE THE OLD SYNCHRONOUS CALL
-# postgres_db.create_tables() # <--- THIS IS THE PROBLEM LINE, REMOVE IT
 
-# 3. DEFINE THE LIFESPAN CONTEXT MANAGER
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -28,11 +24,10 @@ async def lifespan(app: FastAPI):
     """
     # --- Startup ---
     print("INFO:     Application startup: Creating database tables...")
-    # Call the async function correctly
     await postgres_db.create_tables()
     print("INFO:     Application startup: Database tables created/verified.")
 
-    yield  # The application runs while the lifespan is in this 'yield' state
+    yield
 
     # --- Shutdown ---
     # You can add cleanup code here if needed, like closing the engine pool

@@ -45,7 +45,6 @@ class ChatService:
             session (AsyncSession): The request-scoped SQLAlchemy session, used for transaction control.
             chat_repository (ChatRepository): The repository for Chat data access.
             thread_repository (ThreadRepository): The repository for Thread data access.
-            ai_model_service (AIModelService): Service for managing AI models.
             model_api_service (ModelApiService): Service for managing API keys.
             notebook_model_service (NotebookModelService): Service for managing notebook models.
             chat_model_service (ChatModelService): Service for managing chat models.

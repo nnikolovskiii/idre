@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
-import { fileService } from "../../lib/filesService";
 import { Mic, Send, Upload } from "lucide-react";
 import "./InputArea.css";
+import { fileService } from "../../lib/filesService";
 
 const FILE_SERVICE_URL =
   window.ENV?.VITE_FILE_SERVICE_DOCKER_NETWORK ||

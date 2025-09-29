@@ -11,8 +11,10 @@ from fastapi import Request
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
+from backend.api.dependencies import get_user_service
 from backend.models.user import User
 from backend.container import container
+from backend.services.user_service import UserService
 
 router = APIRouter()
 
@@ -23,7 +25,7 @@ google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
 
 class UserRegistration(BaseModel):
-    email: EmailStr
+    email: str
     username: str
     password: str
     name: str
@@ -31,8 +33,11 @@ class UserRegistration(BaseModel):
 
 
 @router.post("/register")
-async def register(user_data: UserRegistration, response: Response):
-    user_service = container.user_service()
+async def register(
+        user_data: UserRegistration,
+        response: Response,
+        user_service: UserService = Depends(get_user_service)
+):
     password_service = container.password_service()
 
     # Check if email already exists
@@ -84,8 +89,11 @@ class GoogleAuth(BaseModel):
 
 
 @router.post("/login")
-async def login(user_data: UserLogin, response: Response):
-    user_service = container.user_service()
+async def login(
+        user_data: UserLogin,
+        response: Response,
+        user_service: UserService = Depends(get_user_service)
+):
     password_service = container.password_service()
 
     # Try to find user by either email or username
@@ -129,9 +137,11 @@ async def login(user_data: UserLogin, response: Response):
 
 
 @router.post("/google")
-async def google_auth(auth_data: GoogleAuth, response: Response):
-    user_service = container.user_service()
-
+async def google_auth(
+        auth_data: GoogleAuth,
+        response: Response,
+        user_service: UserService = Depends(get_user_service)
+):
     try:
         # Verify the Google ID token
         idinfo = id_token.verify_oauth2_token(
@@ -202,9 +212,10 @@ async def logout(response: Response):
     return {"status": "success", "message": "Logged out successfully"}
 
 
-async def get_current_user(request: Request) -> User:
-    user_service = container.user_service()
-
+async def get_current_user(
+        request: Request,
+        user_service: UserService = Depends(get_user_service)
+) -> User:
     token = request.cookies.get("access_token")
     if not token:
         # Check Authorization header as fallback

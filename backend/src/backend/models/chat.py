@@ -8,7 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     func
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.dialects.postgresql import UUID
 
 from backend.databases.postgres_db import Base
@@ -29,7 +29,7 @@ class Chat(Base):
 
     thread = relationship("Thread", back_populates="chats")
 
-    models: List[ChatModel] = relationship(
+    models: Mapped[List[ChatModel]] = relationship(
         "ChatModel",
         back_populates="chat",
         cascade="all, delete-orphan"

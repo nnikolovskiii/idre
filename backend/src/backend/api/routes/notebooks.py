@@ -1,53 +1,12 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_notebook_service
 from backend.models import User
 from backend.api.routes.auth import get_current_user
+from backend.models.dtos.notebook_dtos import NotebookResponse, NotebookCreate, NotebooksListResponse, NotebookUpdate
 from backend.services.notebook_service import NotebookService
 
-
 router = APIRouter()
-
-
-# Pydantic models for request/response
-class NotebookCreate(BaseModel):
-    emoji: str = Field(..., min_length=1, max_length=10)
-    title: str = Field(..., min_length=1, max_length=255)
-    date: str = Field(..., min_length=1, max_length=50)
-    bg_color: str = Field(..., min_length=1, max_length=20)
-    text_color: str = Field(..., min_length=1, max_length=20)
-    source_count: int = Field(default=0, ge=0)
-
-
-class NotebookUpdate(BaseModel):
-    emoji: str = Field(None, min_length=1, max_length=10)
-    title: str = Field(None, min_length=1, max_length=255)
-    date: str = Field(None, min_length=1, max_length=50)
-    bg_color: str = Field(None, min_length=1, max_length=20)
-    text_color: str = Field(None, min_length=1, max_length=20)
-    source_count: int = Field(None, ge=0)
-
-
-class NotebookResponse(BaseModel):
-    id: str
-    emoji: str
-    title: str
-    date: str
-    source_count: int
-    bg_color: str
-    text_color: str
-    created_at: str
-    updated_at: str
-
-
-# CHANGE 1: Define a new response model for the list endpoint.
-# This model matches the `NotebooksListResponse` interface in your frontend.
-class NotebooksListResponse(BaseModel):
-    status: str = "success"
-    message: str = "Notebooks retrieved successfully"
-    data: List[NotebookResponse]
 
 
 @router.post("", response_model=NotebookResponse, status_code=status.HTTP_201_CREATED)
@@ -70,7 +29,6 @@ async def create_notebook(
             date=notebook_data.date,
             bg_color=notebook_data.bg_color,
             text_color=notebook_data.text_color,
-            source_count=notebook_data.source_count
         )
 
         return NotebookResponse(
@@ -78,7 +36,6 @@ async def create_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            source_count=notebook.source_count,
             bg_color=notebook.bg_color,
             text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,
@@ -110,7 +67,6 @@ async def get_all_notebooks(
                 emoji=notebook.emoji,
                 title=notebook.title,
                 date=notebook.date,
-                source_count=notebook.source_count,
                 bg_color=notebook.bg_color,
                 text_color=notebook.text_color,
                 created_at=notebook.created_at.isoformat() if notebook.created_at else None,
@@ -150,7 +106,6 @@ async def get_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            source_count=notebook.source_count,
             bg_color=notebook.bg_color,
             text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,
@@ -180,12 +135,13 @@ async def update_notebook(
     try:
         notebook = await notebook_service.update_notebook(
             notebook_id=notebook_id,
-            emoji=notebook_data.emoji,
-            title=notebook_data.title,
-            date=notebook_data.date,
-            bg_color=notebook_data.bg_color,
-            text_color=notebook_data.text_color,
-            source_count=notebook_data.source_count
+            update_data={
+                "emoji": notebook_data.emoji,
+                "title": notebook_data.title,
+                "date": notebook_data.date,
+                "bg_color": notebook_data.bg_color,
+                "text_color": notebook_data.text_color,
+            }
         )
 
         if not notebook:
@@ -196,7 +152,6 @@ async def update_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            source_count=notebook.source_count,
             bg_color=notebook.bg_color,
             text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,

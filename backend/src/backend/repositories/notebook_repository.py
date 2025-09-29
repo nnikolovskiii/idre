@@ -18,11 +18,11 @@ class NotebookRepository:
         self.session = session
 
     async def create(self, user_id: str, emoji: str, title: str, date: str,
-                     bg_color: str, text_color: str, source_count: int = 0) -> Notebook:
+                     bg_color: str, text_color: str) -> Notebook:
         """Creates a new Notebook object and adds it to the session."""
         notebook = Notebook(
             user_id=user_id, emoji=emoji, title=title, date=date,
-            bg_color=bg_color, text_color=text_color, source_count=source_count
+            bg_color=bg_color, text_color=text_color
         )
         self.session.add(notebook)
         await self.session.flush()
