@@ -1,144 +1,146 @@
-import React, {useState, useEffect} from "react";
-import {useAuth} from "../../contexts/AuthContext";
-import {useChats} from "../../hooks/useChats";
-import {useModals} from "../../hooks/useModals";
-import ChatSidebar from "./ChatSidebar";
-import ChatHeader from "./ChatHeader";
-import MessagesContainer from "./MessagesContainer";
-import InputArea from "./InputArea";
-import ModelSettingsModal from "../modals/ModelSettingsModal";
-import LoginModal from "../modals/LoginModal";
-import RegisterModal from "../modals/RegisterModal";
+// Updated src/views/ChatView.tsx
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+
 import "./ChatView.css";
+import {useChats} from "../../hooks/useChats.ts";
+import InputArea from "./InputArea.tsx";
+import ChatHeader from "./ChatHeader.tsx";
+import MessagesContainer from "./MessagesContainer.tsx";
+import Layout from "../layout/Layout.tsx";
+import {fileService} from "../../lib/filesService.ts";
 
-const ChatView: React.FC = () => {
-    const {logout} = useAuth();
-    const {
-        chatSessions,
-        currentChat,
-        currentChatId,
-        loadingChats,
-        creatingChat,
-        isTyping,
-        hasModelsConfigured,
-        isAuthenticated,
-        user,
-        createNewChat,
-        switchToChat,
-        handleDeleteChat,
-        handleSendMessage,
-        handleDeleteMessage,
-    } = useChats();
+const FILE_SERVICE_URL =
+    window.ENV?.VITE_FILE_SERVICE_DOCKER_NETWORK ||
+    import.meta.env.VITE_FILE_SERVICE_URL ||
+    "https://files.nikolanikovski.com";
 
-    const {
-        modals,
-        actions: {
-            handleOpenAIModelsSettings,
-            handleCloseAIModelsSettings,
-            handleCloseDefaultModelsModal,
-            handleOpenLoginModal,
-            handleCloseLoginModal,
-            handleOpenRegisterModal,
-            handleCloseRegisterModal,
-            switchToRegister,
-            switchToLogin,
-        },
-    } = useModals();
+type ChatViewProps = {
+    notebookId?: string;
+};
 
-    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+const ChatView: React.FC<ChatViewProps> = ({ notebookId: propNotebookId }) => {
+    const { notebookId: paramNotebookId } = useParams<{ notebookId: string }>();
+    const currentNotebookId = propNotebookId || paramNotebookId;
+
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    console.log("Mobile detection:", window.innerWidth, isMobile);
 
     useEffect(() => {
         const handleResize = () => {
-            const mobile = window.innerWidth <= 768;
-            setIsMobile(mobile);
-            if (!mobile) {
-                // On desktop, always show sidebar
-                setIsSidebarOpen(true);
-            }
+            setIsMobile(window.innerWidth <= 768);
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
-    return (
-        <div className="chat-view-wrapper">
+
+    const {
+        currentChat,
+        currentChatId,
+        creatingChat,
+        isTyping,
+        hasModelsConfigured,
+        handleSendMessage,
+        handleDeleteMessage,
+    } = useChats(currentNotebookId); // Assuming useChats returns these; adjust if needed
+
+    const handleModelsRequired = () => {
+        // This would be handled in Layout via onSettingsClick, but if needed here, adjust
+    };
+
+    const handleTextSubmit = async (text: string) => {
+        await handleSendMessage(text);
+    };
+
+    const handleAudioSubmit = async (text: string, blob: Blob) => {
+        try {
+            // Generate unique filename by adding timestamp and random string
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(2, 8);
+            const fileExtension = "webm";
+            const baseName = "recording";
+            const uniqueFilename = `${baseName}_${timestamp}_${randomString}.${fileExtension}`;
+
+            // Convert blob to File object with unique filename
+            const audioFile = new File([blob], uniqueFilename, { type: "audio/webm" });
+
+            // Use fileService to upload the file
+            const uploadResult = await fileService.uploadFile(audioFile);
+
+            const backendFilename = uploadResult.filename;
+
+            if (!backendFilename) {
+                throw new Error(
+                    "Backend did not return a valid filename for the audio."
+                );
+            }
+
+            await handleSendMessage(text || undefined, uploadResult.url);
+        } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : "Unknown error";
+            await handleSendMessage(`[Error] Failed to process audio: ${errorMessage}`);
+        }
+    };
+
+    const handleFileSubmit = async (file: File) => {
+        try {
+            // Upload the file using fileService
+            await fileService.uploadFile(file);
+
+            console.log("File uploaded successfully:", file.name);
+
+            // Create a message with the file information
+            const fileMessage = `[File Uploaded: ${file.name}]`;
+            await handleSendMessage(fileMessage);
+        } catch (error) {
+            console.error("Failed to upload file:", error);
+            const errorMessage = `[Error] Failed to upload file: ${file.name}`;
+            await handleSendMessage(errorMessage);
+        }
+    };
+
+    const inputArea = (
+        <InputArea
+            onTextSubmit={handleTextSubmit}
+            onAudioSubmit={handleAudioSubmit}
+            onFileSubmit={handleFileSubmit}
+            disabled={!currentChatId || creatingChat || isTyping}
+            hasModelsConfigured={hasModelsConfigured}
+            onModelsRequired={handleModelsRequired}
+        />
+    );
+
+    const children = (
+        <>
             {isMobile && (
-                <div
-                    className={`mobile-overlay ${isSidebarOpen ? "visible" : ""}`}
-                    onClick={() => setIsSidebarOpen(false)}
+                <ChatHeader
+                    title={currentChat?.title || "AI Assistant"}
+                    isMobile={isMobile}
+                    onMenuClick={() => {
+                        // Toggle sidebar - but since Layout handles it, perhaps pass a ref or prop
+                        // For simplicity, assuming Layout handles toggle; if needed, expose via context or prop
+                    }}
+                    onSettingsClick={() => {
+                        // Handled in Layout
+                    }}
                 />
             )}
-            <div className={`chat-sidebar-container ${isMobile ? "mobile" : ""}`}>
-                <ChatSidebar
-                    chatSessions={chatSessions}
-                    currentChatId={currentChatId}
-                    collapsed={!isSidebarOpen}
-                    onToggleCollapse={() => setIsSidebarOpen(!isSidebarOpen)}
-                    onCreateNewChat={createNewChat}
-                    onSwitchChat={switchToChat}
-                    onDeleteChat={handleDeleteChat}
-                    loading={loadingChats}
-                    creatingChat={creatingChat}
-                    onSettingsClick={handleOpenAIModelsSettings}
-                    user={user || undefined}
-                    onLogout={logout}
-                    isAuthenticated={isAuthenticated}
-                    onLoginClick={handleOpenLoginModal}
-                    onRegisterClick={handleOpenRegisterModal}
-                />
-            </div>
-
-            <main className="main-chat-area">
-                {isMobile && (
-                    <ChatHeader
-                        title={currentChat?.title || "AI Assistant"}
-                        isMobile={isMobile}
-                        onMenuClick={() => setIsSidebarOpen(true)}
-                        onSettingsClick={handleOpenAIModelsSettings}
-                    />
-                )}
-                <MessagesContainer
-                    messages={currentChat?.messages || []}
-                    isTyping={isTyping}
-                    onDeleteMessage={handleDeleteMessage}
-                />
-                <InputArea
-                    onSendMessage={(text, audioPath) =>
-                        handleSendMessage(text, audioPath)
-                    }
-                    disabled={creatingChat || isTyping}
-                    hasModelsConfigured={hasModelsConfigured}
-                    onModelsRequired={() => handleOpenAIModelsSettings()}
-                />
-            </main>
-
-            {/* AI Models Settings Modal */}
-            <ModelSettingsModal
-                chatId={currentChatId || undefined}
-                isOpen={
-                    modals.isAIModelsSettingsOpen || modals.isDefaultModelsModalOpen
-                }
-                onClose={() => {
-                    handleCloseAIModelsSettings();
-                    handleCloseDefaultModelsModal();
-                }}
+            <MessagesContainer
+                messages={currentChat?.messages || []}
+                isTyping={isTyping}
+                onDeleteMessage={handleDeleteMessage}
             />
+        </>
+    );
 
-            {/* Login Modal */}
-            <LoginModal
-                isOpen={modals.isLoginModalOpen}
-                onClose={handleCloseLoginModal}
-                onSwitchToRegister={switchToRegister}
-            />
-
-            {/* Register Modal */}
-            <RegisterModal
-                isOpen={modals.isRegisterModalOpen}
-                onClose={handleCloseRegisterModal}
-                onSwitchToLogin={switchToLogin}
-            />
-        </div>
+    return (
+        <Layout
+            notebookId={currentNotebookId}
+            children={children}
+            inputArea={inputArea}
+            wrapperClassName="chat-view-wrapper"
+            mainClassName="main-chat-area"
+        />
     );
 };
 

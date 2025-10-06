@@ -4,7 +4,11 @@ from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from backend.models.chat import Chat
+from backend.models.chat_model import ChatModel
+
 
 class ChatRepository:
     def __init__(self, session: AsyncSession):
@@ -16,7 +20,9 @@ class ChatRepository:
             thread_uuid = uuid.UUID(thread_id)
         except ValueError:
             return None
-        stmt = select(Chat).where(Chat.thread_id == thread_uuid)
+        stmt = select(Chat).options(
+            selectinload(Chat.models).selectinload(ChatModel.model)
+        ).where(Chat.thread_id == thread_uuid)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 

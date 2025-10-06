@@ -75,7 +75,6 @@ class ChatService:
             values={"messages": {"$replace": new_messages_list}}
         )
 
-
     async def create_new_chat_and_thread(
             self, user_id: str, title: str, notebook_id: Optional[str] = None
     ) -> Chat:
@@ -87,40 +86,50 @@ class ChatService:
         thread_id = thread['thread_id']
 
         # 2. Use repositories to prepare local database records
-        await self.thread_repo.create(thread_id=thread_id, notebook_id=notebook_id)
         new_chat = await self.chat_repo.create(
             user_id=user_id, thread_id=thread_id, notebook_id=notebook_id
         )
 
+        await self.session.flush()
+        # Track created models for potential later refresh
+        created_models = []
+
         # 3. Get notebook models if notebook_id is provided
         if notebook_id:
             notebook_light_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
-                notebook_id=notebook_id, model_type="light"
+                notebook_id=notebook_id, model_type="light", user_id=user_id
             )
             notebook_heavy_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
-                notebook_id=notebook_id, model_type="heavy"
+                notebook_id=notebook_id, model_type="heavy", user_id=user_id
             )
 
-            # 4. Create chat models based on notebook models
+            # 4. Create chat models based on notebook models (no commits here)
             if notebook_light_model:
-                await self.chat_model_service.create_ai_model(
+                light_model = await self.chat_model_service.create_ai_model(
                     user_id=user_id,
                     chat_id=new_chat.chat_id,
                     generative_model_id=str(notebook_light_model.generative_model_id)
                 )
+                created_models.append(light_model)
 
             if notebook_heavy_model:
-                await self.chat_model_service.create_ai_model(
+                heavy_model = await self.chat_model_service.create_ai_model(
                     user_id=user_id,
                     chat_id=new_chat.chat_id,
                     generative_model_id=str(notebook_heavy_model.generative_model_id)
                 )
+                created_models.append(heavy_model)
 
+        # 5. Single commit for everything
         await self.session.commit()
+
+        # 6. Refresh the main chat object (and optionally the models if needed)
         await self.session.refresh(new_chat)
+        # If you need refreshed model instances, uncomment and refresh them too:
+        # for model in created_models:
+        #     await self.session.refresh(model)
 
         return new_chat
-
     async def send_message_to_graph(self, thread_id: str, user_id: str, request: SendMessageRequest):
         """
         Orchestrates sending a message by gathering all data and invoking LangGraph.
@@ -141,9 +150,6 @@ class ChatService:
             run_input["text_input"] = request.message
         if request.audio_path:
             run_input["audio_path"] = request.audio_path
-
-        if not run_input.get("api_key"):
-            raise ValueError("API Key not found for the user.")
 
         await self.langgraph_client.runs.wait(
             thread_id=thread_id,

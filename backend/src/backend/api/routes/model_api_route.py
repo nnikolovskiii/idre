@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from backend.api.dependencies import get_model_api_service
 from backend.models import User
-from backend.api.routes.auth import get_current_user
+from backend.api.routes.auth_route import get_current_user
 from backend.services.model_api_service import ModelApiService
 
 router = APIRouter()

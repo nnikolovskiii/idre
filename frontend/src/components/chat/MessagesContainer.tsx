@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, createRef } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Message } from "./ChatView";
+import type { Message } from "../../types/chat";
 import AudioPlayer from "../ui/AudioPlayer";
 import { Bot, Trash2, Copy, Volume2 } from "lucide-react";
 
@@ -132,10 +132,7 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
               </div>
             ) : (
               <>
-                <div className="ai-message-header">
-                  <Bot size={16} />
-                  <span>I-DY</span>
-                </div>
+
                 <div className="message-bubble">
                   <MessageBody message={message} />
                 </div>

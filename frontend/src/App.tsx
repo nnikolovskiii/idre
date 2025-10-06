@@ -7,6 +7,9 @@ import { ApiKeyProvider } from "./contexts/ApiKeyContext";
 import MyDriveView from "./pages/MyDriveView.tsx";
 import NotebooksDashboard from "./pages/NotebooksDashboard.tsx";
 import CreateNotebookPage from "./pages/CreateNotebookPage.tsx";
+import ProtectedRoute from "./components/ui/ProtectedRoute";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 // Main App component wrapped with AuthProvider and ApiKeyProvider
 function App() {
@@ -14,27 +17,63 @@ function App() {
     <AuthProvider>
       <ApiKeyProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
+          {/* Default route: if authenticated, go to notebooks; else go to login */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/notebooks" replace />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Chat route - always accessible, handles auth internally */}
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/files" element={<MyDriveView />} />
-          <Route path="/notebooks" element={<NotebooksDashboard />} />
-          <Route path="/notebooks/create" element={<CreateNotebookPage />} />
+          {/* Auth routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-          {/* Legacy routes - redirect to chat */}
-          <Route path="/login" element={<Navigate to="/chat" replace />} />
-          <Route path="/register" element={<Navigate to="/chat" replace />} />
+          {/* Protected application routes */}
+          <Route
+            path="/chat/:notebookId"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/files/:notebookId"
+            element={
+              <ProtectedRoute>
+                <MyDriveView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notebooks"
+            element={
+              <ProtectedRoute>
+                <NotebooksDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notebooks/create"
+            element={
+              <ProtectedRoute>
+                <CreateNotebookPage />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Other routes - redirect to chat for now */}
+          {/* Other routes - redirect to notebooks for now (protected) */}
           <Route
             path="/default-models"
-            element={<Navigate to="/chat" replace />}
+            element={<Navigate to="/notebooks" replace />}
           />
-          <Route path="/model-api" element={<Navigate to="/chat" replace />} />
+          <Route path="/model-api" element={<Navigate to="/notebooks" replace />} />
 
-          {/* Redirect any unknown routes to chat */}
-          <Route path="*" element={<Navigate to="/chat" replace />} />
+          {/* Redirect any unknown routes to notebooks */}
+          <Route path="*" element={<Navigate to="/notebooks" replace />} />
         </Routes>
       </ApiKeyProvider>
     </AuthProvider>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "./ChatSidebar.css";
-import type { ChatSession } from "./ChatView";
+import type { ChatSession } from "../../types/chat";
 import { ChevronLeft, X, MessageCircle, FolderOpen } from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
 import idreLogo from "../../assets/idre_logo_v1.png";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useNotebooks } from "../../hooks/useNotebooks"; // Adjust path as needed
 
 interface ChatSidebarProps {
   chatSessions: ChatSession[];
@@ -27,26 +28,27 @@ interface ChatSidebarProps {
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
-  chatSessions,
-  currentChatId,
-  collapsed,
-  onToggleCollapse,
-  onCreateNewChat,
-  onSwitchChat,
-  onDeleteChat,
-  loading = false,
-  creatingChat = false,
-  onSettingsClick,
-  user,
-  onLogout,
-  isAuthenticated = false,
-  onLoginClick,
-  onRegisterClick,
-}) => {
+                                                   chatSessions,
+                                                   currentChatId,
+                                                   collapsed,
+                                                   onToggleCollapse,
+                                                   onCreateNewChat,
+                                                   onSwitchChat,
+                                                   onDeleteChat,
+                                                   loading = false,
+                                                   creatingChat = false,
+                                                   onSettingsClick,
+                                                   user,
+                                                   onLogout,
+                                                   isAuthenticated = false,
+                                                   onLoginClick,
+                                                   onRegisterClick,
+                                                 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentNotebook, getNotebookById } = useNotebooks();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -60,114 +62,148 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   // Update active tab based on current route
   useEffect(() => {
-    if (location.pathname === "/files") {
+    if (location.pathname.startsWith("/files/")) {
       setActiveTab("files");
-    } else if (location.pathname === "/chat") {
+    } else if (location.pathname.startsWith("/chat/")) {
       setActiveTab("chat");
     }
   }, [location.pathname]);
 
+  const getNotebookIdFromPath = () => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    // Expected: ["chat", ":notebookId", ...] or ["files", ":notebookId", ...]
+    if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files')) {
+      return parts[1];
+    }
+    return null;
+  };
+
+  // Fetch notebook when path changes
+  useEffect(() => {
+    const notebookId = getNotebookIdFromPath();
+    if (notebookId && !currentNotebook?.id) {
+      getNotebookById(notebookId);
+    }
+  }, [location.pathname, getNotebookById, currentNotebook?.id]);
+
   const handleTabChange = (tab: "chat" | "files") => {
     setActiveTab(tab);
+    const notebookId = getNotebookIdFromPath();
     if (tab === "files") {
-      navigate("/files");
+      if (notebookId) {
+        navigate(`/files/${notebookId}`);
+      } else {
+        navigate('/notebooks');
+      }
     } else {
-      navigate("/chat");
+      // Chat requires a notebook context; send user to notebooks dashboard to pick one
+      if (notebookId) {
+        navigate(`/chat/${notebookId}`);
+      } else {
+        navigate("/notebooks");
+      }
     }
   };
 
   return (
-    <aside
-      className={`chat-sidebar ${collapsed ? "collapsed" : ""} ${
-        !collapsed && isMobile ? "mobile-visible" : ""
-      }`}
-      onClick={collapsed && isMobile ? onToggleCollapse : undefined}
-    >
-      <div className="sidebar-content">
-        <header className="sidebar-header">
-          <div className="sidebar-logo">
-            <img src={idreLogo} alt="Blocks Logo" width={70} height={70} />
-          </div>
-          {isMobile ? (
-            <button
-              className="mobile-close-btn"
-              onClick={onToggleCollapse}
-              title="Close sidebar"
-            >
-              <X size={20} />
-            </button>
-          ) : (
-            <button
-              className="collapse-btn"
-              onClick={onToggleCollapse}
-              title="Collapse sidebar"
-            >
-              <ChevronLeft size={18} />
-            </button>
+      <aside
+          className={`chat-sidebar ${collapsed ? "collapsed" : ""} ${
+              !collapsed && isMobile ? "mobile-visible" : ""
+          }`}
+          onClick={collapsed && isMobile ? onToggleCollapse : undefined}
+      >
+        <div className="sidebar-content">
+          <header className="sidebar-header">
+            <div className="sidebar-logo">
+              <img src={idreLogo} alt="Blocks Logo" width={70} height={70} />
+            </div>
+            {isMobile ? (
+                <button
+                    className="mobile-close-btn"
+                    onClick={onToggleCollapse}
+                    title="Close sidebar"
+                >
+                  <X size={20} />
+                </button>
+            ) : (
+                <button
+                    className="collapse-btn"
+                    onClick={onToggleCollapse}
+                    title="Collapse sidebar"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+            )}
+          </header>
+
+          {/* Notebook Indicator */}
+          {!collapsed && currentNotebook && (
+              <div className="notebook-indicator">
+                <span className="notebook-name">{currentNotebook.title}</span>
+              </div>
           )}
-        </header>
 
-        {/* Navigation Section */}
-        {!collapsed && (
-          <section className="navigation-section">
-            <div className="navigation-header">
-              <MessageCircle size={16} />
-              <span>Navigation</span>
-            </div>
-            <div className="navigation-items">
-              <button
-                className={`navigation-item ${
-                  activeTab === "chat" ? "active" : ""
-                }`}
-                onClick={() => handleTabChange("chat")}
-                title="Chat History"
-              >
-                <MessageCircle size={16} />
-                <span>Chat</span>
-              </button>
-              <button
-                className={`navigation-item ${
-                  activeTab === "files" ? "active" : ""
-                }`}
-                onClick={() => handleTabChange("files")}
-                title="Files"
-              >
-                <FolderOpen size={16} />
-                <span>Files</span>
-              </button>
-            </div>
-          </section>
-        )}
+          {/* Navigation Section */}
+          {!collapsed && (
+              <section className="navigation-section">
+                <div className="navigation-header">
+                  <MessageCircle size={16} />
+                  <span>Navigation</span>
+                </div>
+                <div className="navigation-items">
+                  <button
+                      className={`navigation-item ${
+                          activeTab === "chat" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("chat")}
+                      title="Chat History"
+                  >
+                    <MessageCircle size={16} />
+                    <span>Chat</span>
+                  </button>
+                  <button
+                      className={`navigation-item ${
+                          activeTab === "files" ? "active" : ""
+                      }`}
+                      onClick={() => handleTabChange("files")}
+                      title="Files"
+                  >
+                    <FolderOpen size={16} />
+                    <span>Files</span>
+                  </button>
+                </div>
+              </section>
+          )}
 
-        <SettingsDropdown
-          collapsed={collapsed}
-          onToggleCollapse={onToggleCollapse}
-          onSettingsClick={onSettingsClick}
-        />
+          <SettingsDropdown
+              collapsed={collapsed}
+              onToggleCollapse={onToggleCollapse}
+              onSettingsClick={onSettingsClick}
+          />
 
-        <AuthDropdown
-          collapsed={collapsed}
-          user={user}
-          onLogout={onLogout}
-          onToggleCollapse={onToggleCollapse}
-          isAuthenticated={isAuthenticated}
-          onLoginClick={onLoginClick}
-          onRegisterClick={onRegisterClick}
-        />
+          <AuthDropdown
+              collapsed={collapsed}
+              user={user}
+              onLogout={onLogout}
+              onToggleCollapse={onToggleCollapse}
+              isAuthenticated={isAuthenticated}
+              onLoginClick={onLoginClick}
+              onRegisterClick={onRegisterClick}
+          />
 
-        <ChatHistory
-          chatSessions={chatSessions}
-          currentChatId={currentChatId}
-          onSwitchChat={onSwitchChat}
-          onDeleteChat={onDeleteChat}
-          loading={loading}
-          creatingChat={creatingChat}
-          onCreateNewChat={onCreateNewChat}
-          onToggleCollapse={onToggleCollapse}
-          isAuthenticated={isAuthenticated}
-        />
-      </div>
-    </aside>
+          <ChatHistory
+              chatSessions={chatSessions}
+              currentChatId={currentChatId}
+              onSwitchChat={onSwitchChat}
+              onDeleteChat={onDeleteChat}
+              loading={loading}
+              creatingChat={creatingChat}
+              onCreateNewChat={onCreateNewChat}
+              onToggleCollapse={onToggleCollapse}
+              isAuthenticated={isAuthenticated}
+          />
+        </div>
+      </aside>
   );
 };
 

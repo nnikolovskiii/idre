@@ -27,7 +27,7 @@ export const API_CONFIG = {
         // File management endpoints
         FILES: {
             UPLOAD: '/files/upload',
-            LIST: '/files/files',
+            LIST: '/files',
             PROCESS: '/files/process',
             STATUS: '/files/status',
             POLL: '/files/poll',

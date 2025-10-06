@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.app_settings import AppSettings
+from backend.models.dtos.notebook_model_dtos import NotebookModelUpdate
 from backend.models.generative_model import GenerativeModel
 from backend.models.notebook_model import NotebookModel
 from backend.repositories.notebook_model_repository import NotebookModelRepository
@@ -37,6 +37,18 @@ class NotebookModelService:
         )
         await self.session.commit()
         await self.session.refresh(notebook_model)
+        return notebook_model
+
+    async def update_notebook_model_name(self, notebook_model_id: str, model_update: NotebookModelUpdate) -> Optional[
+        NotebookModel]:
+        """Updates a notebook model and commits the transaction."""
+
+        gen_model = await self.generative_model_service.get_model(model_update.generative_model_name, model_update.generative_model_type)
+        update_data = {"generative_model_id": gen_model.id}
+        notebook_model = await self.repo.update(notebook_model_id, update_data)
+        if notebook_model:
+            await self.session.commit()
+            await self.session.refresh(notebook_model)
         return notebook_model
 
     async def update_notebook_model(self, notebook_model_id: str, update_data: Dict[str, Any]) -> Optional[NotebookModel]:

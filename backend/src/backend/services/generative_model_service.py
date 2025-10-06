@@ -8,17 +8,17 @@ class GenerativeModelService:
     """
     Orchestrates business logic for GenerativeModel entities.
     """
+
     def __init__(self, session: AsyncSession, generative_model_repository: GenerativeModelRepository):
         self.session = session
         self.repo = generative_model_repository
 
-    async def create_model(self, name: str, model_type: str, model_identifier: str, is_active: bool = True) -> GenerativeModel:
+    async def create_model(self, name: str, model_type: str, is_open_access: bool = True) -> GenerativeModel:
         """Creates a generative model and commits the transaction."""
         generative_model = await self.repo.create(
             name=name,
             type=model_type,
-            model_identifier=model_identifier,
-            is_active=is_active
+            is_open_access=is_open_access
         )
         await self.session.commit()
         await self.session.refresh(generative_model)
@@ -62,21 +62,9 @@ class GenerativeModelService:
             raise ValueError(f"Model '{name}' of type '{model_type}' not found")
         return model
 
-    async def get_model_by_identifier(self, model_identifier: str) -> Optional[GenerativeModel]:
-        """Gets a generative model by its model identifier."""
-        return await self.repo.get_by_model_identifier(model_identifier)
-
     async def get_models_by_type(self, model_type: str) -> List[GenerativeModel]:
         """Gets all generative models of a specific type."""
         return await self.repo.get_by_type(model_type)
-
-    async def get_active_models(self) -> List[GenerativeModel]:
-        """Gets all active generative models."""
-        return await self.repo.get_active_models()
-
-    async def get_active_models_by_type(self, model_type: str) -> List[GenerativeModel]:
-        """Gets all active generative models of a specific type."""
-        return await self.repo.get_active_models_by_type(model_type)
 
     async def get_all_models(self) -> List[GenerativeModel]:
         """Gets all generative models."""

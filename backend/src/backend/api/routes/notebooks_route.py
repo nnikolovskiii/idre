@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.api.dependencies import get_notebook_service
 from backend.models import User
-from backend.api.routes.auth import get_current_user
+from backend.api.routes.auth_route import get_current_user
 from backend.models.dtos.notebook_dtos import NotebookResponse, NotebookCreate, NotebooksListResponse, NotebookUpdate
 from backend.services.notebook_service import NotebookService
 
@@ -45,7 +45,6 @@ async def create_notebook(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-# CHANGE 2: Update the response_model for the `get_all_notebooks` endpoint.
 @router.get("", response_model=NotebooksListResponse)
 async def get_all_notebooks(
         current_user: User = Depends(get_current_user),

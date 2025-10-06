@@ -1,7 +1,8 @@
-
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from backend.models.chat_model import ChatModel
 
 
@@ -9,6 +10,7 @@ class ChatModelRepository:
     """
     Handles data access logic for the ChatModel entity.
     """
+
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -25,11 +27,17 @@ class ChatModelRepository:
 
     async def get_by_id(self, chat_model_id: str) -> Optional[ChatModel]:
         """Retrieves a chat model by its ID."""
-        return await self.session.get(ChatModel, chat_model_id)
+        stmt = select(ChatModel).options(
+            selectinload(ChatModel.model)
+        ).where(ChatModel.id == chat_model_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_by_chat_id(self, chat_id: str) -> Optional[ChatModel]:
         """Retrieves a chat model by chat_id."""
-        stmt = select(ChatModel).where(ChatModel.chat_id == chat_id)
+        stmt = select(ChatModel).options(
+            selectinload(ChatModel.model)
+        ).where(ChatModel.chat_id == chat_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -37,6 +45,7 @@ class ChatModelRepository:
         """Retrieves a chat model by chat_id and model type."""
         stmt = (
             select(ChatModel)
+            .options(selectinload(ChatModel.model))
             .join(ChatModel.model)
             .where(ChatModel.chat_id == chat_id)
             .where(ChatModel.model.has(type=model_type))
@@ -46,13 +55,17 @@ class ChatModelRepository:
 
     async def list_by_chat_id(self, chat_id: str) -> List[ChatModel]:
         """Retrieves all chat models for a specific chat."""
-        stmt = select(ChatModel).where(ChatModel.chat_id == chat_id)
+        stmt = select(ChatModel).options(
+            selectinload(ChatModel.model)
+        ).where(ChatModel.chat_id == chat_id)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
     async def list_by_user_id(self, user_id: str) -> List[ChatModel]:
         """Retrieves all chat models for a specific user."""
-        stmt = select(ChatModel).where(ChatModel.user_id == user_id)
+        stmt = select(ChatModel).options(
+            selectinload(ChatModel.model)
+        ).where(ChatModel.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

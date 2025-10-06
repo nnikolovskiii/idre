@@ -7,18 +7,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
-
 from backend.databases.postgres_db import AsyncPostgreSQLDatabase
+from backend.repositories.app_settings_repository import AppSettingsRepository
+from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
+from backend.repositories.generative_model_repository import GenerativeModelRepository
 from backend.repositories.model_api_repository import ModelApiRepository
+from backend.repositories.notebook_model_repository import NotebookModelRepository
 from backend.repositories.notebook_repository import NotebookRepository
 from backend.repositories.thread_repository import ThreadRepository
 from backend.repositories.user_repository import UserRepository
+from backend.services.chat_model_service import ChatModelService
 from backend.services.chat_service import ChatService
+from backend.services.app_settings_service import AppSettingsService
 from backend.services.file_service import FileService
+from backend.services.generative_model_service import GenerativeModelService
 from backend.services.model_api_service import ModelApiService
 from backend.services.fernet_service import FernetService
+from backend.services.notebook_model_service import NotebookModelService
 from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 from backend.services.notebook_service import NotebookService
@@ -34,7 +41,6 @@ def create_fernet() -> Fernet:
 
 
 class Container(containers.DeclarativeContainer):
-
     db = providers.Singleton(AsyncPostgreSQLDatabase)
 
     fernet = providers.Singleton(create_fernet)
@@ -65,22 +71,51 @@ class Container(containers.DeclarativeContainer):
         thread_repository=thread_repository,  # Inject ThreadRepository
     )
 
-    # Add factory for the new repository
     file_repository = providers.Factory(FileRepository)
 
-    # Add/Update the factory for the FileService
     file_service = providers.Factory(
         FileService,
-        # session will be injected by the dependency provider
         file_repository=file_repository,
     )
 
+    generative_model_repository = providers.Factory(GenerativeModelRepository)
+
+    generative_model_service = providers.Factory(
+        GenerativeModelService,
+        generative_model_repository=generative_model_repository,
+    )
+
+    app_settings_repository = providers.Factory(AppSettingsRepository)
+
+    app_settings_service = providers.Factory(
+        AppSettingsService,
+        app_settings_repository=app_settings_repository,
+    )
+
+    notebook_model_repository = providers.Factory(NotebookModelRepository)
+
+    notebook_model_service = providers.Factory(
+        NotebookModelService,
+        notebook_model_repository=notebook_model_repository,
+        app_settings_service=app_settings_service,
+        generative_model_service=generative_model_service,
+    )
+
+    chat_model_repository = providers.Factory(ChatModelRepository)
+
+    chat_model_service = providers.Factory(
+        ChatModelService,
+        chat_model_repository=chat_model_repository,
+        generative_model_service=generative_model_service,
+    )
 
     chat_service = providers.Factory(
         ChatService,
         model_api_service=model_api_service,
         chat_repository=chat_repository,
         thread_repository=thread_repository,
+        notebook_model_service=notebook_model_service,
+        chat_model_service=chat_model_service,
     )
 
     user_repository = providers.Factory(UserRepository)
@@ -94,8 +129,6 @@ class Container(containers.DeclarativeContainer):
     password_service = providers.Factory(
         PasswordService,
     )
-
-
 
 
 container = Container()

@@ -2,8 +2,11 @@
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.models.chat_model import ChatModel
+from backend.models.dtos.chat_model_dtos import ChatModelUpdate
 from backend.repositories.chat_model_repository import ChatModelRepository
+from backend.services.generative_model_service import GenerativeModelService
 
 
 class ChatModelService:
@@ -13,10 +16,12 @@ class ChatModelService:
     def __init__(
         self,
         session: AsyncSession,
-        chat_model_repository: ChatModelRepository
+        chat_model_repository: ChatModelRepository,
+        generative_model_service: GenerativeModelService
     ):
         self.session = session
         self.repo = chat_model_repository
+        self.generative_model_service = generative_model_service
 
     async def create_ai_model(self, user_id: str, chat_id: str, generative_model_id: str) -> ChatModel:
         """Creates a chat model and commits the transaction."""
@@ -27,6 +32,17 @@ class ChatModelService:
         )
         await self.session.commit()
         await self.session.refresh(chat_model)
+        return chat_model
+
+    async def update_chat_model_with_generative_model(self, chat_model_id: str, model_update: ChatModelUpdate) -> Optional[ChatModel]:
+        """Updates a chat model and commits the transaction."""
+        gen_model = await self.generative_model_service.get_model(model_update.generative_model_name,
+                                                                  model_update.generative_model_type)
+        update_data = {"generative_model_id": gen_model.id}
+        chat_model = await self.repo.update(chat_model_id, update_data)
+        if chat_model:
+            await self.session.commit()
+            await self.session.refresh(chat_model)
         return chat_model
 
     async def update_chat_model(self, chat_model_id: str, update_data: Dict[str, Any]) -> Optional[ChatModel]:

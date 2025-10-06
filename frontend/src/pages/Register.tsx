@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import idreLogo from "../assets/idre_logo_v1.png";
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -33,162 +34,134 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="header bg-gray-900 text-white px-3 h-14 flex items-center justify-between shadow-md fixed top-0 left-0 right-0 z-50">
-        <div className="header-left flex items-center gap-3">
-          <div className="app-menu w-5 h-5 grid grid-cols-3 gap-px">
-            {[...Array(9)].map((_, i) => (
-              <div 
-                key={i} 
-                className={`w-1 h-1 rounded-full ${i === 0 ? 'bg-green-400' : 'bg-gray-600'}`}
-              ></div>
-            ))}
-          </div>
-        </div>
-        <div className="header-right flex items-center gap-2">
-          <div className="user-info flex items-center gap-1.5">
-            <div className="user-avatar w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
-              AC
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Logo/Brand */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center mb-4">
+              <img src={idreLogo} alt="Blocks Logo" width={90} height={90} />
             </div>
-            <div>
-              <div className="text-sm font-semibold">Accountant</div>
-              <div className="text-xs text-gray-400">Register</div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 pt-14">
-        {/* Sidebar - hidden on mobile */}
-        <aside className="sidebar w-60 bg-white border-r border-border fixed top-14 bottom-0 left-0 overflow-y-auto py-4 hidden md:block">
-          <div className="sidebar-section mb-6">
-            <Link to="/" className="sidebar-item flex items-center px-4 py-2.5 text-gray-600 text-sm no-underline border-l-3 border-transparent transition-all duration-200 hover:bg-gray-100">
-              <div className="sidebar-item-icon w-4 h-4 mr-2.5 flex items-center justify-center">🏠</div>
-              Home
-            </Link>
-          </div>
-          <div className="sidebar-section mb-6">
-            <div className="sidebar-header flex items-center justify-between px-4 mb-2">
-              <div className="sidebar-title text-sm font-semibold text-gray-800">Authentication</div>
-            </div>
-            <Link to="/login" className="sidebar-item flex items-center px-4 py-2.5 text-gray-600 text-sm no-underline border-l-3 border-transparent transition-all duration-200 hover:bg-gray-100">
-              <div className="sidebar-item-icon w-4 h-4 mr-2.5 flex items-center justify-center">🔑</div>
-              Login
-            </Link>
-            <a href="#" className="sidebar-item flex items-center px-4 py-2.5 text-gray-800 text-sm no-underline border-l-3 border-blue-500 bg-gray-100 transition-all duration-200">
-              <div className="sidebar-item-icon w-4 h-4 mr-2.5 flex items-center justify-center">📝</div>
-              Register
-            </a>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="main-content flex-1 ml-0 md:ml-60 p-4 md:p-6">
-          <div className="page-header mb-6">
-            <h1 className="page-title text-2xl md:text-3xl font-bold text-gray-800 mb-1.5">Register</h1>
-            <p className="page-subtitle text-sm md:text-base text-gray-500">Create a new account</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+            <p className="text-gray-600">Join us today and get started</p>
           </div>
 
-          <div className="register-section max-w-md mx-auto bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
+          {/* Register Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
             {error && (
-              <div className="error-message bg-destructive/10 text-destructive border border-destructive/20 rounded-md p-2.5 mb-4 text-sm">
-                {error}
-              </div>
+                <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg p-3 mb-6 text-sm flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span className="flex-1">{error}</span>
+                </div>
             )}
-            
+
             {success && (
-              <div className="success-message bg-success/10 text-success border border-success/20 rounded-md p-2.5 mb-4 text-sm">
-                Registration successful! Redirecting to login...
-              </div>
+                <div className="bg-green-50 text-green-600 border border-green-200 rounded-lg p-3 mb-6 text-sm flex items-start gap-2">
+                  <span className="text-lg">✓</span>
+                  <span className="flex-1">Registration successful! Redirecting to login...</span>
+                </div>
             )}
-            
-            <form onSubmit={handleSubmit} className="register-form flex flex-col gap-4">
-              <div className="form-group flex flex-col gap-1.5">
-                <label htmlFor="name" className="label text-xs md:text-sm font-medium text-gray-600">First Name</label>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    First Name
+                  </label>
+                  <input
+                      type="text"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      required
+                      placeholder="John"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="surname" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Last Name
+                  </label>
+                  <input
+                      type="text"
+                      id="surname"
+                      value={surname}
+                      onChange={(e) => setSurname(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      required
+                      placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Username
+                </label>
                 <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="input w-full px-3 py-2.5 text-sm md:text-base border border-input rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                  placeholder="Enter your first name"
+                    type="text"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    required
+                    placeholder="johndoe"
                 />
               </div>
-              
-              <div className="form-group flex flex-col gap-1.5">
-                <label htmlFor="surname" className="label text-xs md:text-sm font-medium text-gray-600">Last Name</label>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email Address
+                </label>
                 <input
-                  type="text"
-                  id="surname"
-                  value={surname}
-                  onChange={(e) => setSurname(e.target.value)}
-                  className="input w-full px-3 py-2.5 text-sm md:text-base border border-input rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                  placeholder="Enter your last name"
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    required
+                    placeholder="john@example.com"
                 />
               </div>
-              
-              <div className="form-group flex flex-col gap-1.5">
-                <label htmlFor="username" className="label text-xs md:text-sm font-medium text-gray-600">Username</label>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Password
+                </label>
                 <input
-                  type="text"
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="input w-full px-3 py-2.5 text-sm md:text-base border border-input rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                  placeholder="Enter your username"
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    required
+                    placeholder="••••••••"
                 />
               </div>
-              
-              <div className="form-group flex flex-col gap-1.5">
-                <label htmlFor="email" className="label text-xs md:text-sm font-medium text-gray-600">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input w-full px-3 py-2.5 text-sm md:text-base border border-input rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                  placeholder="Enter your email"
-                />
-              </div>
-              
-              <div className="form-group flex flex-col gap-1.5">
-                <label htmlFor="password" className="label text-xs md:text-sm font-medium text-gray-600">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input w-full px-3 py-2.5 text-sm md:text-base border border-input rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  required
-                  placeholder="Enter your password"
-                />
-              </div>
-              
-              <button 
-                type="submit" 
-                disabled={isLoading || success}
-                className={`register-button w-full py-2.5 px-5 text-sm md:text-base font-medium text-white rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${
-                  isLoading || success
-                    ? 'bg-primary/70 cursor-not-allowed' 
-                    : 'bg-primary hover:bg-primary/90 cursor-pointer'
-                }`}
+
+              <button
+                  type="submit"
+                  disabled={isLoading || success}
+                  className={`w-full py-3.5 px-6 text-base font-semibold text-white rounded-lg transition-all shadow-lg ${
+                      isLoading || success
+                          ? 'bg-gradient-to-r from-blue-400 to-purple-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-xl transform hover:-translate-y-0.5'
+                  }`}
               >
-                {isLoading ? 'Registering...' : success ? 'Registered!' : 'Register'}
+                {isLoading ? 'Creating Account...' : success ? 'Success!' : 'Create Account'}
               </button>
-              
-              <div className="login-link text-center mt-3 text-xs md:text-sm text-gray-500">
-                Already have an account? <Link to="/login" className="text-primary hover:underline">Login</Link>
-              </div>
             </form>
           </div>
-        </main>
+
+          {/* Login Link */}
+          <p className="text-center mt-6 text-gray-600">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
-    </div>
   );
 };
 

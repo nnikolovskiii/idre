@@ -69,8 +69,8 @@ const DefaultModels: React.FC = () => {
   return (
     <div className="default-models-container">
       <div className="default-models-header">
-        <h1>Default AI Models Settings</h1>
-        <p>Configure the default AI models that will be used for new chats</p>
+        <h1>Notebook AI Models Settings</h1>
+        <p>Configure the notebook AI models that will be used for new chats in this notebook</p>
         {!loading && !lightModel && !heavyModel && (
           <div className="first-time-notice">
             <span className="info-icon">ℹ️</span>

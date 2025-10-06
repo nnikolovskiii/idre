@@ -1,6 +1,9 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from backend.models.generative_model import GenerativeModel
 from backend.models.notebook_model import NotebookModel
 
 
@@ -24,22 +27,31 @@ class NotebookModelRepository:
 
     async def get_by_id(self, notebook_model_id: str) -> Optional[NotebookModel]:
         """Retrieves a notebook model by its ID."""
-        return await self.session.get(NotebookModel, notebook_model_id)
+        stmt = select(NotebookModel).options(
+            selectinload(NotebookModel.model)
+        ).where(NotebookModel.id == notebook_model_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_by_notebook_id_and_type(self, notebook_id: str, model_type: str) -> Optional[NotebookModel]:
         """Retrieves a notebook model by notebook_id and model type."""
         stmt = (
             select(NotebookModel)
+            .options(selectinload(NotebookModel.model))
             .join(NotebookModel.model)
             .where(NotebookModel.notebook_id == notebook_id)
-            .where(NotebookModel.model.has(type=model_type))
+            .where(GenerativeModel.type == model_type)  # Direct reference to the joined table
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def list_by_notebook_id(self, notebook_id: str) -> List[NotebookModel]:
         """Retrieves all notebook models for a specific notebook."""
-        stmt = select(NotebookModel).where(NotebookModel.notebook_id == notebook_id)
+        stmt = (
+            select(NotebookModel)
+            .where(NotebookModel.notebook_id == notebook_id)
+            .options(selectinload(NotebookModel.model))  # Eagerly load the relationship
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

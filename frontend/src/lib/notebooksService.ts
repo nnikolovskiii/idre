@@ -1,4 +1,3 @@
-// Types matching your Pydantic models
 import {API_CONFIG} from "./api.ts";
 
 export interface NotebookCreate {
@@ -37,21 +36,18 @@ export interface NotebooksListResponse {
 // Base URL — update to match your backend
 const API_BASE_URL = API_CONFIG.URL+"/notebooks"; // adjust path if needed
 
-// Helper to get auth token (adjust based on your auth strategy)
-const getAuthToken = (): string | null => {
-    return localStorage.getItem('access_token'); // or however you store it
-};
-
 // Generic fetch wrapper with auth and error handling
 const apiFetch = async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
     const headers = {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
     };
 
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, { 
+        ...options, 
+        headers,
+        credentials: 'include' // Use cookie-based auth like other services
+    });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

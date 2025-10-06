@@ -1,26 +1,26 @@
+// Updated src/views/MyDriveView.tsx
 import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   MdArrowDropDown,
   MdArrowUpward,
-  MdInfoOutline,
   MdInsertDriveFile,
+  MdImage,
+  MdAudiotrack,
+  MdPictureAsPdf,
+  MdCode,
+  MdDescription,
+  MdVideocam,
 } from "react-icons/md";
-import { BsGrid3X3, BsThreeDotsVertical } from "react-icons/bs";
-import { FaList } from "react-icons/fa";
-import { BiSort } from "react-icons/bi";
+import { BsThreeDotsVertical } from "react-icons/bs";
 import { fileService } from "../lib/filesService";
 import type { FileData } from "../lib/filesService";
-import { useAuth } from "../contexts/AuthContext";
-import { useChats } from "../hooks/useChats";
-import { useModals } from "../hooks/useModals";
-import ChatSidebar from "../components/chat/ChatSidebar";
 import InputArea from "../components/chat/InputArea";
-import ModelSettingsModal from "../components/modals/ModelSettingsModal";
-import LoginModal from "../components/modals/LoginModal";
-import RegisterModal from "../components/modals/RegisterModal";
+import Layout from "../components/layout/Layout"; // Adjust path as needed
 import "./MyDriveView.css";
+import {useChats} from "../hooks/useChats.ts";
 
-// File Viewer Modal Component
+// File Viewer Modal Component (kept as is)
 const FileViewerModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -62,77 +62,76 @@ const FileViewerModal: React.FC<{
   const isAudio = contentType.startsWith("audio/");
 
   return (
-    <div className="file-viewer-modal-overlay" onClick={onClose}>
-      <div className="file-viewer-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="file-viewer-header">
-          <h3>{fileName}</h3>
-          <button className="file-viewer-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="file-viewer-content">
-          {loading && (
-            <div className="file-viewer-loading">
-              <div className="loading-spinner"></div>
-              <span>Loading file...</span>
-            </div>
-          )}
-          {error && (
-            <div className="file-viewer-error">
-              <p>Error: {error}</p>
-              <button onClick={fetchFileContent}>Retry</button>
-            </div>
-          )}
-          {isImage && !loading && (
-            <img
-              src={fileUrl}
-              alt={fileName}
-              className="file-viewer-image"
-              onError={() => setError("Failed to load image")}
-            />
-          )}
-          {isAudio && !loading && !error && (
-            <div className="file-viewer-audio">
-              <audio
-                controls
-                preload="metadata"
-                className="audio-player"
-                onError={() => setError("Failed to load audio")}
-              >
-                <source src={fileUrl} type={contentType} />
-                Your browser does not support the audio element.
-              </audio>
-              <div className="audio-info">
-                <p>
-                  <strong>File:</strong> {fileName}
-                </p>
-                <p>
-                  <strong>Type:</strong> {contentType}
-                </p>
-              </div>
-            </div>
-          )}
-          {isText && !loading && !error && (
-            <pre className="file-viewer-text">{fileContent}</pre>
-          )}
-          {!isImage && !isAudio && !isText && !loading && !error && (
-            <div className="file-viewer-unsupported">
-              <p>This file type cannot be previewed in the application.</p>
-              <button
-                onClick={() => window.open(fileUrl, "_blank")}
-                className="file-viewer-download-btn"
-              >
-                Open in New Tab
-              </button>
-            </div>
-          )}
+      <div className="file-viewer-modal-overlay" onClick={onClose}>
+        <div className="file-viewer-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="file-viewer-header">
+            <h3>{fileName}</h3>
+            <button className="file-viewer-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <div className="file-viewer-content">
+            {loading && (
+                <div className="file-viewer-loading">
+                  <div className="loading-spinner"></div>
+                  <span>Loading file...</span>
+                </div>
+            )}
+            {error && (
+                <div className="file-viewer-error">
+                  <p>Error: {error}</p>
+                  <button onClick={fetchFileContent}>Retry</button>
+                </div>
+            )}
+            {isImage && !loading && (
+                <img
+                    src={fileUrl}
+                    alt={fileName}
+                    className="file-viewer-image"
+                    onError={() => setError("Failed to load image")}
+                />
+            )}
+            {isAudio && !loading && !error && (
+                <div className="file-viewer-audio">
+                  <audio
+                      controls
+                      preload="metadata"
+                      className="audio-player"
+                      onError={() => setError("Failed to load audio")}
+                  >
+                    <source src={fileUrl} type={contentType} />
+                    Your browser does not support the audio element.
+                  </audio>
+                  <div className="audio-info">
+                    <p>
+                      <strong>File:</strong> {fileName}
+                    </p>
+                    <p>
+                      <strong>Type:</strong> {contentType}
+                    </p>
+                  </div>
+                </div>
+            )}
+            {isText && !loading && !error && (
+                <pre className="file-viewer-text">{fileContent}</pre>
+            )}
+            {!isImage && !isAudio && !isText && !loading && !error && (
+                <div className="file-viewer-unsupported">
+                  <p>This file type cannot be previewed in the application.</p>
+                  <button
+                      onClick={() => window.open(fileUrl, "_blank")}
+                      className="file-viewer-download-btn"
+                  >
+                    Open in New Tab
+                  </button>
+                </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
   );
 };
 
-// 1. DATA DEFINITION
 // Type for a single drive item
 type DriveItem = {
   id: number;
@@ -143,54 +142,17 @@ type DriveItem = {
   iconColor: string;
 };
 
-// 2. SUB-COMPONENTS
-
 // DriveHeader Component
-const DriveHeader: React.FC = () => {
+const DriveHeader: React.FC<{ notebookId: string }> = ({ notebookId }) => {
   return (
-    <header className="drive-header">
-      <div className="drive-title-container">
-        <h1 className="drive-title">My Drive</h1>
-        <MdArrowDropDown
-          size={24}
-          style={{ color: "#5f6368", cursor: "pointer" }}
-        />
-      </div>
-      <div className="drive-header-icons">
-        <button
-          className="drive-icon-button drive-icon-button-selected"
-          aria-label="List view"
-        >
-          <FaList size={18} />
-        </button>
-        <button className="drive-icon-button" aria-label="Grid view">
-          <BsGrid3X3 size={18} />
-        </button>
-        <button className="drive-icon-button" aria-label="View details">
-          <MdInfoOutline size={22} />
-        </button>
-      </div>
-    </header>
-  );
-};
-
-// DriveFilterBar Component
-const DriveFilterBar: React.FC = () => {
-  return (
-    <div className="drive-filter-bar">
-      <button className="drive-filter-button">
-        Type <MdArrowDropDown />
-      </button>
-      <button className="drive-filter-button">
-        People <MdArrowDropDown />
-      </button>
-      <button className="drive-filter-button">
-        Modified <MdArrowDropDown />
-      </button>
-      <button className="drive-filter-button">
-        Source <MdArrowDropDown />
-      </button>
-    </div>
+      <header className="drive-header">
+        <div className="drive-title-container">
+          <h1 className="drive-title">My Drive</h1>
+        </div>
+        <div className="drive-header-icons">
+          {/* Commented out view toggles */}
+        </div>
+      </header>
   );
 };
 
@@ -204,24 +166,24 @@ const DriveFileItem: React.FC<{
   };
 
   return (
-    <div className="drive-list-item clickable" onClick={handleClick}>
-      <div className="grid-cell name-cell">
-        <item.icon
-          size={24}
-          style={{
-            marginRight: 16,
-            color: item.iconColor,
-            flexShrink: 0,
-          }}
-        />
-        <span>{item.name}</span>
+      <div className="drive-list-item clickable" onClick={handleClick}>
+        <div className="grid-cell name-cell">
+          <item.icon
+              size={24}
+              style={{
+                marginRight: 16,
+                color: item.iconColor,
+                flexShrink: 0,
+              }}
+          />
+          <span>{item.name}</span>
+        </div>
+        <div className="grid-cell date-cell">{item.dateModified}</div>
+        <div className="grid-cell size-cell">{item.fileSize}</div>
+        <div className="grid-cell more-cell">
+          <BsThreeDotsVertical size={18} />
+        </div>
       </div>
-      <div className="grid-cell date-cell">{item.dateModified}</div>
-      <div className="grid-cell size-cell">{item.fileSize}</div>
-      <div className="grid-cell more-cell">
-        <BsThreeDotsVertical size={18} />
-      </div>
-    </div>
   );
 };
 
@@ -231,23 +193,19 @@ const DriveFileList: React.FC<{
   onFileClick: (item: DriveItem) => void;
 }> = ({ items, onFileClick }) => {
   return (
-    <div className="drive-file-list">
-      <div className="drive-list-header">
-        <div className="grid-cell name-header">
-          Name <MdArrowUpward size={16} style={{ marginLeft: 4 }} />
+      <div className="drive-file-list">
+        <div className="drive-list-header">
+          <div className="grid-cell name-header">
+            Name <MdArrowUpward size={16} style={{ marginLeft: 4 }} />
+          </div>
+          <div className="grid-cell date-header">Date modified</div>
+          <div className="grid-cell size-header">File size</div>
         </div>
-        <div className="grid-cell date-header">Date modified</div>
-        <div className="grid-cell size-header">File size</div>
-        <div className="grid-cell sort-header">
-          <BiSort size={18} />
-          <span>Sort</span>
-        </div>
-      </div>
 
-      {items.map((item) => (
-        <DriveFileItem key={item.id} item={item} onFileClick={onFileClick} />
-      ))}
-    </div>
+        {items.map((item) => (
+            <DriveFileItem key={item.id} item={item} onFileClick={onFileClick} />
+        ))}
+      </div>
   );
 };
 
@@ -257,87 +215,107 @@ const convertFileToDriveItem = (file: FileData): DriveItem => {
     if (!dateString) return "—";
     const date = new Date(dateString);
     return (
-      date.toLocaleDateString() +
-      " " +
-      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        date.toLocaleDateString() +
+        " " +
+        date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
   };
 
+  let icon: React.ElementType = MdInsertDriveFile;
+  let iconColor: string = "#1967d2";
+
+  const contentType = file.content_type;
+  const extension = file.filename.split(".").pop()?.toLowerCase();
+
+  if (contentType?.startsWith("image/")) {
+    icon = MdImage;
+    iconColor = "#1a73e8";
+  } else if (contentType?.startsWith("audio/")) {
+    icon = MdAudiotrack;
+    iconColor = "#34a853";
+  } else if (contentType?.startsWith("video/")) {
+    icon = MdVideocam;
+    iconColor = "#ea4335";
+  } else if (contentType === "application/pdf") {
+    icon = MdPictureAsPdf;
+    iconColor = "#db4437";
+  } else if (contentType?.startsWith("text/") ||
+      extension === "js" ||
+      extension === "ts" ||
+      extension === "py" ||
+      extension === "html" ||
+      extension === "css" ||
+      extension === "json" ||
+      extension === "txt") {
+    icon = MdCode;
+    iconColor = "#4285f4";
+  } else if (extension === "doc" || extension === "docx" || extension === "xls" || extension === "xlsx") {
+    icon = MdDescription;
+    iconColor = "#fbbc04";
+  } else {
+    icon = MdInsertDriveFile;
+    iconColor = "#1967d2";
+  }
+
   return {
-    id: parseInt(file.file_id.slice(-6), 16), // Convert last 6 chars of UUID to number for display
+    id: parseInt(file.file_id.slice(-6), 16),
     name: file.filename,
     dateModified: formatDate(file.created_at),
-    fileSize: file.file_size || "—", // Use the actual file size from backend
-    icon: MdInsertDriveFile,
-    iconColor: "#1967d2", // Blue color for files
+    fileSize: file.file_size || "—",
+    icon,
+    iconColor,
   };
 };
 
 // Loading Component
 const DriveLoading: React.FC = () => (
-  <div className="drive-loading">
-    <div className="loading-spinner"></div>
-    <span>Loading files...</span>
-  </div>
+    <div className="drive-loading">
+      <div className="loading-spinner"></div>
+      <span>Loading files...</span>
+    </div>
 );
 
 // Error Component
 const DriveError: React.FC<{ error: string; onRetry: () => void }> = ({
-  error,
-  onRetry,
-}) => (
-  <div className="drive-error">
-    <div className="error-message">{error}</div>
-    <button className="retry-button" onClick={onRetry}>
-      Retry
-    </button>
-  </div>
+                                                                        error,
+                                                                        onRetry,
+                                                                      }) => (
+    <div className="drive-error">
+      <div className="error-message">{error}</div>
+      <button className="retry-button" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
 );
 
-// 3. MAIN COMPONENT
 const MyDriveView = () => {
+  const { notebookId } = useParams<{ notebookId: string }>();
+
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [fileViewerOpen, setFileViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
 
-  const { logout } = useAuth();
   const {
-    chatSessions,
     currentChatId,
-    loadingChats,
     creatingChat,
-    isAuthenticated,
-    user,
-    createNewChat,
-    switchToChat,
-    handleDeleteChat,
-  } = useChats();
-
-  const {
-    modals,
-    actions: {
-      handleOpenAIModelsSettings,
-      handleCloseAIModelsSettings,
-      handleCloseDefaultModelsModal,
-      handleOpenLoginModal,
-      handleCloseLoginModal,
-      handleOpenRegisterModal,
-      handleCloseRegisterModal,
-      switchToRegister,
-      switchToLogin,
-    },
-  } = useModals();
+    isTyping,
+  } = useChats(notebookId); // Only pull needed for InputArea
 
   const fetchFiles = async () => {
+    if (!notebookId) {
+      setError("No notebook ID provided");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const fileData = await fileService.getFiles();
-      setFiles(fileData);
+      const fileData = await fileService.getUserFiles(notebookId);
+      console.log(fileData.data);
+      setFiles(fileData.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load files");
     } finally {
@@ -347,75 +325,90 @@ const MyDriveView = () => {
 
   useEffect(() => {
     fetchFiles();
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (!mobile) {
-        // On desktop, always show sidebar
-        setIsSidebarOpen(true);
-      }
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [notebookId]);
 
   const driveItems = files.map(convertFileToDriveItem);
 
-  const handleSendMessage = async (text?: string, audioPath?: string) => {
-    // Handle sending messages from the drive view
-    if (text) {
-      try {
-        // Create a .txt file with the text content
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const filename = `message-${timestamp}.txt`;
-        const file = new File([text], filename, { type: "text/plain" });
+  const handleTextSubmit = async (text: string) => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `message-${timestamp}.txt`;
+    const fileContent = new File([text], filename, { type: "text/plain" });
 
-        // Upload the file using fileService
-        const uploadResult = await fileService.uploadFile(file);
+    const uploadResult = await fileService.uploadFile(fileContent, notebookId);
 
-        console.log("File uploaded successfully:", uploadResult);
+    console.log("File uploaded successfully:", uploadResult);
 
-        // Refresh the files list to show the new uploaded file
-        await fetchFiles();
+    await fetchFiles();
 
-        // If there's no current chat, create one
-        if (!currentChatId) {
-          createNewChat();
-        }
+    console.log("Message saved as file:", { text, filename, uploadResult, notebookId });
+  };
 
-        // TODO: You could also send the uploaded file to a chat or process it further
-        console.log("Message saved as file:", { text, filename, uploadResult });
-      } catch (error) {
-        console.error("Failed to upload message as file:", error);
-        // Fallback to just logging if upload fails
-        console.log("Message from MyDriveView:", { text, audioPath });
+  const handleAudioSubmit = async (text: string, blob: Blob) => {
+    try {
+      // Upload audio blob
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const baseFilename = `recording-${timestamp}`;
+      const uniqueTimestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 8);
+      const uniqueFilename = `${baseFilename}_${uniqueTimestamp}_${randomString}.webm`;
+      const audioFile = new File([blob], uniqueFilename, { type: "audio/webm" });
+
+      await fileService.uploadFile(audioFile, notebookId);
+
+      // If text is provided, upload it as a separate file
+      if (text.trim()) {
+        const textTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const textFilename = `message-${textTimestamp}.txt`;
+        const textFile = new File([text], textFilename, { type: "text/plain" });
+        await fileService.uploadFile(textFile, notebookId);
       }
-    } else if (audioPath) {
-      // Handle audio files - refresh the file list after audio upload
-      console.log("Audio message from MyDriveView:", { audioPath });
 
-      // Refresh the files list to show the newly uploaded audio file
-      try {
-        await fetchFiles();
-        console.log("File list refreshed after audio upload");
-      } catch (error) {
-        console.error("Failed to refresh files after audio upload:", error);
-      }
+      await fetchFiles();
+      console.log("Audio processed:", { text: text.trim() ? "included" : "none", uniqueFilename, notebookId });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      console.error("Failed to process audio:", err);
+
+      // Upload error as file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `audio-error-${timestamp}.txt`;
+      const errorFile = new File([`[Error] Failed to process audio: ${errorMessage}`], filename, { type: "text/plain" });
+      await fileService.uploadFile(errorFile, notebookId);
+      await fetchFiles();
+    }
+  };
+
+  const handleFileSubmit = async (file: File) => {
+    try {
+      await fileService.uploadFile(file, notebookId);
+
+      const message = `[File Uploaded: ${file.name}]`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `upload-notification-${timestamp}.txt`;
+      const msgFile = new File([message], filename, { type: "text/plain" });
+
+      await fileService.uploadFile(msgFile, notebookId);
+
+      console.log("File uploaded and notification saved:", { file: file.name });
+
+      await fetchFiles();
+    } catch (err) {
+      console.error("Failed to upload file:", err);
+      const errorMessage = `[Error] Failed to upload file: ${file.name}`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `file-error-${timestamp}.txt`;
+      const errFile = new File([errorMessage], filename, { type: "text/plain" });
+      await fileService.uploadFile(errFile, notebookId);
+      await fetchFiles();
     }
   };
 
   const handleModelsRequired = () => {
-    // Open the model settings modal when models are required
-    handleOpenAIModelsSettings();
+    // Handled in Layout via onSettingsClick
   };
 
   const handleFileClick = (item: DriveItem) => {
-    // Handle file click - open the file for viewing
-    if (item.icon === MdInsertDriveFile) {
-      // This is a file from our service, open in modal
+    if (item.icon === MdInsertDriveFile || item.icon === MdImage || item.icon === MdAudiotrack || item.icon === MdVideocam || item.icon === MdPictureAsPdf || item.icon === MdCode || item.icon === MdDescription) {
       const correspondingFile = files.find((f) => f.filename === item.name);
       if (correspondingFile) {
         setSelectedFile(correspondingFile);
@@ -424,7 +417,6 @@ const MyDriveView = () => {
         console.error("File not found for:", item.name);
       }
     } else {
-      // For folders or other items, just log for now
       console.log("Clicked on:", item.name);
     }
   };
@@ -434,93 +426,65 @@ const MyDriveView = () => {
     setSelectedFile(null);
   };
 
-  return (
-    <div className="drive-view-wrapper">
-      {isMobile && (
-        <div
-          className={`mobile-overlay ${isSidebarOpen ? "visible" : ""}`}
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      <div className={`chat-sidebar-container ${isMobile ? "mobile" : ""}`}>
-        <ChatSidebar
-          chatSessions={chatSessions}
-          currentChatId={currentChatId}
-          collapsed={!isSidebarOpen}
-          onToggleCollapse={() => setIsSidebarOpen(!isSidebarOpen)}
-          onCreateNewChat={createNewChat}
-          onSwitchChat={switchToChat}
-          onDeleteChat={handleDeleteChat}
-          loading={loadingChats}
-          creatingChat={creatingChat}
-          onSettingsClick={handleOpenAIModelsSettings}
-          user={user || undefined}
-          onLogout={logout}
-          isAuthenticated={isAuthenticated}
-          onLoginClick={handleOpenLoginModal}
-          onRegisterClick={handleOpenRegisterModal}
-        />
-      </div>
-
-      <main className="main-drive-area">
-        <div className="drive-container">
-          <DriveHeader />
-          <DriveFilterBar />
-
-          {loading && <DriveLoading />}
-          {error && <DriveError error={error} onRetry={fetchFiles} />}
-          {!loading && !error && (
-            <DriveFileList items={driveItems} onFileClick={handleFileClick} />
-          )}
+  if (!notebookId) {
+    return (
+        <div className="drive-view-wrapper">
+          <main className="main-drive-area">
+            <div className="drive-container">
+              <DriveError
+                  error="No notebook ID provided in URL"
+                  onRetry={() => window.history.back()}
+              />
+            </div>
+          </main>
         </div>
+    );
+  }
 
-        {/* Input Area for chat functionality */}
-        <div className="drive-input-area">
-          <InputArea
-            onSendMessage={handleSendMessage}
+  const children = (
+      <div className="drive-container">
+        <DriveHeader notebookId={notebookId} />
+        {loading && <DriveLoading />}
+        {error && <DriveError error={error} onRetry={fetchFiles} />}
+        {!loading && !error && (
+            <DriveFileList items={driveItems} onFileClick={handleFileClick} />
+        )}
+      </div>
+  );
+
+  const inputArea = (
+      <div className="drive-input-area">
+        <InputArea
+            onTextSubmit={handleTextSubmit}
+            onAudioSubmit={handleAudioSubmit}
+            onFileSubmit={handleFileSubmit}
             onModelsRequired={handleModelsRequired}
             hasModelsConfigured={true}
-          />
-        </div>
-      </main>
-
-      {/* AI Models Settings Modal */}
-      <ModelSettingsModal
-        chatId={currentChatId || undefined}
-        isOpen={
-          modals.isAIModelsSettingsOpen || modals.isDefaultModelsModalOpen
-        }
-        onClose={() => {
-          handleCloseAIModelsSettings();
-          handleCloseDefaultModelsModal();
-        }}
-      />
-
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={modals.isLoginModalOpen}
-        onClose={handleCloseLoginModal}
-        onSwitchToRegister={switchToRegister}
-      />
-
-      {/* Register Modal */}
-      <RegisterModal
-        isOpen={modals.isRegisterModalOpen}
-        onClose={handleCloseRegisterModal}
-        onSwitchToLogin={switchToLogin}
-      />
-
-      {/* File Viewer Modal */}
-      {selectedFile && (
-        <FileViewerModal
-          isOpen={fileViewerOpen}
-          onClose={closeFileViewer}
-          fileName={selectedFile.filename}
-          fileUrl={selectedFile.url}
-          contentType={selectedFile.content_type}
+            disabled={!currentChatId || creatingChat || isTyping}
         />
-      )}
-    </div>
+      </div>
+  );
+
+  return (
+      <>
+        <Layout
+            notebookId={notebookId}
+            children={children}
+            inputArea={inputArea}
+            wrapperClassName="drive-view-wrapper"
+            mainClassName="main-drive-area"
+        />
+        {/* File Viewer Modal - kept outside Layout as it's specific */}
+        {selectedFile && (
+            <FileViewerModal
+                isOpen={fileViewerOpen}
+                onClose={closeFileViewer}
+                fileName={selectedFile.filename}
+                fileUrl={selectedFile.url}
+                contentType={selectedFile.content_type}
+            />
+        )}
+      </>
   );
 };
 

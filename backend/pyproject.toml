@@ -6,7 +6,7 @@ authors = [
     {name = "Nikola Nikolovski", email = "nikolovski.nikola42@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "fastapi (>=0.116.0,<0.117.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
@@ -30,7 +30,10 @@ dependencies = [
     "pandas (>=2.3.2,<3.0.0)",
     "matplotlib (>=3.10.6,<4.0.0)",
     "seaborn (>=0.13.2,<0.14.0)",
-    "pymongo (>=4.15.1,<5.0.0)"
+    "pymongo (>=4.15.1,<5.0.0)",
+    "python-pptx (>=1.0.2,<2.0.0)",
+    "rembg (>=2.0.67,<3.0.0)",
+    "onnxruntime (>=1.23.0,<2.0.0)"
 ]
 
 [tool.poetry]

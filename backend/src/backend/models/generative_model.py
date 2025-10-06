@@ -14,8 +14,7 @@ class GenerativeModel(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False, comment="User-friendly display name, e.g., 'GPT-4 Turbo'")
     type = Column(Text, nullable=False, index=True, comment="The provider or family, e.g., 'openai'")
-    model_identifier = Column(Text, nullable=False, unique=True, comment="The stable identifier for API calls")
-    is_active = Column(Boolean, nullable=False, default=True, comment="Controls if users can select this model")
+    is_open_access = Column(Boolean, nullable=False, default=True, comment="Controls if users can select this model")
 
     __table_args__ = (
         UniqueConstraint('name', 'type', name='_model_name_type_uc'),

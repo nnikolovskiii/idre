@@ -21,7 +21,7 @@ class ChatModel(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Text, nullable=False)
-    chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.chat_id', ondelete="CASCADE"), nullable=False, unique=True)
+    chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.chat_id', ondelete="CASCADE"), nullable=False)
 
     generative_model_id = Column(UUID(as_uuid=True), ForeignKey('generative_models.id'), nullable=False)
 

@@ -1,4 +1,5 @@
 import React, {useState, useRef, type DragEvent, type ChangeEvent, useEffect} from 'react';
+import { useParams } from 'react-router-dom';
 import {
     FaFileUpload,
     FaImage,
@@ -71,6 +72,7 @@ const StatusIcon: React.FC<{ status: string }> = ({status}) => {
 
 // Main Component
 const FileUploadDashboard: React.FC = () => {
+    const { notebookId } = useParams<{ notebookId: string }>();
     // Upload states
     const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
     const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -185,7 +187,10 @@ const FileUploadDashboard: React.FC = () => {
         setError(null);
 
         try {
-            let url = getFilesUrl('LIST');
+            if (!notebookId) {
+                throw new Error('Notebook ID is missing in route');
+            }
+            let url = getFilesUrl('LIST', notebookId);
             if (status && status !== 'all') {
                 url += `?status=${status}`;
             }
@@ -260,7 +265,8 @@ const FileUploadDashboard: React.FC = () => {
     // Initial fetch
     useEffect(() => {
         fetchFiles();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notebookId]);
 
     return (
         <>

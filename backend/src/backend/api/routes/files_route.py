@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, UploadFile, File as FastAPIFile, HTTPExc
 
 from backend.api.dependencies import get_file_service
 from backend.models import User
-from backend.api.routes.auth import get_current_user
+from backend.api.routes.auth_route import get_current_user
 from backend.services.file_service import FileService
 
 
@@ -81,10 +81,10 @@ async def upload_file(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-@router.get("/files")
+@router.get("/{notebook_id}")
 async def get_user_files(
+        notebook_id: str,
         current_user: User = Depends(get_current_user),
-        notebook_id: str = None,
         file_service: FileService = Depends(get_file_service)
 ):
     try:

@@ -1,11 +1,12 @@
-import {useState, useEffect, useCallback} from "react";
-import {useAuth} from "../contexts/AuthContext";
-import {useApiKey} from "../contexts/ApiKeyContext";
-import {chatsService} from "../lib/chatsService";
-import {getChatsUrl} from "../lib/api";
-import type {BackendMessage, ChatSession, Message} from "../types/chat";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useApiKey } from "../contexts/ApiKeyContext";
+import { chatsService, type ChatResponse } from "../lib/chatsService";
+import type { ChatSession, Message } from "../types/chat";
+import type { MessageResponse } from "../lib/chatsService";
+import { getChatModels } from "../lib/chatModelService";
 
-const convertBackendMessages = (messages: BackendMessage[]): Message[] => {
+const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
     return messages
         .filter((msg) => msg.type === "human" || msg.type === "ai")
         .map((msg) => ({
@@ -18,35 +19,42 @@ const convertBackendMessages = (messages: BackendMessage[]): Message[] => {
         }));
 };
 
-export const useChats = () => {
-    const {user, isAuthenticated} = useAuth();
-    const {hasApiKey} = useApiKey();
+const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSession[] => {
+    return backendChats
+        .map((chat) => ({
+            id: chat.chat_id,
+            thread_id: chat.thread_id,
+            title: `Chat ${chat.chat_id.substring(0, 8)}`,
+            messages: [],
+            createdAt: new Date(chat.created_at),
+        }))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+};
+
+export const useChats = (notebookIdParam?: string) => {
+    const { user, isAuthenticated } = useAuth();
+    const { hasApiKey } = useApiKey();
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+    const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [loadingChats, setLoadingChats] = useState(true);
     const [creatingChat, setCreatingChat] = useState(false);
+    const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
 
     const fetchMessagesForCurrentChat = useCallback(async () => {
-        const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
-        if (!currentChat || !currentChat.thread_id) return;
-
-        setChatSessions((prev) =>
-            prev.map((chat) =>
-                chat.id === currentChatId ? {...chat, messages: []} : chat
-            )
-        );
+        if (!currentChatId || !currentThreadId) return;
 
         try {
             const backendMessages = await chatsService.getThreadMessages(
-                currentChat.thread_id
+                currentThreadId
             );
             const convertedMessages = convertBackendMessages(backendMessages);
 
             setChatSessions((prev) =>
                 prev.map((chat) =>
                     chat.id === currentChatId
-                        ? {...chat, messages: convertedMessages}
+                        ? { ...chat, messages: convertedMessages }
                         : chat
                 )
             );
@@ -55,49 +63,41 @@ export const useChats = () => {
                 err instanceof Error ? err.message : "Could not fetch messages.";
             console.error("Error fetching messages for thread:", errorMessage);
         }
-    }, [currentChatId]);
+    }, [currentChatId, currentThreadId]);
 
     useEffect(() => {
         const fetchInitialChats = async () => {
             setLoadingChats(true);
             try {
-                const response = await fetch(getChatsUrl("/get-all"), {
-                    method: "GET",
-                    credentials: "include",
-                });
-
-                if (!response.ok) throw new Error("Failed to fetch chat history.");
-
-                const backendChats: BackendChat[] = await response.json();
+                // Use the new chatsService.getChats() method with optional notebook_id
+                const backendChats = await chatsService.getChats(notebookIdParam);
 
                 if (backendChats.length > 0) {
-                    const convertedChats: ChatSession[] = backendChats
-                        .map((chat) => ({
-                            id: chat.chat_id,
-                            thread_id: chat.thread_id,
-                            title: `Chat ${chat.chat_id.substring(0, 8)}`,
-                            messages: [],
-                            createdAt: new Date(chat.created_at),
-                        }))
-                        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
+                    const convertedChats = convertBackendChatsToSessions(backendChats);
                     setChatSessions(convertedChats);
                     setCurrentChatId(convertedChats[0].id);
+                    setCurrentThreadId(convertedChats[0].thread_id);
                 } else {
-                    await createNewChat();
+                    // Do not auto-create a new chat; wait for user to click Add
+                    setChatSessions([]);
+                    setCurrentChatId(null);
+                    setCurrentThreadId(null);
                 }
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
                 console.error("Error fetching chats:", errorMessage);
-                await createNewChat();
+                // Do not auto-create a new chat on error; user can create manually
+                setChatSessions([]);
+                setCurrentChatId(null);
+                setCurrentThreadId(null);
             } finally {
                 setLoadingChats(false);
             }
         };
 
         fetchInitialChats();
-    }, []);
+    }, [notebookIdParam]);
 
     useEffect(() => {
         if (currentChatId) {
@@ -105,12 +105,33 @@ export const useChats = () => {
         }
     }, [currentChatId, fetchMessagesForCurrentChat]);
 
-    const createNewChat = async () => {
+    // Determine if the current chat has models configured (chat-level)
+    useEffect(() => {
+        const checkModels = async () => {
+            // By default, no models configured
+            setHasModelsConfigured(false);
+            if (!currentChatId) return;
+            try {
+                const models = await getChatModels(currentChatId);
+                const hasAny = !!models && (Object.keys(models).length > 0);
+                const hasNamed = !!(models?.["light"]?.model_name || models?.["heavy"]?.model_name);
+                setHasModelsConfigured(hasAny && hasNamed);
+            } catch (e) {
+                // If fetching fails, assume not configured
+                setHasModelsConfigured(false);
+            }
+        };
+        checkModels();
+    }, [currentChatId]);
+
+    const createNewChat = async (notebookId?: string) => {
         setCreatingChat(true);
         try {
             const newThreadData = await chatsService.createThread({
                 title: `New Chat`,
+                notebook_id: notebookId || notebookIdParam,
             });
+
             const newChat: ChatSession = {
                 id: newThreadData.chat_id,
                 thread_id: newThreadData.thread_id,
@@ -128,6 +149,7 @@ export const useChats = () => {
 
             setChatSessions((prev) => [newChat, ...prev]);
             setCurrentChatId(newChat.id);
+            setCurrentThreadId(newChat.thread_id);
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "Failed to create new chat.";
@@ -139,18 +161,34 @@ export const useChats = () => {
 
     const switchToChat = (chatId: string) => {
         setCurrentChatId(chatId);
+        const found = chatSessions.find((c) => c.id === chatId);
+        setCurrentThreadId(found?.thread_id || null);
     };
 
-    const handleDeleteChat = (chatId: string) => {
-        setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
+    const handleDeleteChat = async (chatId: string) => {
+        try {
+            // Call the backend to delete the chat
+            await chatsService.deleteChat(chatId);
 
-        if (currentChatId === chatId) {
-            const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
-            if (remainingChats.length > 0) {
-                setCurrentChatId(remainingChats[0].id);
-            } else {
-                createNewChat();
+            // Remove from local state
+            setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
+
+            // Handle current chat selection
+            if (currentChatId === chatId) {
+                const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
+                if (remainingChats.length > 0) {
+                    setCurrentChatId(remainingChats[0].id);
+                    setCurrentThreadId(remainingChats[0].thread_id);
+                } else {
+                    // Do not auto-create a new chat after deleting the last one
+                    setCurrentChatId(null);
+                    setCurrentThreadId(null);
+                }
             }
+        } catch (err) {
+            const errorMessage =
+                err instanceof Error ? err.message : "Failed to delete chat.";
+            console.error("Error deleting chat:", errorMessage);
         }
     };
 
@@ -168,7 +206,7 @@ export const useChats = () => {
         setChatSessions((prev) =>
             prev.map((chat) =>
                 chat.id === currentChatId
-                    ? {...chat, messages: [...chat.messages, optimisticMessage]}
+                    ? { ...chat, messages: [...chat.messages, optimisticMessage] }
                     : chat
             )
         );
@@ -179,10 +217,10 @@ export const useChats = () => {
         audioPath?: string,
         onApiKeyRequired?: () => void
     ) => {
-        if (!hasApiKey) {
-            onApiKeyRequired?.();
-            return;
-        }
+        // if (!hasApiKey) {
+        //     onApiKeyRequired?.();
+        //     return;
+        // }
 
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) {
@@ -213,6 +251,7 @@ export const useChats = () => {
                 err instanceof Error ? err.message : "An unknown error occurred.";
             console.error("Error sending message:", errorMessage);
 
+            // Remove optimistic message on error
             setChatSessions((prev) =>
                 prev.map((chat) =>
                     chat.id === currentChatId
@@ -251,7 +290,7 @@ export const useChats = () => {
         loadingChats,
         creatingChat,
         isTyping,
-        hasApiKey,
+        hasModelsConfigured,
         isAuthenticated,
         user,
         createNewChat,

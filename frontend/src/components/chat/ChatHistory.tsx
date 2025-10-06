@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { History, Plus, ChevronDown, Trash2 } from "lucide-react";
-import type { ChatSession } from "./ChatView";
+import type { ChatSession } from "../../types/chat";
 
 interface ChatHistoryProps {
   chatSessions: ChatSession[];

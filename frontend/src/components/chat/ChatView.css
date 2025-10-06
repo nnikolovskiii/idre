@@ -3,7 +3,7 @@
   height: 100vh;
   width: 100vw;
   display: flex;
-  background-color: hsl(var(--background));
+  background-color:#f8f7f6;
   color: hsl(var(--foreground));
   overflow: hidden;
 }
@@ -144,14 +144,15 @@
 }
 
 .message.user .message-bubble {
-  background-color: gray;
-  color: hsl(var(--primary-foreground));
+  background-color: white;
+  color: black;
   border-bottom-right-radius: 0.5rem;
   border-color: transparent;
 }
 
 .message.ai .message-bubble {
   border-bottom-left-radius: 0.5rem;
+  padding: 0.75rem 0.4rem;
 }
 
 .ai-message-header {
@@ -233,7 +234,7 @@
 
 .copied-feedback {
   margin-left: 0.25rem;
-  color: hsl(var(--success));
+  color: black;
   font-size: 0.75rem;
   animation: fadeInOut 2s ease-in-out;
 }
@@ -558,7 +559,7 @@
 .input-area-wrapper {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border);
-  background-color: hsl(var(--background));
+  background-color: #f8f7f6;
   flex-shrink: 0;
   /* Ensure input area is always visible on mobile */
   position: relative;

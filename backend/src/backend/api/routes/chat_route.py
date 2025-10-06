@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.dependencies import get_chat_service
 from backend.models import User
-from backend.api.routes.auth import get_current_user
+from backend.api.routes.auth_route import get_current_user
 from backend.models.dtos.chat import ChatResponse, MessageResponse, SendMessageRequest, CreateThreadRequest
 from backend.services.chat_service import ChatService
 

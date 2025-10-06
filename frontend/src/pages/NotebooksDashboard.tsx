@@ -167,7 +167,9 @@ const NotebooksDashboard: React.FC = () => {
               <CreateNewCard />
             </div>
             {notebooks.map((notebook) => (
-                <NotebookCard key={notebook.id} notebook={notebook} />
+                <div key={notebook.id} onClick={() => navigate(`/chat/${notebook.id}`)} className="cursor-pointer">
+                  <NotebookCard notebook={notebook} />
+                </div>
             ))}
           </div>
           {notebooks.length === 0 && !loading && (
