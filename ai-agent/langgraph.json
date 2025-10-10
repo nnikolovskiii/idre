@@ -1,7 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "agent": "./src/agent/core/configs.py:graph"
+    "transcription_agent": "./src/agent/core/configs.py:transcription_graph",
+    "chat_agent": "./src/agent/core/configs.py:chat_graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

@@ -1,9 +1,10 @@
 import os
-from contextlib import asynccontextmanager  # 1. ADD THIS IMPORT
+from contextlib import asynccontextmanager
 
 from backend.container import container
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.api.routes.auth_route import router as auth_router
 from backend.api.routes.files_route import router as files_router
@@ -16,6 +17,32 @@ from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
 
 postgres_db = container.db()
+
+# File size limit for middleware (100MB)
+MAX_REQUEST_SIZE = 100 * 1024 * 1024  # 100MB
+
+async def file_size_middleware(request: Request, call_next):
+    """
+    Middleware to check Content-Length header and reject oversized requests.
+    This provides an early safety net for the entire app.
+    """
+    content_length = request.headers.get('content-length')
+    if content_length:
+        try:
+            size = int(content_length)
+            if size > MAX_REQUEST_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "detail": f"Request size {size} bytes exceeds maximum allowed size of {MAX_REQUEST_SIZE} bytes ({MAX_REQUEST_SIZE / (1024 * 1024):.0f} MB)"
+                    }
+                )
+        except ValueError:
+            # Malformed Content-Length header, proceed normally
+            pass
+
+    response = await call_next(request)
+    return response
 
 
 @asynccontextmanager
@@ -52,6 +79,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
+
+# Add file size middleware
+app.middleware("http")(file_size_middleware)
 
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])

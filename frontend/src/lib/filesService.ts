@@ -1,9 +1,18 @@
 import {API_CONFIG} from "./api.ts";
 
+export interface ProcessingResult {
+    transcription?: string;
+    language?: string;
+    duration?: number;
+    [key: string]: any; // Allow additional fields
+}
+
 export interface FileUploadResponse {
     filename: string;
     file_id: string;
     url: string;
+    processing_status: string;
+    is_audio: boolean;
 }
 
 export interface FileData {
@@ -18,6 +27,7 @@ export interface FileData {
     run_id: string | null;
     created_at: string | null;
     updated_at: string | null;
+    processing_result: ProcessingResult | null;
 }
 
 export interface FileListResponse {
@@ -59,7 +69,9 @@ export const fileService = {
         return {
             filename: result.data.filename,
             file_id: result.data.file_id,
-            url: result.data.url
+            url: result.data.url,
+            processing_status: result.data.processing_status,
+            is_audio: result.data.is_audio
         };
     },
 
@@ -79,5 +91,28 @@ export const fileService = {
         }
 
         return response.json();
+    },
+
+    /**
+     * Transcribe an audio file
+     * Endpoint: POST /files/transcribe/{notebook_id}
+     */
+    transcribeFile: async (notebook_id: string, audio_path: string, file_id: string): Promise<void> => {
+        const response = await fetch(`${FILE_SERVICE_URL}/transcribe/${notebook_id}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                audio_path,
+                file_id
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Transcription failed: ${response.statusText} (${errorText})`);
+        }
     },
 };

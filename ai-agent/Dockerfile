@@ -9,7 +9,7 @@ ADD . /deps/ai-agent
 # -- Installing all local dependencies --
 RUN PYTHONDONTWRITEBYTECODE=1 uv pip install --system --no-cache-dir -c /api/constraints.txt -e /deps/*
 # -- End of local dependencies install --
-ENV LANGSERVE_GRAPHS='{"agent": "/deps/ai-agent/src/agent/core/configs.py:graph"}'
+ENV LANGSERVE_GRAPHS='{"chat_agent": "/deps/ai-agent/src/agent/core/configs.py:chat_graph", "transcription_agent": "/deps/ai-agent/src/agent/core/configs.py:transcription_graph"}'
 
 
 

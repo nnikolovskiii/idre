@@ -29,7 +29,6 @@ class NotebookModelService:
         """Creates a notebook model and commits the transaction."""
         generative_model: GenerativeModel = await self.generative_model_service.get_model(model_name, model_type)
 
-
         notebook_model = await self.repo.create(
             user_id=user_id,
             notebook_id=notebook_id,

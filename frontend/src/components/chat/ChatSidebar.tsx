@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./ChatSidebar.css";
 import type { ChatSession } from "../../types/chat";
-import { ChevronLeft, X, MessageCircle, FolderOpen } from "lucide-react";
+import { ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft } from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
@@ -151,6 +151,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <span>Navigation</span>
                 </div>
                 <div className="navigation-items">
+                  <button
+                      className="navigation-item"
+                      onClick={() => navigate('/notebooks')}
+                      title="Back to Notebooks"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Back to Notebooks</span>
+                  </button>
                   <button
                       className={`navigation-item ${
                           activeTab === "chat" ? "active" : ""

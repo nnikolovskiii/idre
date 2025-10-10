@@ -1,12 +1,12 @@
 // src/components/layout/Layout.tsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { useChats } from "../../hooks/useChats";
 import { useModals } from "../../hooks/useModals";
 import ChatSidebar from "../chat/ChatSidebar";
 import ModelSettingsModal from "../modals/ModelSettingsModal";
 import LoginModal from "../modals/LoginModal";
 import RegisterModal from "../modals/RegisterModal";
+import type { ChatSession } from "../../types/chat";
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -14,28 +14,37 @@ interface LayoutProps {
     wrapperClassName?: string;
     mainClassName?: string;
     notebookId?: string;
+    // Injected chat state/actions from parent (useChats)
+    chatSessions: ChatSession[];
+    currentChatId: string | null;
+    loadingChats: boolean;
+    creatingChat: boolean;
+    isTyping: boolean;
+    isAuthenticated?: boolean;
+    user?: { name?: string; surname?: string; email?: string; username?: string } | null;
+    createNewChat: (notebookId?: string) => void;
+    switchToChat: (chatId: string) => void;
+    handleDeleteChat: (chatId: string) => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
-                                           children,
-                                           inputArea,
-                                           wrapperClassName = "chat-view-wrapper",
-                                           mainClassName = "main-chat-area",
-                                           notebookId,
-                                       }) => {
+    children,
+    inputArea,
+    wrapperClassName = "chat-view-wrapper",
+    mainClassName = "main-chat-area",
+    notebookId,
+    chatSessions,
+    currentChatId,
+    loadingChats,
+    creatingChat,
+    isTyping,
+    isAuthenticated,
+    user,
+    createNewChat,
+    switchToChat,
+    handleDeleteChat,
+}) => {
     const { logout } = useAuth();
-    const {
-        chatSessions,
-        currentChatId,
-        loadingChats,
-        creatingChat,
-        isTyping,
-        isAuthenticated,
-        user,
-        createNewChat,
-        switchToChat,
-        handleDeleteChat,
-    } = useChats(notebookId);
 
     const {
         modals,
@@ -89,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({
                     onSettingsClick={handleOpenAIModelsSettings}
                     user={user || undefined}
                     onLogout={logout}
-                    isAuthenticated={isAuthenticated}
+                    isAuthenticated={!!isAuthenticated}
                     onLoginClick={handleOpenLoginModal}
                     onRegisterClick={handleOpenRegisterModal}
                 />

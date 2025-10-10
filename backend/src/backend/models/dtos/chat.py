@@ -25,6 +25,7 @@ class SendMessageRequest(BaseModel):
     audio_path: Optional[str] = None
     light_model: Optional[str] = None
     heavy_model: Optional[str] = None
+    file_id : Optional[str] = None
 
 
 class CreateThreadRequest(BaseModel):

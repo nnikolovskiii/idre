@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     Text,
     ForeignKey,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, Mapped
@@ -26,8 +27,14 @@ class NotebookModel(Base):
     # Foreign key to the central definition table
     generative_model_id = Column(UUID(as_uuid=True), ForeignKey('generative_models.id'), nullable=False)
 
+    # Unique constraint to enforce one-to-one per user-notebook pair
+    __table_args__ = (UniqueConstraint('user_id', 'notebook_id', name='unique_user_notebook'),)
+
     # Relationship to easily access the model details
-    model: Mapped[GenerativeModel]= relationship("GenerativeModel")
+    model: Mapped[GenerativeModel] = relationship("GenerativeModel")
+
+    # One-to-one relationship back to the notebook
+    notebook = relationship("Notebook", back_populates="default_model")
 
     def __repr__(self):
         return f"<NotebookDefaultModel(notebook_id='{self.notebook_id}', user_id='{self.user_id}')>"

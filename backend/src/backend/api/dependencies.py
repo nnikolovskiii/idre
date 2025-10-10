@@ -2,6 +2,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.container import container, get_db_session
+from backend.repositories.assistant_repository import AssistantRepository
 from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
 from backend.repositories.model_api_repository import ModelApiRepository
@@ -12,6 +13,8 @@ from backend.repositories.notebook_model_repository import NotebookModelReposito
 from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.generative_model_repository import GenerativeModelRepository
 from backend.repositories.app_settings_repository import AppSettingsRepository
+from backend.services.ai_service import AIService
+from backend.services.assistant_service import AssistantService
 from backend.services.fernet_service import FernetService
 from backend.services.file_service import FileService
 from backend.services.model_api_service import ModelApiService
@@ -46,6 +49,23 @@ def get_fernet_service() -> FernetService:
     container for an instance.
     """
     return container.fernet_service()
+
+def get_assistant_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> AssistantRepository:
+    return container.assistant_repository(session=session)
+
+
+# --- Provider for FileService ---
+def get_assistant_service(
+        session: AsyncSession = Depends(get_db_session),
+        assistant_repo: AssistantRepository = Depends(get_assistant_repository)
+) -> AssistantService:
+    return container.assistant_service(
+        session=session,
+        assistant_repository=assistant_repo
+    )
+
 
 
 def get_file_repository(
@@ -194,6 +214,7 @@ def get_chat_service(
         model_api_service: ModelApiService = Depends(get_model_api_service),
         notebook_model_service: NotebookModelService = Depends(get_notebook_model_service),
         chat_model_service: ChatModelService = Depends(get_chat_model_service),
+        assistant_service: AssistantService = Depends(get_assistant_service)
 ) -> ChatService:
     """Dependency provider for the ChatService."""
     return container.chat_service(
@@ -203,7 +224,26 @@ def get_chat_service(
         model_api_service=model_api_service,
         notebook_model_service=notebook_model_service,
         chat_model_service=chat_model_service,
+        assistant_service=assistant_service
     )
+
+    # model_api_service: ModelApiService,
+    # notebook_model_service: NotebookModelService,
+    # assistant_service: AssistantService,
+
+def get_ai_service(
+        session: AsyncSession = Depends(get_db_session),
+        model_api_service: ModelApiService = Depends(get_model_api_service),
+        notebook_model_service: NotebookModelService = Depends(get_notebook_model_service),
+        assistant_service: AssistantService = Depends(get_assistant_service)
+) -> AIService:
+    return container.ai_service(
+        session=session,
+        model_api_service=model_api_service,
+        notebook_model_service=notebook_model_service,
+        assistant_service=assistant_service
+    )
+
 
 
 # --- Provider for PasswordService ---

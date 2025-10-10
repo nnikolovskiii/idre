@@ -1,5 +1,3 @@
-# backend/services/chat_service.py
-
 import os
 from typing import List, Optional
 
@@ -10,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.chat import Chat
 from backend.models.dtos.chat import SendMessageRequest
 from backend.models.notebook_model import NotebookModel
+from backend.services.assistant_service import AssistantService
 from backend.services.model_api_service import ModelApiService
 from backend.services.notebook_model_service import NotebookModelService
 from backend.services.chat_model_service import ChatModelService
@@ -37,6 +36,7 @@ class ChatService:
             model_api_service: ModelApiService,
             notebook_model_service: NotebookModelService,
             chat_model_service: ChatModelService,
+            assistant_service: AssistantService
     ):
         """
         Initializes the ChatService with all its dependencies.
@@ -48,6 +48,7 @@ class ChatService:
             model_api_service (ModelApiService): Service for managing API keys.
             notebook_model_service (NotebookModelService): Service for managing notebook models.
             chat_model_service (ChatModelService): Service for managing chat models.
+            assistant_service (AssistantService): Service for managing assistants.
         """
         self.session = session
         self.chat_repo = chat_repository
@@ -55,14 +56,30 @@ class ChatService:
         self.model_api_service = model_api_service
         self.notebook_model_service = notebook_model_service
         self.chat_model_service = chat_model_service
+        self.assistant_service = assistant_service
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
-        self.assistant_id = "fe096781-5601-53d2-b2f6-0d3403f7e9ca"
+        self._assistant_id = None
 
+    async def _get_assistant_id(self) -> str:
+        """Lazy loads the assistant ID and returns it as a string."""
+        if self._assistant_id is None:
+            print("DEBUG: Fetching assistant...")
+            assistant = await self.assistant_service.get_assistant_by_graph_id("chat_agent")
+            print(f"DEBUG: Got assistant: {assistant}")
+
+            if assistant is None:
+                raise ValueError("Assistant with graph_id 'chat_agent' not found.")
+
+            print(f"DEBUG: Assistant ID: {assistant.assistant_id}")
+            self._assistant_id = str(assistant.assistant_id)
+            print(f"DEBUG: Stored assistant_id as string: {self._assistant_id}")
+
+        return self._assistant_id
     # --- LangGraph Methods (External API Interaction) ---
 
     async def get_messages_for_thread(self, thread_id: str) -> List[dict]:
         """Gets all messages from a thread in LangGraph."""
-        thread_state = await self.langgraph_client.threads.get_state(thread_id=thread_id)
+        thread_state = await self.langgraph_client.threads.get_state(thread_id=thread_id,)
         return thread_state.get('values', {}).get('messages', [])
 
     async def delete_message_from_thread(self, thread_id: str, message_id_to_delete: str):
@@ -130,6 +147,7 @@ class ChatService:
         #     await self.session.refresh(model)
 
         return new_chat
+
     async def send_message_to_graph(self, thread_id: str, user_id: str, request: SendMessageRequest):
         """
         Orchestrates sending a message by gathering all data and invoking LangGraph.
@@ -151,9 +169,10 @@ class ChatService:
         if request.audio_path:
             run_input["audio_path"] = request.audio_path
 
+        assistant_id = await self._get_assistant_id()
         await self.langgraph_client.runs.wait(
             thread_id=thread_id,
-            assistant_id=self.assistant_id,
+            assistant_id=assistant_id,
             input=run_input,
         )
 

@@ -50,7 +50,7 @@ async def get_thread_messages(
     try:
         messages = await chat_service.get_messages_for_thread(thread_id)
 
-        return [
+        messages_list = [
             MessageResponse(
                 id=message.get('id', ''),
                 content=message.get('content', ''),
@@ -58,6 +58,8 @@ async def get_thread_messages(
                 additional_kwargs=message.get('additional_kwargs', {})
             ) for message in messages
         ]
+
+        return messages_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving messages: {str(e)}")
 

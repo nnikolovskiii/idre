@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from backend.databases.postgres_db import AsyncPostgreSQLDatabase
 from backend.repositories.app_settings_repository import AppSettingsRepository
+from backend.repositories.assistant_repository import AssistantRepository
 from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
@@ -18,6 +19,8 @@ from backend.repositories.notebook_model_repository import NotebookModelReposito
 from backend.repositories.notebook_repository import NotebookRepository
 from backend.repositories.thread_repository import ThreadRepository
 from backend.repositories.user_repository import UserRepository
+from backend.services.ai_service import AIService
+from backend.services.assistant_service import AssistantService
 from backend.services.chat_model_service import ChatModelService
 from backend.services.chat_service import ChatService
 from backend.services.app_settings_service import AppSettingsService
@@ -52,10 +55,16 @@ class Container(containers.DeclarativeContainer):
         FernetService,
         fernet=fernet
     )
-    # Add factory for the new repository
+
+    assistant_repository = providers.Factory(AssistantRepository)
+
+    assistant_service = providers.Factory(
+        AssistantService,
+        assistant_repository=assistant_repository,
+    )
+
     model_api_repository = providers.Factory(ModelApiRepository)
 
-    # Update the factory for the ModelApiService
     model_api_service = providers.Factory(
         ModelApiService,
         fernet_service=fernet_service,
@@ -64,11 +73,10 @@ class Container(containers.DeclarativeContainer):
 
     notebook_repository = providers.Factory(NotebookRepository)
 
-    # Add the factory for the NotebookService
     notebook_service = providers.Factory(
         NotebookService,
         notebook_repository=notebook_repository,
-        thread_repository=thread_repository,  # Inject ThreadRepository
+        thread_repository=thread_repository,
     )
 
     file_repository = providers.Factory(FileRepository)
@@ -116,6 +124,14 @@ class Container(containers.DeclarativeContainer):
         thread_repository=thread_repository,
         notebook_model_service=notebook_model_service,
         chat_model_service=chat_model_service,
+        assistant_service=assistant_service,
+    )
+
+    ai_service = providers.Factory(
+        AIService,
+        model_api_service=model_api_service,
+        notebook_model_service=notebook_model_service,
+        assistant_service=assistant_service,
     )
 
     user_repository = providers.Factory(UserRepository)

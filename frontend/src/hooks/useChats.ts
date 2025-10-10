@@ -42,28 +42,36 @@ export const useChats = (notebookIdParam?: string) => {
     const [creatingChat, setCreatingChat] = useState(false);
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
 
+    // In useChats hook, update the fetchMessagesForCurrentChat function:
     const fetchMessagesForCurrentChat = useCallback(async () => {
-        if (!currentChatId || !currentThreadId) return;
+        if (!currentThreadId) {
+            console.log('No currentThreadId, skipping fetch');
+            return;
+        }
+
+        console.log('Fetching messages for thread:', currentThreadId);
 
         try {
-            const backendMessages = await chatsService.getThreadMessages(
-                currentThreadId
-            );
+            const backendMessages = await chatsService.getThreadMessages(currentThreadId);
             const convertedMessages = convertBackendMessages(backendMessages);
 
-            setChatSessions((prev) =>
-                prev.map((chat) =>
-                    chat.id === currentChatId
+            console.log('Fetched messages:', convertedMessages.length);
+
+            setChatSessions((prev) => {
+                const updated = prev.map((chat) =>
+                    chat.thread_id === currentThreadId
                         ? { ...chat, messages: convertedMessages }
                         : chat
-                )
-            );
+                );
+                console.log('Updated chatSessions');
+                return updated;
+            });
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "Could not fetch messages.";
             console.error("Error fetching messages for thread:", errorMessage);
         }
-    }, [currentChatId, currentThreadId]);
+    }, [currentThreadId]); // Only depend on currentThreadId
 
     useEffect(() => {
         const fetchInitialChats = async () => {
@@ -100,10 +108,11 @@ export const useChats = (notebookIdParam?: string) => {
     }, [notebookIdParam]);
 
     useEffect(() => {
-        if (currentChatId) {
+        if (currentThreadId) {
+            console.log('Effect triggered, fetching messages for:', currentThreadId);
             fetchMessagesForCurrentChat();
         }
-    }, [currentChatId, fetchMessagesForCurrentChat]);
+    }, [currentThreadId, fetchMessagesForCurrentChat]);
 
     // Determine if the current chat has models configured (chat-level)
     useEffect(() => {
@@ -160,11 +169,17 @@ export const useChats = (notebookIdParam?: string) => {
     };
 
     const switchToChat = (chatId: string) => {
-        setCurrentChatId(chatId);
+        console.log('Switching to chat:', chatId);
         const found = chatSessions.find((c) => c.id === chatId);
-        setCurrentThreadId(found?.thread_id || null);
+        if (found) {
+            console.log('Found chat with thread_id:', found.thread_id);
+            setCurrentChatId(found.id);
+            setCurrentThreadId(found.thread_id);
+        } else {
+            console.log('Chat not found:', chatId);
+        }
     };
-
+    
     const handleDeleteChat = async (chatId: string) => {
         try {
             // Call the backend to delete the chat

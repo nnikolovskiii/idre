@@ -34,14 +34,21 @@ const ChatView: React.FC<ChatViewProps> = ({ notebookId: propNotebookId }) => {
     }, []);
 
     const {
+        chatSessions,
         currentChat,
         currentChatId,
+        loadingChats,
         creatingChat,
         isTyping,
         hasModelsConfigured,
+        isAuthenticated,
+        user,
+        createNewChat,
+        switchToChat,
+        handleDeleteChat,
         handleSendMessage,
         handleDeleteMessage,
-    } = useChats(currentNotebookId); // Assuming useChats returns these; adjust if needed
+    } = useChats(currentNotebookId);
 
     const handleModelsRequired = () => {
         // This would be handled in Layout via onSettingsClick, but if needed here, adjust
@@ -140,6 +147,16 @@ const ChatView: React.FC<ChatViewProps> = ({ notebookId: propNotebookId }) => {
             inputArea={inputArea}
             wrapperClassName="chat-view-wrapper"
             mainClassName="main-chat-area"
+            chatSessions={chatSessions}
+            currentChatId={currentChatId}
+            loadingChats={loadingChats}
+            creatingChat={creatingChat}
+            isTyping={isTyping}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            createNewChat={createNewChat}
+            switchToChat={switchToChat}
+            handleDeleteChat={handleDeleteChat}
         />
     );
 };

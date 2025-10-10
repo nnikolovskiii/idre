@@ -1,11 +1,9 @@
-# backend/services/file_service.py
-
 import uuid
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.file import File
+from backend.models.file import File, ProcessingStatus
 from backend.repositories.file_repository import FileRepository
 
 
@@ -60,7 +58,8 @@ class FileService:
         url: str,
         content_type: Optional[str] = None,
         file_size_bytes: Optional[int] = None,
-        notebook_id: Optional[str] = None
+        notebook_id: Optional[str] = None,
+        processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     ) -> File:
         """
         (Orchestration) Create a file record using the repository and commit.
@@ -72,7 +71,8 @@ class FileService:
             url=url,
             content_type=content_type,
             file_size_bytes=file_size_bytes,
-            notebook_id=notebook_id
+            notebook_id=notebook_id,
+            processing_status=processing_status
         )
         await self.session.commit()
         await self.session.refresh(file_record)
@@ -84,3 +84,27 @@ class FileService:
         (Delegation) Retrieve all files for a user via the repository.
         """
         return await self.repo.list_by_user_id(user_id=user_id, notebook_id=notebook_id)
+
+    async def update_file(
+        self,
+        file_id: str,
+        updates: Dict[str, Any],
+        merge_processing_result: bool = False
+    ) -> Optional[File]:
+        """
+        (Orchestration) Update a file record with the provided updates.
+        If 'processing_result' is in updates and merge_processing_result is True,
+        it will be merged into the existing result (or set as new if none exists).
+        Commits the changes.
+        """
+        file_record = await self.repo.update(
+            file_id=file_id,
+            updates=updates,
+            merge_processing_result=merge_processing_result
+        )
+        if file_record:
+            await self.session.commit()
+            await self.session.refresh(file_record)
+        return file_record
+
+    # transcribe audio file

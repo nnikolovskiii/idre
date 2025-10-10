@@ -21,6 +21,9 @@ interface FileWithPreview extends File {
     preview: string;
 }
 
+// Constants
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
 interface FileData {
     filename: string;
     url: string;
@@ -89,10 +92,30 @@ const FileUploadDashboard: React.FC = () => {
 
     // Upload functions
     const addFiles = (files: FileList) => {
-        const newFiles = Array.from(files).map(file => Object.assign(file, {
-            preview: URL.createObjectURL(file)
-        }));
-        setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
+        const validFiles: FileWithPreview[] = [];
+        const invalidFiles: string[] = [];
+
+        Array.from(files).forEach(file => {
+            if (file.size > MAX_FILE_SIZE) {
+                invalidFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+            } else {
+                const fileWithPreview = Object.assign(file, {
+                    preview: URL.createObjectURL(file)
+                });
+                validFiles.push(fileWithPreview);
+            }
+        });
+
+        if (validFiles.length > 0) {
+            setSelectedFiles(prevFiles => [...prevFiles, ...validFiles]);
+        }
+
+        if (invalidFiles.length > 0) {
+            setUploadStatus({
+                success: false,
+                message: `Some files exceed the maximum size limit of ${formatFileSize(MAX_FILE_SIZE)}: ${invalidFiles.join(', ')}`
+            });
+        }
     };
 
     const removeFile = (index: number) => {
@@ -267,6 +290,13 @@ const FileUploadDashboard: React.FC = () => {
         fetchFiles();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [notebookId]);
+
+    // Cleanup preview URLs on unmount
+    useEffect(() => {
+        return () => {
+            selectedFiles.forEach(file => URL.revokeObjectURL(file.preview));
+        };
+    }, [selectedFiles]);
 
     return (
         <>

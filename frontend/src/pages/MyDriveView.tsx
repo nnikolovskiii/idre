@@ -1,5 +1,5 @@
 // Updated src/views/MyDriveView.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   MdArrowDropDown,
@@ -132,14 +132,30 @@ const FileViewerModal: React.FC<{
   );
 };
 
-// Type for a single drive item
-type DriveItem = {
-  id: number;
-  name: string;
-  dateModified: string;
-  fileSize: string | null;
-  icon: React.ElementType;
-  iconColor: string;
+// Transcription Modal Component
+const TranscriptionModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  transcription: string;
+  filename: string;
+}> = ({ isOpen, onClose, transcription, filename }) => {
+  if (!isOpen) return null;
+
+  return (
+      <div className="transcription-modal-overlay" onClick={onClose}>
+        <div className="transcription-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="transcription-header">
+            <h3>Transcription for {filename}</h3>
+            <button className="transcription-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <div className="transcription-content">
+            <pre className="transcription-text">{transcription}</pre>
+          </div>
+        </div>
+      </div>
+  );
 };
 
 // DriveHeader Component
@@ -158,59 +174,14 @@ const DriveHeader: React.FC<{ notebookId: string }> = ({ notebookId }) => {
 
 // DriveFileItem Component
 const DriveFileItem: React.FC<{
-  item: DriveItem;
-  onFileClick: (item: DriveItem) => void;
-}> = ({ item, onFileClick }) => {
+  item: FileData;
+  onFileClick: (item: FileData) => void;
+  onViewTranscription?: (item: FileData) => void;
+}> = ({ item, onFileClick, onViewTranscription }) => {
   const handleClick = () => {
     onFileClick(item);
   };
 
-  return (
-      <div className="drive-list-item clickable" onClick={handleClick}>
-        <div className="grid-cell name-cell">
-          <item.icon
-              size={24}
-              style={{
-                marginRight: 16,
-                color: item.iconColor,
-                flexShrink: 0,
-              }}
-          />
-          <span>{item.name}</span>
-        </div>
-        <div className="grid-cell date-cell">{item.dateModified}</div>
-        <div className="grid-cell size-cell">{item.fileSize}</div>
-        <div className="grid-cell more-cell">
-          <BsThreeDotsVertical size={18} />
-        </div>
-      </div>
-  );
-};
-
-// DriveFileList Component
-const DriveFileList: React.FC<{
-  items: DriveItem[];
-  onFileClick: (item: DriveItem) => void;
-}> = ({ items, onFileClick }) => {
-  return (
-      <div className="drive-file-list">
-        <div className="drive-list-header">
-          <div className="grid-cell name-header">
-            Name <MdArrowUpward size={16} style={{ marginLeft: 4 }} />
-          </div>
-          <div className="grid-cell date-header">Date modified</div>
-          <div className="grid-cell size-header">File size</div>
-        </div>
-
-        {items.map((item) => (
-            <DriveFileItem key={item.id} item={item} onFileClick={onFileClick} />
-        ))}
-      </div>
-  );
-};
-
-// Helper function to convert FileData to DriveItem
-const convertFileToDriveItem = (file: FileData): DriveItem => {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
     const date = new Date(dateString);
@@ -224,8 +195,8 @@ const convertFileToDriveItem = (file: FileData): DriveItem => {
   let icon: React.ElementType = MdInsertDriveFile;
   let iconColor: string = "#1967d2";
 
-  const contentType = file.content_type;
-  const extension = file.filename.split(".").pop()?.toLowerCase();
+  const contentType = item.content_type;
+  const extension = item.filename.split(".").pop()?.toLowerCase();
 
   if (contentType?.startsWith("image/")) {
     icon = MdImage;
@@ -257,14 +228,89 @@ const convertFileToDriveItem = (file: FileData): DriveItem => {
     iconColor = "#1967d2";
   }
 
-  return {
-    id: parseInt(file.file_id.slice(-6), 16),
-    name: file.filename,
-    dateModified: formatDate(file.created_at),
-    fileSize: file.file_size || "—",
-    icon,
-    iconColor,
-  };
+  const dateModified = formatDate(item.updated_at || item.created_at);
+  const fileSize = item.file_size || "—";
+
+  let transcriptionContent: React.ReactNode = "—";
+  const status = item.processing_status;
+  const isAudio = contentType?.startsWith("audio/") || false;
+
+  if (isAudio) {
+    if (status === "pending") {
+      transcriptionContent = "No transcription";
+    } else if (status === "processing") {
+      transcriptionContent = (
+          <div className="transcription-loading">
+            <div className="loading-spinner-small"></div>
+          </div>
+      );
+    } else if (status === "completed" && item.processing_result?.transcription) {
+      transcriptionContent = (
+          <button
+              className="view-transcription-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewTranscription?.(item);
+              }}
+          >
+            View Transcription
+          </button>
+      );
+    } else if (status === "failed") {
+      transcriptionContent = "Failed";
+    }
+  }
+
+  return (
+      <div className="drive-list-item clickable" onClick={handleClick}>
+        <div className="grid-cell name-cell">
+          {React.createElement(icon, {
+            size: 24,
+            style: {
+              marginRight: 16,
+              color: iconColor,
+              flexShrink: 0,
+            }
+          })}
+          <span>{item.filename}</span>
+        </div>
+        <div className="grid-cell date-cell">{dateModified}</div>
+        <div className="grid-cell size-cell">{fileSize}</div>
+        <div className="grid-cell transcription-cell">{transcriptionContent}</div>
+        <div className="grid-cell more-cell">
+          <BsThreeDotsVertical size={18} />
+        </div>
+      </div>
+  );
+};
+
+// DriveFileList Component
+const DriveFileList: React.FC<{
+  items: FileData[];
+  onFileClick: (item: FileData) => void;
+  onViewTranscription?: (item: FileData) => void;
+}> = ({ items, onFileClick, onViewTranscription }) => {
+  return (
+      <div className="drive-file-list">
+        <div className="drive-list-header">
+          <div className="grid-cell name-header">
+            Name <MdArrowUpward size={16} style={{ marginLeft: 4 }} />
+          </div>
+          <div className="grid-cell date-header">Date modified</div>
+          <div className="grid-cell size-header">File size</div>
+          <div className="grid-cell transcription-header">Transcription</div>
+        </div>
+
+        {items.map((item) => (
+            <DriveFileItem
+                key={item.file_id}
+                item={item}
+                onFileClick={onFileClick}
+                onViewTranscription={onViewTranscription}
+            />
+        ))}
+      </div>
+  );
 };
 
 // Loading Component
@@ -296,6 +342,9 @@ const MyDriveView = () => {
   const [error, setError] = useState<string | null>(null);
   const [fileViewerOpen, setFileViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
+  const [transcriptionOpen, setTranscriptionOpen] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] = useState<string>('');
+  const [selectedFilename, setSelectedFilename] = useState<string>('');
 
   const {
     currentChatId,
@@ -327,7 +376,11 @@ const MyDriveView = () => {
     fetchFiles();
   }, [notebookId]);
 
-  const driveItems = files.map(convertFileToDriveItem);
+  const handleViewTranscription = useCallback((file: FileData) => {
+    setSelectedTranscription(file.processing_result?.transcription || '');
+    setSelectedFilename(file.filename);
+    setTranscriptionOpen(true);
+  }, []);
 
   const handleTextSubmit = async (text: string) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -382,14 +435,7 @@ const MyDriveView = () => {
     try {
       await fileService.uploadFile(file, notebookId);
 
-      const message = `[File Uploaded: ${file.name}]`;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `upload-notification-${timestamp}.txt`;
-      const msgFile = new File([message], filename, { type: "text/plain" });
-
-      await fileService.uploadFile(msgFile, notebookId);
-
-      console.log("File uploaded and notification saved:", { file: file.name });
+      console.log("File uploaded successfully:", { file: file.name });
 
       await fetchFiles();
     } catch (err) {
@@ -407,18 +453,9 @@ const MyDriveView = () => {
     // Handled in Layout via onSettingsClick
   };
 
-  const handleFileClick = (item: DriveItem) => {
-    if (item.icon === MdInsertDriveFile || item.icon === MdImage || item.icon === MdAudiotrack || item.icon === MdVideocam || item.icon === MdPictureAsPdf || item.icon === MdCode || item.icon === MdDescription) {
-      const correspondingFile = files.find((f) => f.filename === item.name);
-      if (correspondingFile) {
-        setSelectedFile(correspondingFile);
-        setFileViewerOpen(true);
-      } else {
-        console.error("File not found for:", item.name);
-      }
-    } else {
-      console.log("Clicked on:", item.name);
-    }
+  const handleFileClick = (item: FileData) => {
+    setSelectedFile(item);
+    setFileViewerOpen(true);
   };
 
   const closeFileViewer = () => {
@@ -447,7 +484,11 @@ const MyDriveView = () => {
         {loading && <DriveLoading />}
         {error && <DriveError error={error} onRetry={fetchFiles} />}
         {!loading && !error && (
-            <DriveFileList items={driveItems} onFileClick={handleFileClick} />
+            <DriveFileList
+                items={files}
+                onFileClick={handleFileClick}
+                onViewTranscription={handleViewTranscription}
+            />
         )}
       </div>
   );
@@ -482,6 +523,15 @@ const MyDriveView = () => {
                 fileName={selectedFile.filename}
                 fileUrl={selectedFile.url}
                 contentType={selectedFile.content_type}
+            />
+        )}
+        {/* Transcription Modal */}
+        {transcriptionOpen && selectedTranscription && (
+            <TranscriptionModal
+                isOpen={transcriptionOpen}
+                onClose={() => setTranscriptionOpen(false)}
+                transcription={selectedTranscription}
+                filename={selectedFilename}
             />
         )}
       </>

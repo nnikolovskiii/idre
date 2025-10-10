@@ -1,3 +1,4 @@
+/* Updated MyDriveView.css */
 .drive-view-wrapper {
   display: flex;
   height: 100vh;
@@ -160,17 +161,17 @@
 .drive-list-header,
 .drive-list-item {
   display: grid;
-  grid-template-columns: minmax(300px, 3fr) 1.5fr 1fr 120px;
+  grid-template-columns: minmax(300px, 2fr) 1.2fr 1fr 1.5fr 80px;
   border-bottom: 1px solid #dadce0;
   align-items: center;
-  min-width: 600px;
+  min-width: 700px;
 }
 
 @media (max-width: 768px) {
   .drive-list-header,
   .drive-list-item {
-    grid-template-columns: minmax(200px, 2.5fr) 1.2fr 1fr 80px;
-    min-width: 500px;
+    grid-template-columns: minmax(200px, 2fr) 1fr 0.8fr 1fr 60px;
+    min-width: 550px;
     font-size: 13px;
   }
 }
@@ -178,8 +179,8 @@
 @media (max-width: 480px) {
   .drive-list-header,
   .drive-list-item {
-    grid-template-columns: minmax(150px, 2.5fr) 1fr 1fr 60px;
-    min-width: 400px;
+    grid-template-columns: minmax(150px, 2fr) 0.8fr 0.8fr 1fr 50px;
+    min-width: 450px;
     font-size: 12px;
   }
 }
@@ -248,6 +249,13 @@
   font-weight: 500;
 }
 
+.date-header,
+.size-header,
+.transcription-header {
+  color: #5f6368;
+  font-weight: 500;
+}
+
 .sort-header {
   justify-content: flex-end;
   gap: 8px;
@@ -259,6 +267,10 @@
     padding-right: 12px;
     gap: 6px;
   }
+}
+
+.transcription-cell {
+  justify-content: flex-start;
 }
 
 .more-cell {
@@ -273,6 +285,38 @@
   .more-cell {
     padding-right: 12px;
   }
+}
+
+.view-transcription-btn {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.view-transcription-btn:hover {
+  background-color: #1557b0;
+}
+
+.transcription-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e0e0e0;
+  border-top: 2px solid #1967d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .drive-loading {
@@ -526,6 +570,93 @@
   background-color: #1557b0;
 }
 
+/* Transcription Modal Styles */
+.transcription-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.transcription-modal {
+  background: white;
+  border-radius: 8px;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.transcription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.transcription-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.transcription-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #5f6368;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.transcription-close:hover {
+  background-color: #e0e0e0;
+}
+
+.transcription-content {
+  flex: 1;
+  padding: 20px;
+  overflow: auto;
+  min-height: 200px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.transcription-text {
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: #202124;
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: auto;
+}
+
 /* Responsive adjustments for file viewer */
 @media (max-width: 768px) {
   .file-viewer-modal-overlay {
@@ -556,5 +687,31 @@
 
   .file-viewer-image {
     max-height: 60vh;
+  }
+
+  .transcription-modal-overlay {
+    padding: 10px;
+  }
+
+  .transcription-modal {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .transcription-header {
+    padding: 12px 16px;
+  }
+
+  .transcription-header h3 {
+    font-size: 16px;
+  }
+
+  .transcription-content {
+    padding: 16px;
+  }
+
+  .transcription-text {
+    font-size: 13px;
+    padding: 12px;
   }
 }

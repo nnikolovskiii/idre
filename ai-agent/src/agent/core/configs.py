@@ -4,6 +4,7 @@ from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 
 from agent.core.chat_graph_state import ChatGraphState
+from agent.core.transcription_graph import transcribe_and_enhance_audio_node
 from src.agent.core.agent import (
     llm_call,
     next_step,
@@ -177,7 +178,22 @@ def simple_graph():
 
     return workflow
 
+def transcription_graph():
+    workflow = StateGraph(ChatGraphState)
+
+    workflow.add_node("transcribe_and_enhance_audio_node", transcribe_and_enhance_audio_node)
+
+    workflow.set_entry_point("transcribe_and_enhance_audio_node")
+    workflow.add_edge("transcribe_and_enhance_audio_node", END)
+
+    return workflow
 
 
-optimizer_builder = simple_graph()
-graph = optimizer_builder.compile()
+
+# Build and compile transcription graph
+transcription_builder = transcription_graph()
+transcription_graph = transcription_builder.compile()
+
+# Build and compile chat graph
+chat_builder = simple_graph()
+chat_graph = chat_builder.compile()
