@@ -136,9 +136,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
           </header>
 
+
+
           {/* Notebook Indicator */}
           {!collapsed && currentNotebook && (
               <div className="notebook-indicator">
+                <button
+                    className="navigation-item"
+                    onClick={() => navigate('/notebooks')}
+                    title="Back to Notebooks"
+                >
+                  <ArrowLeft size={16} />
+                </button>
                 <span className="notebook-name">{currentNotebook.title}</span>
               </div>
           )}
@@ -151,14 +160,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <span>Navigation</span>
                 </div>
                 <div className="navigation-items">
-                  <button
-                      className="navigation-item"
-                      onClick={() => navigate('/notebooks')}
-                      title="Back to Notebooks"
-                  >
-                    <ArrowLeft size={16} />
-                    <span>Back to Notebooks</span>
-                  </button>
                   <button
                       className={`navigation-item ${
                           activeTab === "chat" ? "active" : ""

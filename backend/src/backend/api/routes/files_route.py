@@ -189,3 +189,29 @@ async def transcribe_file_endpoint(
         return {"status": "success", "message": "Transcription initiated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.delete("/{file_id}")
+async def delete_file(
+        file_id: str,
+        current_user: User = Depends(get_current_user),
+        file_service: FileService = Depends(get_file_service)
+):
+    try:
+        success = await file_service.delete_file(
+            user_id=current_user.email,
+            file_id=file_id
+        )
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail="File not found or access denied"
+            )
+        return {
+            "status": "success",
+            "message": "File deleted successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

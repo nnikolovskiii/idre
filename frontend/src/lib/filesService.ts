@@ -115,4 +115,20 @@ export const fileService = {
             throw new Error(`Transcription failed: ${response.statusText} (${errorText})`);
         }
     },
+
+    /**
+     * Delete a file
+     * Endpoint: DELETE /files/{file_id}
+     */
+    deleteFile: async (file_id: string): Promise<void> => {
+        const response = await fetch(`${FILE_SERVICE_URL}/${file_id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`File deletion failed: ${response.statusText} (${errorText})`);
+        }
+    },
 };

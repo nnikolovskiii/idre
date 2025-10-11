@@ -1,3 +1,4 @@
+import os
 import uuid
 import time
 from typing import List, Optional, Dict, Any
@@ -106,5 +107,21 @@ class FileService:
             await self.session.commit()
             await self.session.refresh(file_record)
         return file_record
+
+    async def delete_file(self, user_id: str, file_id: str) -> bool:
+        """
+        (Orchestration) Delete a file record for the user.
+        Returns True if successful, False if not found or unauthorized.
+        """
+        # Fetch the file to verify ownership
+        file_record = await self.repo.get_by_id_and_user(file_id=file_id, user_id=user_id)
+        if not file_record:
+            return False
+
+        # Delete from DB
+        success = await self.repo.delete(file_id=file_id)
+        if success:
+            await self.session.commit()
+        return success
 
     # transcribe audio file

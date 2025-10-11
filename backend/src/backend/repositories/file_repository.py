@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.file import File, ProcessingStatus
 
@@ -55,6 +55,14 @@ class FileRepository:
         result = await self.session.execute(query)
         return result.scalars().all()
 
+    async def get_by_id_and_user(self, file_id: str, user_id: str) -> Optional[File]:
+        """
+        Retrieve a file by ID and user ID to verify ownership.
+        """
+        query = select(File).where(File.id == file_id, File.user_id == user_id)
+        result = await self.session.execute(query)
+        return result.scalars().first()
+
     async def update(
         self,
         file_id: str,
@@ -90,3 +98,13 @@ class FileRepository:
 
         await self.session.flush()  # Flush to update the object
         return existing_file
+
+    async def delete(self, file_id: str) -> bool:
+        """
+        Delete a file record by ID.
+        Returns True if deleted, False otherwise.
+        Does not commit the transaction.
+        """
+        stmt = delete(File).where(File.id == file_id)
+        result = await self.session.execute(stmt)
+        return result.rowcount > 0

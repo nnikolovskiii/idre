@@ -1,5 +1,5 @@
 // Updated src/views/MyDriveView.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   MdArrowDropDown,
@@ -177,10 +177,41 @@ const DriveFileItem: React.FC<{
   item: FileData;
   onFileClick: (item: FileData) => void;
   onViewTranscription?: (item: FileData) => void;
-}> = ({ item, onFileClick, onViewTranscription }) => {
+  onDelete?: (item: FileData) => void;
+}> = ({ item, onFileClick, onViewTranscription, onDelete }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const handleClick = () => {
     onFileClick(item);
   };
+
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(item);
+    setShowMenu(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMenu]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
@@ -277,8 +308,19 @@ const DriveFileItem: React.FC<{
         <div className="grid-cell date-cell">{dateModified}</div>
         <div className="grid-cell size-cell">{fileSize}</div>
         <div className="grid-cell transcription-cell">{transcriptionContent}</div>
-        <div className="grid-cell more-cell">
-          <BsThreeDotsVertical size={18} />
+        <div className="more-cell" ref={menuRef}>
+          <BsThreeDotsVertical
+              size={18}
+              onClick={handleMenuToggle}
+              style={{ cursor: 'pointer' }}
+          />
+          {showMenu && (
+              <div className="file-menu">
+                <div className="file-menu-option" onClick={handleDelete}>
+                  Delete
+                </div>
+              </div>
+          )}
         </div>
       </div>
   );
@@ -289,7 +331,8 @@ const DriveFileList: React.FC<{
   items: FileData[];
   onFileClick: (item: FileData) => void;
   onViewTranscription?: (item: FileData) => void;
-}> = ({ items, onFileClick, onViewTranscription }) => {
+  onDelete?: (item: FileData) => void;
+}> = ({ items, onFileClick, onViewTranscription, onDelete }) => {
   return (
       <div className="drive-file-list">
         <div className="drive-list-header">
@@ -307,6 +350,7 @@ const DriveFileList: React.FC<{
                 item={item}
                 onFileClick={onFileClick}
                 onViewTranscription={onViewTranscription}
+                onDelete={onDelete}
             />
         ))}
       </div>
@@ -371,6 +415,21 @@ const MyDriveView = () => {
       setLoading(false);
     }
   };
+
+  const handleDelete = useCallback(async (file: FileData) => {
+    if (!window.confirm(`Are you sure you want to delete "${file.filename}"?`)) {
+      return;
+    }
+
+    try {
+      await fileService.deleteFile(file.file_id);
+      await fetchFiles();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete file";
+      alert(errorMessage);
+      console.error("Delete error:", err);
+    }
+  }, [notebookId]);
 
   useEffect(() => {
     fetchFiles();
@@ -488,6 +547,7 @@ const MyDriveView = () => {
                 items={files}
                 onFileClick={handleFileClick}
                 onViewTranscription={handleViewTranscription}
+                onDelete={handleDelete}
             />
         )}
       </div>
