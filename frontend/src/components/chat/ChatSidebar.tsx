@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import "./ChatSidebar.css";
 import type { ChatSession } from "../../types/chat";
 import { ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft } from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
@@ -105,21 +104,43 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
+  const sidebarClasses = [
+    "h-full flex flex-col flex-shrink-0 bg-white border-r border-neutral-200 transition-[width,transform] duration-300 ease-in-out",
+    "md:relative fixed top-0 left-0 z-50",
+    isMobile ? "w-[280px]" : (collapsed ? "w-[60px]" : "w-[260px]"),
+    isMobile && !collapsed ? "translate-x-0 shadow-2xl" : "",
+    isMobile && collapsed ? "-translate-x-full" : "",
+    !isMobile ? "translate-x-0" : ""
+  ].join(" ");
+
+
   return (
       <aside
-          className={`chat-sidebar ${collapsed ? "collapsed" : ""} ${
-              !collapsed && isMobile ? "mobile-visible" : ""
-          }`}
+          className={sidebarClasses}
           onClick={collapsed && isMobile ? onToggleCollapse : undefined}
       >
-        <div className="sidebar-content">
-          <header className="sidebar-header">
-            <div className="sidebar-logo">
+        <div
+            className={`flex flex-col h-full gap-6 ${
+                collapsed && !isMobile ? "p-2 overflow-hidden" : "p-4"
+            }`}
+        >
+          <header
+              className={`flex items-center ${
+                  collapsed && !isMobile
+                      ? "justify-center py-2"
+                      : "justify-between px-1"
+              }`}
+          >
+            <div
+                className={`flex items-center gap-2 font-semibold text-lg text-neutral-800 ${
+                    collapsed && !isMobile ? "hidden" : ""
+                }`}
+            >
               <img src={idreLogo} alt="Blocks Logo" width={70} height={70} />
             </div>
             {isMobile ? (
                 <button
-                    className="mobile-close-btn"
+                    className="flex items-center justify-center p-2 rounded-md bg-neutral-100 hover:bg-neutral-200 transition-all text-neutral-600"
                     onClick={onToggleCollapse}
                     title="Close sidebar"
                 >
@@ -127,7 +148,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 </button>
             ) : (
                 <button
-                    className="collapse-btn"
+                    className={`flex items-center justify-center p-1 rounded-md text-neutral-600 hover:bg-neutral-100 transition-transform ${
+                        collapsed ? "rotate-180" : ""
+                    }`}
                     onClick={onToggleCollapse}
                     title="Collapse sidebar"
                 >
@@ -136,33 +159,33 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
           </header>
 
-
-
-          {/* Notebook Indicator */}
           {!collapsed && currentNotebook && (
-              <div className="notebook-indicator">
+              <div className="flex items-center gap-2 p-2 px-3 mb-4 rounded-md bg-neutral-100">
                 <button
-                    className="navigation-item"
-                    onClick={() => navigate('/notebooks')}
+                    className="flex items-center justify-center p-1 rounded-md text-neutral-600 hover:bg-neutral-200"
+                    onClick={() => navigate("/notebooks")}
                     title="Back to Notebooks"
                 >
                   <ArrowLeft size={16} />
                 </button>
-                <span className="notebook-name">{currentNotebook.title}</span>
+                <span className="flex-1 text-sm font-medium text-neutral-700 whitespace-nowrap overflow-hidden text-ellipsis">
+              {currentNotebook.title}
+            </span>
               </div>
           )}
 
-          {/* Navigation Section */}
           {!collapsed && (
-              <section className="navigation-section">
-                <div className="navigation-header">
+              <section className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 px-1 text-xs font-semibold tracking-wider text-neutral-500 uppercase">
                   <MessageCircle size={16} />
                   <span>Navigation</span>
                 </div>
-                <div className="navigation-items">
+                <div className="flex flex-col gap-1">
                   <button
-                      className={`navigation-item ${
-                          activeTab === "chat" ? "active" : ""
+                      className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
+                          activeTab === "chat"
+                              ? "bg-neutral-100/80 text-indigo-600 font-semibold border border-neutral-200"
+                              : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-800"
                       }`}
                       onClick={() => handleTabChange("chat")}
                       title="Chat History"
@@ -171,8 +194,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     <span>Chat</span>
                   </button>
                   <button
-                      className={`navigation-item ${
-                          activeTab === "files" ? "active" : ""
+                      className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
+                          activeTab === "files"
+                              ? "bg-neutral-100/80 text-indigo-600 font-semibold border border-neutral-200"
+                              : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-800"
                       }`}
                       onClick={() => handleTabChange("files")}
                       title="Files"
@@ -184,33 +209,36 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </section>
           )}
 
-          <SettingsDropdown
-              collapsed={collapsed}
-              onToggleCollapse={onToggleCollapse}
-              onSettingsClick={onSettingsClick}
-          />
+          {/* This container ensures dropdowns and history are only shown when not collapsed */}
+          <div className={collapsed && !isMobile ? "hidden" : "contents"}>
+            <SettingsDropdown
+                collapsed={collapsed}
+                onToggleCollapse={onToggleCollapse}
+                onSettingsClick={onSettingsClick}
+            />
 
-          <AuthDropdown
-              collapsed={collapsed}
-              user={user}
-              onLogout={onLogout}
-              onToggleCollapse={onToggleCollapse}
-              isAuthenticated={isAuthenticated}
-              onLoginClick={onLoginClick}
-              onRegisterClick={onRegisterClick}
-          />
+            <AuthDropdown
+                collapsed={collapsed}
+                user={user}
+                onLogout={onLogout}
+                onToggleCollapse={onToggleCollapse}
+                isAuthenticated={isAuthenticated}
+                onLoginClick={onLoginClick}
+                onRegisterClick={onRegisterClick}
+            />
 
-          <ChatHistory
-              chatSessions={chatSessions}
-              currentChatId={currentChatId}
-              onSwitchChat={onSwitchChat}
-              onDeleteChat={onDeleteChat}
-              loading={loading}
-              creatingChat={creatingChat}
-              onCreateNewChat={onCreateNewChat}
-              onToggleCollapse={onToggleCollapse}
-              isAuthenticated={isAuthenticated}
-          />
+            <ChatHistory
+                chatSessions={chatSessions}
+                currentChatId={currentChatId}
+                onSwitchChat={onSwitchChat}
+                onDeleteChat={onDeleteChat}
+                loading={loading}
+                creatingChat={creatingChat}
+                onCreateNewChat={onCreateNewChat}
+                onToggleCollapse={onToggleCollapse}
+                isAuthenticated={isAuthenticated}
+            />
+          </div>
         </div>
       </aside>
   );

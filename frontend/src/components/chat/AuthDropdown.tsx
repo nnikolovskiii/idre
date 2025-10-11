@@ -12,83 +12,91 @@ interface AuthDropdownProps {
 }
 
 const AuthDropdown: React.FC<AuthDropdownProps> = ({
-  collapsed,
-  user,
-  onLogout,
-  onToggleCollapse,
-  isAuthenticated,
-  onLoginClick,
-  onRegisterClick,
-}) => {
+                                                     collapsed,
+                                                     user,
+                                                     onLogout,
+                                                     onToggleCollapse,
+                                                     isAuthenticated,
+                                                     onLoginClick,
+                                                     onRegisterClick,
+                                                   }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <section className="auth-section">
-      <button className="auth-header" onClick={() => setIsOpen(!isOpen)}>
-        <User size={16} />
-        {!collapsed && <span>Authentication</span>}
-        {!collapsed && (
-          <ChevronDown size={16} className={isOpen ? "" : "rotated"} />
-        )}
-      </button>
-      {!collapsed && isOpen && (
-        <div className="auth-items">
-          {isAuthenticated ? (
-            <>
-              {user && (
-                <div className="profile-info">
-                  <User size={16} />
-                  <div>
-                    <div className="profile-name">
-                      {user.name && user.surname
-                        ? `${user.name} ${user.surname}`
-                        : user.username}
-                    </div>
-                    <div className="profile-email">{user.email}</div>
-                  </div>
-                </div>
-              )}
-              <button
-                className="settings-item logout-btn"
-                onClick={() => {
-                  onLogout();
-                  onToggleCollapse();
-                }}
-                title="Logout"
-              >
-                <LogOut size={16} />
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="settings-item"
-                onClick={() => {
-                  onLoginClick();
-                  onToggleCollapse();
-                }}
-                title="Login"
-              >
-                <LogOut size={16} />
-                <span>Login</span>
-              </button>
-              <button
-                className="settings-item"
-                onClick={() => {
-                  onRegisterClick();
-                  onToggleCollapse();
-                }}
-                title="Register"
-              >
-                <User size={16} />
-                <span>Register</span>
-              </button>
-            </>
+      <section className="flex flex-col">
+        <button
+            className="flex items-center gap-2 px-1 w-full text-left text-xs font-semibold tracking-wider text-neutral-500 uppercase hover:text-neutral-700 transition-colors"
+            onClick={() => setIsOpen(!isOpen)}
+        >
+          <User size={16} />
+          {!collapsed && <span>Authentication</span>}
+          {!collapsed && (
+              <ChevronDown
+                  size={16}
+                  className={`ml-auto transition-transform duration-200 ${
+                      isOpen ? "" : "rotate-180"
+                  }`}
+              />
           )}
-        </div>
-      )}
-    </section>
+        </button>
+        {!collapsed && isOpen && (
+            <div className="flex flex-col gap-1 mt-2">
+              {isAuthenticated ? (
+                  <>
+                    {user && (
+                        <div className="flex items-center gap-3 p-3 bg-neutral-100 rounded-md text-neutral-700">
+                          <User size={24} className="flex-shrink-0" />
+                          <div>
+                            <div className="font-semibold text-sm">
+                              {user.name && user.surname
+                                  ? `${user.name} ${user.surname}`
+                                  : user.username}
+                            </div>
+                            <div className="text-xs text-neutral-500">{user.email}</div>
+                          </div>
+                        </div>
+                    )}
+                    <button
+                        className="flex items-center gap-3 w-full text-left p-2.5 px-3 rounded-md text-sm font-medium text-red-600 transition-all hover:bg-red-600 hover:text-white"
+                        onClick={() => {
+                          onLogout();
+                          if (window.innerWidth <= 768) onToggleCollapse();
+                        }}
+                        title="Logout"
+                    >
+                      <LogOut size={16} />
+                      <span>Logout</span>
+                    </button>
+                  </>
+              ) : (
+                  <>
+                    <button
+                        className="flex items-center gap-3 w-full text-left p-2.5 px-3 rounded-md text-sm font-medium text-neutral-700 transition-all hover:bg-neutral-100"
+                        onClick={() => {
+                          onLoginClick();
+                          if (window.innerWidth <= 768) onToggleCollapse();
+                        }}
+                        title="Login"
+                    >
+                      <LogOut size={16} />
+                      <span>Login</span>
+                    </button>
+                    <button
+                        className="flex items-center gap-3 w-full text-left p-2.5 px-3 rounded-md text-sm font-medium text-neutral-700 transition-all hover:bg-neutral-100"
+                        onClick={() => {
+                          onRegisterClick();
+                          if (window.innerWidth <= 768) onToggleCollapse();
+                        }}
+                        title="Register"
+                    >
+                      <User size={16} />
+                      <span>Register</span>
+                    </button>
+                  </>
+              )}
+            </div>
+        )}
+      </section>
   );
 };
 
