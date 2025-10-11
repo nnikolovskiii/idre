@@ -1,5 +1,4 @@
-// src/components/layout/Layout.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModals } from "../../hooks/useModals";
 import ChatSidebar from "../chat/ChatSidebar";
@@ -7,14 +6,13 @@ import ModelSettingsModal from "../modals/ModelSettingsModal";
 import LoginModal from "../modals/LoginModal";
 import RegisterModal from "../modals/RegisterModal";
 import type { ChatSession } from "../../types/chat";
+import ChatHeader from "../chat/ChatHeader";
 
 interface LayoutProps {
     children: React.ReactNode;
     inputArea?: React.ReactNode;
-    wrapperClassName?: string;
-    mainClassName?: string;
     notebookId?: string;
-    // Injected chat state/actions from parent (useChats)
+    title: string;
     chatSessions: ChatSession[];
     currentChatId: string | null;
     loadingChats: boolean;
@@ -28,22 +26,20 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({
-    children,
-    inputArea,
-    wrapperClassName = "chat-view-wrapper",
-    mainClassName = "main-chat-area",
-    notebookId,
-    chatSessions,
-    currentChatId,
-    loadingChats,
-    creatingChat,
-    isTyping,
-    isAuthenticated,
-    user,
-    createNewChat,
-    switchToChat,
-    handleDeleteChat,
-}) => {
+                                           children,
+                                           inputArea,
+                                           notebookId,
+                                           title,
+                                           chatSessions,
+                                           currentChatId,
+                                           loadingChats,
+                                           creatingChat,
+                                           isAuthenticated,
+                                           user,
+                                           createNewChat,
+                                           switchToChat,
+                                           handleDeleteChat,
+                                       }) => {
     const { logout } = useAuth();
 
     const {
@@ -62,29 +58,21 @@ const Layout: React.FC<LayoutProps> = ({
     } = useModals();
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-    useEffect(() => {
-        const handleResize = () => {
-            const mobile = window.innerWidth <= 768;
-            setIsMobile(mobile);
-            if (!mobile) {
-                setIsSidebarOpen(true);
-            }
-        };
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
 
     return (
-        <div className={wrapperClassName}>
-            {isMobile && (
-                <div
-                    className={`mobile-overlay ${isSidebarOpen ? "visible" : ""}`}
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-            <div className={`chat-sidebar-container ${isMobile ? "mobile" : ""}`}>
+        <div className="h-dvh w-screen flex bg-[#f8f7f6] text-foreground overflow-hidden">
+            {/* Mobile Overlay */}
+            <div
+                className={`fixed inset-0 bg-black/50 z-[999] transition-opacity md:hidden ${
+                    isSidebarOpen
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
+                }`}
+                onClick={() => setIsSidebarOpen(false)}
+            />
+
+            {/* Sidebar Container */}
+            <div className="relative z-[1001] h-full flex-shrink-0 md:static">
                 <ChatSidebar
                     chatSessions={chatSessions}
                     currentChatId={currentChatId}
@@ -104,12 +92,20 @@ const Layout: React.FC<LayoutProps> = ({
                 />
             </div>
 
-            <main className={mainClassName}>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col h-full min-w-0 relative">
+                <div className="md:hidden">
+                    <ChatHeader
+                        title={title}
+                        onMenuClick={() => setIsSidebarOpen(true)}
+                        onSettingsClick={handleOpenAIModelsSettings}
+                    />
+                </div>
                 {children}
                 {inputArea}
             </main>
 
-            {/* AI Models Settings Modal */}
+            {/* Modals */}
             <ModelSettingsModal
                 chatId={currentChatId || undefined}
                 notebookId={notebookId}
@@ -121,15 +117,11 @@ const Layout: React.FC<LayoutProps> = ({
                     handleCloseDefaultModelsModal();
                 }}
             />
-
-            {/* Login Modal */}
             <LoginModal
                 isOpen={modals.isLoginModalOpen}
                 onClose={handleCloseLoginModal}
                 onSwitchToRegister={switchToRegister}
             />
-
-            {/* Register Modal */}
             <RegisterModal
                 isOpen={modals.isRegisterModalOpen}
                 onClose={handleCloseRegisterModal}
