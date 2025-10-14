@@ -107,7 +107,7 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
     const { icon: Icon, color: iconColor } = getFileIcon();
 
     return (
-        <div className="grid grid-cols-[minmax(150px,_2fr)_0.8fr_0.8fr_1fr_50px] md:grid-cols-[minmax(200px,_2fr)_1fr_0.8fr_1fr_60px] lg:grid-cols-[minmax(300px,_2fr)_1.2fr_1fr_1.5fr_80px] border-b border-gray-200 items-center min-w-[450px] md:min-w-[550px] lg:min-w-[700px] text-xs md:text-sm text-gray-700 cursor-pointer hover:bg-gray-50 hover:rounded-md transition-colors group relative" onClick={handleClick}>
+        <div className="grid grid-cols-[minmax(150px,_2fr)_0.8fr_0.8fr_1fr_50px] md:grid-cols-[minmax(200px,_2fr)_1fr_0.8fr_1fr_60px] lg:grid-cols-[minmax(300px,_2fr)_1.2fr_1fr_1.5fr_80px] border-b border-bg-muted items-center min-w-[450px] md:min-w-[550px] lg:min-w-[700px] text-xs md:text-sm  cursor-pointer hover:bg-sidebar-accent hover:rounded-md transition-colors group relative" onClick={handleClick}>
             <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis font-medium">
                 <Icon size={24} style={{ marginRight: 16, color: iconColor, flexShrink: 0 }} />
                 <span className="truncate">{item.filename}</span>
@@ -115,11 +115,11 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
             <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{formatDate(item.updated_at || item.created_at)}</div>
             <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{item.file_size || "—"}</div>
             <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis justify-start">{renderTranscriptionContent()}</div>
-            <div className="p-2 md:p-3 flex items-center justify-end pr-5 md:pr-4 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef}>
+            <div className="p-2 md:p-3 flex items-center justify-end pr-5 md:pr-4  opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef}>
                 <BsThreeDotsVertical size={18} onClick={handleMenuToggle} className="cursor-pointer" />
                 {showMenu && (
-                    <div className="absolute top-full right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-[100] min-w-[120px]">
-                        <div className="px-4 py-2 cursor-pointer text-sm text-gray-700 hover:bg-gray-50" onClick={handleDelete}>
+                    <div className="absolute top-full right-0 rounded-lg shadow-lg z-[100] min-w-[120px]">
+                        <div className="text-muted px-4 py-2 cursor-pointer text-sm " onClick={handleDelete}>
                             Delete
                         </div>
                     </div>

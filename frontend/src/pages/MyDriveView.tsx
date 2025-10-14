@@ -130,7 +130,7 @@ const MyDriveView = () => {
 
 
   const children = (
-      <div className="font-sans   p-2 md:p-4 rounded-lg max-w-full border border-gray-200 box-border flex-1 overflow-auto">
+      <div className="font-sans   p-2 md:p-4 rounded-lg max-w-full box-border flex-1 overflow-auto">
         <DriveHeader notebookId={notebookId} />
         {loading && <DriveLoading />}
         {error && <DriveError error={error} onRetry={fetchFiles} />}
@@ -146,7 +146,7 @@ const MyDriveView = () => {
   );
 
   const inputArea = (
-      <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-200 sticky bottom-0 z-10">
+      <div className="p-3 md:p-4 bg-background sticky bottom-0 z-10">
         <InputArea
             onTextSubmit={handleTextSubmit}
             onAudioSubmit={handleAudioSubmit}
