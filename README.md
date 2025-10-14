@@ -1,5 +1,5 @@
 # IDRE - IDea REalisation
-![Uploading idre_logo_v1.png…]()
+![idre_logo_v1](https://github.com/user-attachments/assets/ad52de48-4717-4d01-addd-f2cb2723bcf0)
 
 
 AI agentic web application that helps individuals/companies push their ideas into real life products and services.
