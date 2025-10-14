@@ -25,7 +25,7 @@ const AuthDropdown: React.FC<AuthDropdownProps> = ({
   return (
       <section className="flex flex-col">
         <button
-            className="flex items-center gap-2 px-1 w-full text-left text-xs font-semibold tracking-wider text-neutral-500 uppercase hover:text-neutral-700 transition-colors"
+            className="flex items-center gap-2 px-1 w-full text-left text-xs font-semibold tracking-wider uppercase  transition-colors"
             onClick={() => setIsOpen(!isOpen)}
         >
           <User size={16} />

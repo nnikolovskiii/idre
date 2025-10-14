@@ -52,7 +52,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
       <section className="flex-1 flex flex-col min-h-0">
         <div className="flex justify-between items-center px-1 pb-2">
           <button
-              className="flex items-center gap-2 w-full text-left text-xs font-semibold tracking-wider text-neutral-500 uppercase hover:text-neutral-700 transition-colors"
+              className="flex items-center gap-2 w-full text-left text-xs font-semibold tracking-wider uppercase transition-colors hover:text-foreground"
               onClick={() => setHistoryOpen(!historyOpen)}
           >
             <History size={16} />
@@ -65,14 +65,14 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
             />
           </button>
           <button
-              className="flex items-center justify-center w-6 h-6 rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 disabled:opacity-50"
+              className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent disabled:opacity-50 text-sidebar-foreground"
               onClick={onCreateNewChat}
               disabled={creatingChat}
               title="New Chat"
           >
             {creatingChat ? (
                 <div
-                    className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin"
+                    className="w-4 h-4 border-2 border-sidebar-border border-t-sidebar-primary rounded-full animate-spin"
                 ></div>
             ) : (
                 <Plus size={16} />
@@ -82,22 +82,22 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         {historyOpen && (
             <div className="flex-1 overflow-y-auto pr-1 -mr-1">
               {loading ? (
-                  <div className="p-8 text-center text-sm text-neutral-500">
-                    <div className="w-6 h-6 border-2 border-neutral-200 border-t-neutral-800 rounded-full animate-spin mx-auto mb-4"></div>
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    <div className="w-6 h-6 border-2 border-sidebar-border border-t-sidebar-primary rounded-full animate-spin mx-auto mb-4"></div>
                     <span>Loading chats...</span>
                   </div>
               ) : chatSessions.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-neutral-500">
+                  <div className="p-8 text-center text-sm text-muted-foreground">
                     No chat sessions yet.
                   </div>
               ) : (
                   chatSessions.map((chat) => (
                       <div
                           key={chat.id}
-                          className={`group flex items-center justify-between gap-2 p-2.5 px-3 rounded-md cursor-pointer transition-all mb-1 border ${
+                          className={`group flex items-center justify-between gap-2 p-2.5 px-3 rounded-md cursor-pointer mb-1 border ${
                               chat.id === currentChatId
-                                  ? "bg-neutral-100/80 border-neutral-200"
-                                  : "border-transparent hover:bg-neutral-100"
+                                  ? "bg-sidebar-accent text-sidebar-primary border-sidebar-border"
+                                  : "border-transparent hover:bg-sidebar-accent"
                           }`}
                           onClick={() => {
                             onSwitchChat(chat.id);
@@ -106,11 +106,11 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                             }
                           }}
                       >
-                        <div className="flex-1 font-medium text-neutral-700 text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                        <div className="flex-1 font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis text-sidebar-foreground">
                           {chat.title || `Chat ${chat.id.slice(0, 8)}`}
                         </div>
                         <button
-                            className="flex-shrink-0 flex items-center justify-center p-1 rounded-md text-neutral-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                            className="flex-shrink-0 flex items-center justify-center p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-destructive hover:text-destructive-foreground"
                             onClick={(e) => handleDeleteChat(chat.id, e)}
                             title="Delete chat"
                             aria-label="Delete chat"

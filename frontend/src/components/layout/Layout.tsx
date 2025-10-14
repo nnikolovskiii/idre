@@ -60,8 +60,11 @@ const Layout: React.FC<LayoutProps> = ({
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
 
     return (
-        <div className="h-dvh w-screen flex bg-[#f8f7f6] text-foreground overflow-hidden">
-            {/* Mobile Overlay */}
+        // The main layout container.
+        // CHANGE: Replaced hardcoded `bg-[#f8f7f6]` with `bg-background`.
+        // This makes the entire app's background color respect the current theme.
+        <div className="h-dvh w-screen flex bg-background text-foreground overflow-hidden">
+            {/* Mobile Overlay - `bg-black/50` is a standard, acceptable overlay color */}
             <div
                 className={`fixed inset-0 bg-black/50 z-[999] transition-opacity md:hidden ${
                     isSidebarOpen
@@ -92,7 +95,7 @@ const Layout: React.FC<LayoutProps> = ({
                 />
             </div>
 
-            {/* Main Content Area */}
+            {/* Main Content Area - this will inherit the `bg-background` color */}
             <main className="flex-1 flex flex-col h-full min-w-0 relative">
                 <div className="md:hidden">
                     <ChatHeader

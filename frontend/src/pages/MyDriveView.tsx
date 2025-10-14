@@ -127,8 +127,10 @@ const MyDriveView = () => {
     );
   }
 
+
+
   const children = (
-      <div className="font-sans bg-white text-gray-800 p-2 md:p-4 rounded-lg max-w-full border border-gray-200 box-border flex-1 overflow-auto">
+      <div className="font-sans   p-2 md:p-4 rounded-lg max-w-full border border-gray-200 box-border flex-1 overflow-auto">
         <DriveHeader notebookId={notebookId} />
         {loading && <DriveLoading />}
         {error && <DriveError error={error} onRetry={fetchFiles} />}

@@ -1,5 +1,3 @@
-// src/components/ThemeToggle.tsx
-
 import { useTheme } from '../context/ThemeContext';
 import { SunIcon, MoonIcon } from './Icons';
 
@@ -11,7 +9,7 @@ export const ThemeToggle = () => {
     return (
         <button
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:bg-muted"
             aria-label="Toggle theme"
         >
             {theme === 'light' ? (

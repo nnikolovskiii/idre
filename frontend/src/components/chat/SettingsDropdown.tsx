@@ -15,7 +15,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
     return (
         <section>
             <button
-                className="flex items-center w-full text-left p-2.5 px-3 rounded-md text-sm font-medium text-neutral-700 transition-all hover:bg-neutral-100 hover:text-neutral-800"
+                className="flex items-center w-full text-left p-2.5 px-3 rounded-md text-sm font-medium transition-all"
                 onClick={() => {
                     onSettingsClick();
                     if (window.innerWidth <= 768) {

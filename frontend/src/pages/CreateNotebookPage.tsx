@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {NotebookService, type NotebookCreate} from "../lib/notebooksService.ts";
+import { useTheme } from "../context/ThemeContext.tsx";
 // Import the new service and types
 
 
 const CreateNotebookPage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,18 +26,34 @@ const CreateNotebookPage: React.FC = () => {
     text_color: "text-blue-800",
   });
 
+  // Color options with names - the actual classes will be determined by theme
   const colorOptions = [
-    { bg: "bg-blue-50", text: "text-blue-800", name: "Blue" },
-    { bg: "bg-green-50", text: "text-green-800", name: "Green" },
-    { bg: "bg-yellow-50", text: "text-yellow-800", name: "Yellow" },
-    { bg: "bg-red-50", text: "text-red-800", name: "Red" },
-    { bg: "bg-purple-50", text: "text-purple-800", name: "Purple" },
-    { bg: "bg-pink-50", text: "text-pink-800", name: "Pink" },
-    { bg: "bg-indigo-50", text: "text-indigo-800", name: "Indigo" },
-    { bg: "bg-gray-50", text: "text-gray-800", name: "Gray" },
-    { bg: "bg-orange-50", text: "text-orange-800", name: "Orange" },
-    { bg: "bg-teal-50", text: "text-teal-800", name: "Teal" },
+    { name: "Blue", color: "blue" },
+    { name: "Green", color: "green" },
+    { name: "Yellow", color: "yellow" },
+    { name: "Red", color: "red" },
+    { name: "Purple", color: "purple" },
+    { name: "Pink", color: "pink" },
+    { name: "Indigo", color: "indigo" },
+    { name: "Gray", color: "gray" },
+    { name: "Orange", color: "orange" },
+    { name: "Teal", color: "teal" },
   ];
+
+  // Function to get theme-appropriate classes for a color
+  const getColorClasses = (colorName: string) => {
+    if (theme === 'dark') {
+      return {
+        bg: `bg-${colorName}-900/20`,
+        text: `text-${colorName}-300`
+      };
+    } else {
+      return {
+        bg: `bg-${colorName}-50`,
+        text: `text-${colorName}-800`
+      };
+    }
+  };
 
   const emojiOptions = [
     "📝", "📚", "📖", "📓", "📔", "📒", "📕", "📗", "📘", "📙", "🔖", "📄",
@@ -84,22 +102,22 @@ const CreateNotebookPage: React.FC = () => {
   };
 
   return (
-      <div className="bg-gray-50 min-h-screen p-8 font-sans">
+      <div className="bg-background min-h-screen p-8 font-sans">
         {/* Header */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="flex items-center gap-4 mb-6">
             <button
                 onClick={handleCancel}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="flex items-center gap-2 transition-colors"
             >
               <ArrowLeft size={20} />
               Back to Notebooks
             </button>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="text-3xl font-bold mb-2">
             Create New Notebook
           </h1>
-          <p className="text-gray-600">
+          <p className="">
             Create a new notebook to organize your thoughts and sources.
           </p>
         </div>
@@ -108,7 +126,7 @@ const CreateNotebookPage: React.FC = () => {
         <div className="max-w-2xl mx-auto">
           <form
               onSubmit={handleSubmit}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+              className="bg-primary rounded-lg shadow-sm border  p-6"
           >
             {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -146,10 +164,14 @@ const CreateNotebookPage: React.FC = () => {
                         key={index}
                         type="button"
                         onClick={() => handleInputChange("emoji", emoji)}
-                        className={`w-10 h-10 rounded-md border-2 flex items-center justify-center text-lg hover:bg-gray-50 transition-colors ${
+                        className={`w-10 h-10 rounded-md border-2 flex items-center justify-center text-lg transition-colors ${
                             formData.emoji === emoji
-                                ? "border-blue-500 bg-blue-50"
-                                : "border-gray-200"
+                                ? theme === 'dark'
+                                    ? "border-blue-400 bg-blue-900/30"
+                                    : "border-blue-500 bg-blue-50"
+                                : theme === 'dark'
+                                    ? "border-gray-600 hover:bg-gray-800"
+                                    : "border-gray-200 hover:bg-gray-50"
                         }`}
                     >
                       {emoji}
@@ -164,23 +186,30 @@ const CreateNotebookPage: React.FC = () => {
                 Color Theme
               </label>
               <div className="grid grid-cols-5 gap-3">
-                {colorOptions.map((color, index) => (
+                {colorOptions.map((colorOption, index) => {
+                  const colorClasses = getColorClasses(colorOption.color);
+                  return (
                     <button
                         key={index}
                         type="button"
                         onClick={() => {
-                          handleInputChange("bg_color", color.bg);
-                          handleInputChange("text_color", color.text);
+                          handleInputChange("bg_color", colorClasses.bg);
+                          handleInputChange("text_color", colorClasses.text);
                         }}
                         className={`w-full h-12 rounded-md border-2 flex items-center justify-center text-sm font-medium transition-all ${
-                            formData.bg_color === color.bg
-                                ? "border-blue-500 ring-2 ring-blue-200"
-                                : "border-gray-200 hover:border-gray-300"
-                        } ${color.bg} ${color.text}`}
+                            formData.bg_color === colorClasses.bg
+                                ? theme === 'dark'
+                                    ? "border-blue-400 ring-2 ring-blue-800/30"
+                                    : "border-blue-500 ring-2 ring-blue-200"
+                                : theme === 'dark'
+                                    ? "border-gray-600 hover:border-gray-500"
+                                    : "border-gray-200 hover:border-gray-300"
+                        } ${colorClasses.bg} ${colorClasses.text}`}
                     >
-                      {color.name}
+                      {colorOption.name}
                     </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

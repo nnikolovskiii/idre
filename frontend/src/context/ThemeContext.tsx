@@ -1,6 +1,7 @@
 // src/context/ThemeContext.tsx
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 // Define the shape of the theme
 type Theme = 'light' | 'dark';
@@ -34,9 +35,25 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
 
     useEffect(() => {
         const root = window.document.documentElement;
+        
+        // Remove the no-transitions class after initial load
+        // This prevents the flash of theme transition on page load
+        const isInitialLoad = !root.classList.contains('light') && !root.classList.contains('dark');
+        if (isInitialLoad) {
+            root.classList.add('no-transitions');
+        }
+        
         root.classList.remove('light', 'dark');
         root.classList.add(theme);
         localStorage.setItem('theme', theme);
+        
+        // Re-enable transitions after the theme class is applied
+        if (isInitialLoad) {
+            // Use setTimeout to ensure the theme class is applied first
+            setTimeout(() => {
+                root.classList.remove('no-transitions');
+            }, 0);
+        }
     }, [theme]);
 
     const toggleTheme = () => {

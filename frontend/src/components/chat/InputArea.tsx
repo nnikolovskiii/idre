@@ -130,20 +130,20 @@ const InputArea: React.FC<InputAreaProps> = ({
     fileInputRef.current?.click();
   };
 
-  const iconButtonClasses = "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border-none bg-transparent text-gray-500 transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:bg-gray-100 hover:enabled:text-gray-700";
+  const iconButtonClasses = "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border-none bg-transparent text-muted-foreground transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:bg-muted hover:enabled:text-foreground";
 
   return (
-      <div className="relative w-full flex-shrink-0 border-t border-border bg-[#f8f7f6] p-2 md:p-4 fixed bottom-0 left-0 right-0 md:static pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="relative w-full flex-shrink-0 bg-background p-2 md:p-4 fixed bottom-0 left-0 right-0 md:static pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="relative mx-auto max-w-3xl">
           {!hasModelsConfigured && (
-              <div className="mb-2 flex cursor-pointer select-none items-center gap-2 rounded-md border border-yellow-300 bg-yellow-100 px-4 py-2 transition-colors duration-200 ease-in-out hover:bg-yellow-200" onClick={handleInputClick}>
+              <div className="mb-2 flex cursor-pointer select-none items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-4 py-2 transition-colors duration-200 ease-in-out hover:bg-warning/20" onClick={handleInputClick}>
                 <span className="text-base">🤖</span>
-                <span className="text-sm font-medium text-yellow-800">
+                <span className="text-sm font-medium text-warning-foreground">
                       Select models to start chatting. Click here to configure models.
                   </span>
               </div>
           )}
-          <div className="flex items-end gap-2 rounded-lg border border-border bg-card p-2 transition-all focus-within:border-ring focus-within:shadow-sm">
+          <div className="flex items-end gap-2 rounded-lg border border-border bg-muted p-2 transition-all focus-within:border-ring focus-within:shadow-sm">
             <input
                 ref={fileInputRef}
                 type="file"
@@ -161,7 +161,7 @@ const InputArea: React.FC<InputAreaProps> = ({
             </button>
             <textarea
                 ref={textareaRef}
-                className={`flex-1 resize-none self-center border-none bg-transparent text-base leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-gray-50 md:text-sm max-h-[120px] p-2`}
+                className={`flex-1 resize-none self-center border-none bg-transparent text-base leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-muted/30 md:text-sm max-h-[120px] p-2`}
                 placeholder={
                   hasModelsConfigured
                       ? "How can I help you?"
@@ -175,7 +175,7 @@ const InputArea: React.FC<InputAreaProps> = ({
                 disabled={isDisabled}
             />
             <button
-                className={`${iconButtonClasses} ${isRecording ? 'bg-red-50 text-red-500 hover:enabled:bg-red-100' : ''}`}
+                className={`${iconButtonClasses} ${isRecording ? 'bg-destructive/10 text-destructive hover:enabled:bg-destructive/20' : ''}`}
                 onClick={handleMicClick}
                 disabled={isDisabled}
                 title={isRecording ? "Stop Recording" : "Start Recording"}
@@ -183,7 +183,7 @@ const InputArea: React.FC<InputAreaProps> = ({
               <Mic size={20} />
             </button>
             <button
-                className={`${iconButtonClasses} bg-primary text-primary-foreground disabled:bg-gray-400 hover:enabled:bg-primary/90`}
+                className={`${iconButtonClasses} bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground hover:enabled:bg-primary/90`}
                 onClick={sendTextMessage}
                 disabled={isDisabled || !textInput.trim()}
                 title="Send Message"
