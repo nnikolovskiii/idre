@@ -56,7 +56,6 @@ def get_assistant_repository(
     return container.assistant_repository(session=session)
 
 
-# --- Provider for FileService ---
 def get_assistant_service(
         session: AsyncSession = Depends(get_db_session),
         assistant_repo: AssistantRepository = Depends(get_assistant_repository)
@@ -127,21 +126,6 @@ def get_user_service(
         user_repository=user_repo,
         fernet=fernet_service
     )
-
-
-# --- Provider for NotebookService ---
-def get_notebook_service(
-        session: AsyncSession = Depends(get_db_session),
-        notebook_repo: NotebookRepository = Depends(get_notebook_repository),
-        thread_repo: ThreadRepository = Depends(get_thread_repository)
-) -> NotebookService:
-    return container.notebook_service(
-        session=session,
-        notebook_repository=notebook_repo,
-        thread_repository=thread_repo,
-
-    )
-
 
 # --- Providers for NotebookModel ---
 def get_notebook_model_repository(
@@ -214,7 +198,8 @@ def get_chat_service(
         model_api_service: ModelApiService = Depends(get_model_api_service),
         notebook_model_service: NotebookModelService = Depends(get_notebook_model_service),
         chat_model_service: ChatModelService = Depends(get_chat_model_service),
-        assistant_service: AssistantService = Depends(get_assistant_service)
+        assistant_service: AssistantService = Depends(get_assistant_service),
+        file_service: FileService = Depends(get_file_service)
 ) -> ChatService:
     """Dependency provider for the ChatService."""
     return container.chat_service(
@@ -224,7 +209,8 @@ def get_chat_service(
         model_api_service=model_api_service,
         notebook_model_service=notebook_model_service,
         chat_model_service=chat_model_service,
-        assistant_service=assistant_service
+        assistant_service=assistant_service,
+        file_service=file_service,
     )
 
     # model_api_service: ModelApiService,
@@ -249,3 +235,16 @@ def get_ai_service(
 # --- Provider for PasswordService ---
 def get_password_service() -> PasswordService:
     return container.password_service()
+
+def get_notebook_service(
+        session: AsyncSession = Depends(get_db_session),
+        notebook_repo: NotebookRepository = Depends(get_notebook_repository),
+        thread_repo: ThreadRepository = Depends(get_thread_repository),
+        notebook_model_service: NotebookModelService = Depends(get_notebook_model_service)
+) -> NotebookService:
+    return container.notebook_service(
+        session=session,
+        notebook_repository=notebook_repo,
+        thread_repository=thread_repo,
+        notebook_model_service=notebook_model_service
+    )

@@ -73,7 +73,8 @@ app.add_middleware(
         "https://accuai.live",
         "http://localhost:3000",  # For local development
         "http://localhost:5173",
-        "https://gcf.nikolanikolovski.com"  # For Vite dev server
+        "https://gcf.nikolanikolovski.com",
+        "https://idre.live" # For Vite dev server
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

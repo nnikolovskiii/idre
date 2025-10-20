@@ -7,6 +7,8 @@ interface InputAreaProps {
   onFileSubmit: (file: File) => Promise<void>;
   disabled?: boolean;
   hasModelsConfigured?: boolean;
+  loadingMessages?: boolean;
+  loadingModels?: boolean;
   onModelsRequired?: () => void;
 }
 
@@ -16,6 +18,8 @@ const InputArea: React.FC<InputAreaProps> = ({
                                                onFileSubmit,
                                                disabled = false,
                                                hasModelsConfigured = false,
+                                               loadingMessages = false,
+                                               loadingModels = false,
                                                onModelsRequired,
                                              }) => {
   const [textInput, setTextInput] = useState("");
@@ -133,9 +137,9 @@ const InputArea: React.FC<InputAreaProps> = ({
   const iconButtonClasses = "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border-none bg-transparent text-muted-foreground transition-all duration-200 ease-in-out disabled:cursor-not-allowed disabled:opacity-50 hover:enabled:bg-muted hover:enabled:text-foreground";
 
   return (
-      <div className="relative w-full flex-shrink-0 bg-background p-2 md:p-4 fixed bottom-0 left-0 right-0 md:static pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="relative w-full flex-shrink-0 bg-background pb-5 px-2 bottom-0 left-0 right-0 md:static">
         <div className="relative mx-auto max-w-3xl">
-          {!hasModelsConfigured && (
+          {!hasModelsConfigured && !loadingMessages && !loadingModels && (
               <div className="mb-2 flex cursor-pointer select-none items-center gap-2 rounded-md border border-warning/30 bg-warning/10 px-4 py-2 transition-colors duration-200 ease-in-out hover:bg-warning/20" onClick={handleInputClick}>
                 <span className="text-base">🤖</span>
                 <span className="text-sm font-medium text-warning-foreground">

@@ -198,7 +198,7 @@ const ModelApiModal: React.FC<ModelApiModalProps> = ({ isOpen, onClose }) => {
                           onChange={(e) => setApiKey(e.target.value)}
                           placeholder={hasApiKey ? 'Enter new key to update' : 'sk-or-v1-...'}
                           disabled={isActionInProgress}
-                          className="w-full rounded-lg border border-gray-300 bg-white p-3 pr-10 text-base text-gray-900 transition-colors duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-300  p-3 pr-10 text-base  transition-colors duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-gray-50"
                       />
                       <button
                           type="button"
@@ -224,7 +224,7 @@ const ModelApiModal: React.FC<ModelApiModalProps> = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          <div className="flex flex-shrink-0 flex-col-reverse gap-3 bg-gray-50 p-4 sm:flex-row sm:justify-end sm:p-6">
+          <div className="flex flex-shrink-0 flex-col-reverse gap-3  p-4 sm:flex-row sm:justify-end sm:p-6">
             {hasApiKey && !loading && (
                 <button
                     className={clsx(btnBaseClasses, "border border-red-200 bg-red-50 text-red-700 hover:enabled:bg-red-100 sm:mr-auto", "focus:ring-red-500")}

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { fileService, type FileData } from "../lib/filesService";
 import InputArea from "../components/chat/InputArea";
 import Layout from "../components/layout/Layout";
 import { useChats } from "../hooks/useChats.ts";
+import { useAuth } from "../contexts/AuthContext";
 import {
   DriveError,
   DriveFileList,
@@ -12,6 +13,53 @@ import {
   FileViewerModal,
   TranscriptionModal
 } from "../components/drive";
+
+// --- START: Added for the custom delete modal ---
+// You can move this component to its own file (e.g., components/drive/DeleteConfirmationModal.tsx)
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  fileName: string;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
+                                                                           isOpen,
+                                                                           onClose,
+                                                                           onConfirm,
+                                                                           fileName,
+                                                                         }) => {
+  if (!isOpen) return null;
+
+  return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+        <div className="bg-background rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
+          <h2 className="text-lg font-semibold text-foreground">Confirm Deletion</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Are you sure you want to delete the file: <br />
+            <strong className="text-foreground">{fileName}</strong>?
+          </p>
+          <p className="mt-2 text-sm text-red-500">This action cannot be undone.</p>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            >
+              Cancel
+            </button>
+            <button
+                onClick={onConfirm}
+                className="px-4 py-2 rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+  );
+};
+// --- END: Added for the custom delete modal ---
+
 
 const MyDriveView = () => {
   const { notebookId } = useParams<{ notebookId: string }>();
@@ -25,11 +73,21 @@ const MyDriveView = () => {
   const [selectedTranscription, setSelectedTranscription] = useState('');
   const [selectedFilename, setSelectedFilename] = useState('');
 
+  // 1. Add state to track the file targeted for deletion
+  const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
+
   const {
+    chatSessions,
     currentChatId,
+    loadingChats,
     creatingChat,
     isTyping,
+    createNewChat,
+    switchToChat,
+    handleDeleteChat,
   } = useChats(notebookId);
+
+  const { isAuthenticated, user } = useAuth();
 
   const fetchFiles = useCallback(async () => {
     if (!notebookId) {
@@ -54,18 +112,29 @@ const MyDriveView = () => {
     fetchFiles();
   }, [notebookId, fetchFiles]);
 
-  const handleDelete = useCallback(async (file: FileData) => {
-    if (!window.confirm(`Are you sure you want to delete "${file.filename}"?`)) {
-      return;
-    }
+
+  // 2. Replace the old handleDelete with two new functions
+
+  // This function OPENS the modal by setting the state
+  const handleDeleteRequest = (file: FileData) => {
+    setFileToDelete(file);
+  };
+
+  // This function PERFORMS the delete and closes the modal
+  const confirmDelete = useCallback(async () => {
+    if (!fileToDelete) return; // Safety check
+
     try {
-      await fileService.deleteFile(file.file_id);
-      await fetchFiles();
+      await fileService.deleteFile(fileToDelete.file_id);
+      await fetchFiles(); // Refresh the list
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete file";
       alert(errorMessage);
+    } finally {
+      setFileToDelete(null); // Close the modal
     }
-  }, [fetchFiles]);
+  }, [fileToDelete, fetchFiles]);
+
 
   const handleViewTranscription = useCallback((file: FileData) => {
     setSelectedTranscription(file.processing_result?.transcription || '');
@@ -90,7 +159,6 @@ const MyDriveView = () => {
       await fetchFiles();
     } catch (err) {
       console.error("Upload failed:", err);
-      // Handle upload error feedback to the user if needed
     }
   };
 
@@ -127,11 +195,9 @@ const MyDriveView = () => {
     );
   }
 
-
-
   const children = (
-      <div className="font-sans   p-2 md:p-4 rounded-lg max-w-full box-border flex-1 overflow-auto">
-        <DriveHeader notebookId={notebookId} />
+      <div className="font-sans p-3 md:p-6 rounded-lg max-w-full box-border flex-1 overflow-auto">
+        <DriveHeader/>
         {loading && <DriveLoading />}
         {error && <DriveError error={error} onRetry={fetchFiles} />}
         {!loading && !error && (
@@ -139,14 +205,15 @@ const MyDriveView = () => {
                 items={files}
                 onFileClick={handleFileClick}
                 onViewTranscription={handleViewTranscription}
-                onDelete={handleDelete}
+                // 3. Pass the new function to the component
+                onDelete={handleDeleteRequest}
             />
         )}
       </div>
   );
 
   const inputArea = (
-      <div className="p-3 md:p-4 bg-background sticky bottom-0 z-10">
+      <div className="p-3 md:p-4 bg-background">
         <InputArea
             onTextSubmit={handleTextSubmit}
             onAudioSubmit={handleAudioSubmit}
@@ -162,10 +229,19 @@ const MyDriveView = () => {
       <>
         <Layout
             notebookId={notebookId}
+            title="My Drive"
+            chatSessions={chatSessions}
+            currentChatId={currentChatId}
+            loadingChats={loadingChats}
+            creatingChat={creatingChat}
+            isTyping={isTyping}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            createNewChat={createNewChat}
+            switchToChat={switchToChat}
+            handleDeleteChat={handleDeleteChat}
             children={children}
             inputArea={inputArea}
-            wrapperClassName="flex h-screen relative"
-            mainClassName="flex-1 overflow-hidden flex flex-col"
         />
         {selectedFile && (
             <FileViewerModal
@@ -182,6 +258,16 @@ const MyDriveView = () => {
                 onClose={() => setTranscriptionOpen(false)}
                 transcription={selectedTranscription}
                 filename={selectedFilename}
+            />
+        )}
+
+        {/* 4. Render the new Delete Confirmation Modal */}
+        {fileToDelete && (
+            <DeleteConfirmationModal
+                isOpen={!!fileToDelete}
+                onClose={() => setFileToDelete(null)}
+                onConfirm={confirmDelete}
+                fileName={fileToDelete.filename}
             />
         )}
       </>

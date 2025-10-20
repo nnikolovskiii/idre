@@ -71,14 +71,6 @@ class Container(containers.DeclarativeContainer):
         model_api_repository=model_api_repository,
     )
 
-    notebook_repository = providers.Factory(NotebookRepository)
-
-    notebook_service = providers.Factory(
-        NotebookService,
-        notebook_repository=notebook_repository,
-        thread_repository=thread_repository,
-    )
-
     file_repository = providers.Factory(FileRepository)
 
     file_service = providers.Factory(
@@ -125,6 +117,7 @@ class Container(containers.DeclarativeContainer):
         notebook_model_service=notebook_model_service,
         chat_model_service=chat_model_service,
         assistant_service=assistant_service,
+        file_service=file_service,
     )
 
     ai_service = providers.Factory(
@@ -144,6 +137,15 @@ class Container(containers.DeclarativeContainer):
 
     password_service = providers.Factory(
         PasswordService,
+    )
+
+    notebook_repository = providers.Factory(NotebookRepository)
+
+    notebook_service = providers.Factory(
+        NotebookService,
+        notebook_repository=notebook_repository,
+        thread_repository=thread_repository,
+        notebook_model_service=notebook_model_service,
     )
 
 

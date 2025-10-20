@@ -20,6 +20,8 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         currentChat,
         currentChatId,
         loadingChats,
+        loadingMessages,
+        loadingModels,
         creatingChat,
         isTyping,
         hasModelsConfigured,
@@ -50,7 +52,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
 
             const audioFile = new File([blob], uniqueFilename, {type: "audio/webm"});
 
-            const uploadResult = await fileService.uploadFile(audioFile);
+            const uploadResult = await fileService.uploadFile(audioFile, undefined, false);
 
             const backendFilename = uploadResult.filename;
 
@@ -70,7 +72,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
 
     const handleFileSubmit = async (file: File) => {
         try {
-            await fileService.uploadFile(file);
+            await fileService.uploadFile(file, undefined,false);
             console.log("File uploaded successfully:", file.name);
             const fileMessage = `[File Uploaded: ${file.name}]`;
             await handleSendMessage(fileMessage);
@@ -88,6 +90,8 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             onFileSubmit={handleFileSubmit}
             disabled={!currentChatId || creatingChat || isTyping}
             hasModelsConfigured={hasModelsConfigured}
+            loadingMessages={loadingMessages}
+            loadingModels={loadingModels}
             onModelsRequired={handleModelsRequired}
         />
     );
@@ -96,6 +100,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         <MessagesContainer
             messages={currentChat?.messages || []}
             isTyping={isTyping}
+            loadingMessages={loadingMessages}
             onDeleteMessage={handleDeleteMessage}
         />
     );

@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-    MdInsertDriveFile,
-    MdImage,
-    MdAudiotrack,
-    MdPictureAsPdf,
-    MdCode,
-    MdDescription,
-    MdVideocam,
+    MdInsertDriveFile, MdImage, MdAudiotrack, MdPictureAsPdf,
+    MdCode, MdDescription, MdVideocam,
 } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import type { FileData } from "../../lib/filesService";
@@ -26,7 +21,7 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
 
     const handleMenuToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setShowMenu(!showMenu);
+        setShowMenu(prev => !prev);
     };
 
     const handleDelete = (e: React.MouseEvent) => {
@@ -42,12 +37,16 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     const formatDate = (dateString: string | null) => {
+        if (!dateString) return "—";
+        const date = new Date(dateString);
+        return date.toLocaleDateString(); // Simpler format for mobile
+    };
+
+    const formatDateTime = (dateString: string | null) => {
         if (!dateString) return "—";
         const date = new Date(dateString);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
@@ -73,57 +72,85 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
     const renderTranscriptionContent = () => {
         const status = item.processing_status;
         const isAudio = item.content_type?.startsWith("audio/");
-
-        if (!isAudio) return "—";
-
+        if (!isAudio) return <span className="text-gray-400">—</span>;
         switch (status) {
-            case "pending":
-                return "No transcription";
             case "processing":
-                return (
-                    <div className="flex justify-start items-center w-full">
-                        <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-                    </div>
-                );
+                return <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                </div>;
             case "completed":
                 return item.processing_result?.transcription ? (
                     <button
-                        className="bg-blue-600 text-white border-none rounded px-2 py-1 text-xs cursor-pointer transition-colors hover:bg-blue-700 whitespace-nowrap"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onViewTranscription?.(item);
-                        }}
-                    >
-                        View Transcription
+                        className="bg-blue-600 text-white border-none rounded-md px-2.5 py-1 text-xs cursor-pointer transition-colors hover:bg-blue-700 whitespace-nowrap"
+                        onClick={(e) => { e.stopPropagation(); onViewTranscription?.(item); }}>
+                        View
                     </button>
-                ) : "No transcription";
+                ) : <span className="text-sm text-gray-500">No transcription</span>;
             case "failed":
-                return "Failed";
+                return <span className="text-sm text-red-500">Failed</span>;
             default:
-                return "—";
+                return <span className="text-sm text-gray-500">No transcription</span>;
         }
     };
 
     const { icon: Icon, color: iconColor } = getFileIcon();
 
+    // Shared content variables
+    const fileIdentifier = (
+        <div className="flex items-center gap-4 min-w-0">
+            <Icon size={24} style={{ color: iconColor, flexShrink: 0 }} />
+            <span className="truncate font-medium">{item.filename}</span>
+        </div>
+    );
+
+    const actionMenu = (
+        <div className="relative" ref={menuRef}>
+            <button onClick={handleMenuToggle} className="p-2 rounded-full hover:bg-muted">
+                <BsThreeDotsVertical size={18} />
+            </button>
+            {showMenu && (
+                <div className="absolute top-full right-0 bg-muted  hover:bg-muted/20 rounded-lg shadow-lg z-10 min-w-[140px] border">
+                    <button className="block w-full text-left px-4 py-2 text-sm " onClick={handleDelete}>
+                        Delete
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
     return (
-        <div className="grid grid-cols-[minmax(150px,_2fr)_0.8fr_0.8fr_1fr_50px] md:grid-cols-[minmax(200px,_2fr)_1fr_0.8fr_1fr_60px] lg:grid-cols-[minmax(300px,_2fr)_1.2fr_1fr_1.5fr_80px] border-b border-bg-muted items-center min-w-[450px] md:min-w-[550px] lg:min-w-[700px] text-xs md:text-sm  cursor-pointer hover:bg-sidebar-accent hover:rounded-md transition-colors group relative" onClick={handleClick}>
-            <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis font-medium">
-                <Icon size={24} style={{ marginRight: 16, color: iconColor, flexShrink: 0 }} />
-                <span className="truncate">{item.filename}</span>
-            </div>
-            <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{formatDate(item.updated_at || item.created_at)}</div>
-            <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{item.file_size || "—"}</div>
-            <div className="p-2 md:p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis justify-start">{renderTranscriptionContent()}</div>
-            <div className="p-2 md:p-3 flex items-center justify-end pr-5 md:pr-4  opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef}>
-                <BsThreeDotsVertical size={18} onClick={handleMenuToggle} className="cursor-pointer" />
-                {showMenu && (
-                    <div className="absolute top-full right-0 rounded-lg shadow-lg z-[100] min-w-[120px]">
-                        <div className="text-muted px-4 py-2 cursor-pointer text-sm " onClick={handleDelete}>
-                            Delete
-                        </div>
+        <div className="group text-sm">
+            {/* Mobile Card Layout */}
+            <div onClick={handleClick} className="md:hidden flex flex-col gap-3 p-4 border rounded-lg cursor-pointer">
+                <div className="flex justify-between items-start">
+                    {fileIdentifier}
+                    {actionMenu}
+                </div>
+                <div className="pl-10 flex flex-col gap-2">
+                    <div className="text-xs  flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>{item.file_size || "—"}</span>
+                        <span className="text-gray-300">•</span>
+                        <span>{formatDate(item.updated_at || item.created_at)}</span>
                     </div>
-                )}
+                    <div className="flex items-center">
+                        {renderTranscriptionContent()}
+                    </div>
+                </div>
+            </div>
+
+            {/* Desktop Table Row Layout */}
+            <div
+                onClick={handleClick}
+                className="hidden md:grid grid-cols-[minmax(250px,_2fr)_1fr_1fr_1.2fr_60px] border-b items-center cursor-pointer hover:bg-muted transition-colors"
+            >
+                <div className="p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{fileIdentifier}</div>
+                <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{formatDateTime(item.updated_at || item.created_at)}</div>
+                <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{item.file_size || "—"}</div>
+                <div className="p-3 flex items-center">{renderTranscriptionContent()}</div>
+                <div className="p-3 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {actionMenu}
+                </div>
             </div>
         </div>
     );

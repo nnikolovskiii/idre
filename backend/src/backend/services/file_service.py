@@ -1,7 +1,8 @@
-import os
 import uuid
 import time
 from typing import List, Optional, Dict, Any
+
+import aiohttp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.file import File, ProcessingStatus
@@ -13,6 +14,7 @@ class FileService:
     Service for handling file-related business logic, such as filename
     generation and orchestration of file record creation.
     """
+
     def __init__(self, session: AsyncSession, file_repository: FileRepository):
         self.session = session
         self.repo = file_repository
@@ -24,7 +26,7 @@ class FileService:
         (This is a utility function, making it a static method is good practice).
         """
         if size_bytes is None or size_bytes < 0:
-             return "0 B"
+            return "0 B"
         if size_bytes == 0:
             return "0 B"
 
@@ -52,15 +54,15 @@ class FileService:
         return f"{unique_id}.{extension}" if extension else unique_id
 
     async def create_file_record(
-        self,
-        user_id: str,
-        filename: str,
-        unique_filename: str,
-        url: str,
-        content_type: Optional[str] = None,
-        file_size_bytes: Optional[int] = None,
-        notebook_id: Optional[str] = None,
-        processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
+            self,
+            user_id: str,
+            filename: str,
+            unique_filename: str,
+            url: str,
+            content_type: Optional[str] = None,
+            file_size_bytes: Optional[int] = None,
+            notebook_id: Optional[str] = None,
+            processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     ) -> File:
         """
         (Orchestration) Create a file record using the repository and commit.
@@ -87,10 +89,10 @@ class FileService:
         return await self.repo.list_by_user_id(user_id=user_id, notebook_id=notebook_id)
 
     async def update_file(
-        self,
-        file_id: str,
-        updates: Dict[str, Any],
-        merge_processing_result: bool = False
+            self,
+            file_id: str,
+            updates: Dict[str, Any],
+            merge_processing_result: bool = False
     ) -> Optional[File]:
         """
         (Orchestration) Update a file record with the provided updates.
@@ -124,4 +126,51 @@ class FileService:
             await self.session.commit()
         return success
 
-    # transcribe audio file
+
+    async def get_notebook_files_content(self, user_id: str, notebook_id: str) -> str:
+        """
+        Retrieve and concatenate all file contents for a given notebook.
+
+        For text files: fetches content from the URL
+        For audio files: extracts transcription from processing_result if available
+
+        Args:
+            user_id: The user ID to verify ownership
+            notebook_id: The notebook ID to fetch files for
+
+        Returns:
+            A concatenated string of all file contents, separated by newlines
+        """
+        # Get all files for this notebook and user (for security)
+        files = await self.repo.list_by_user_id(user_id=user_id, notebook_id=notebook_id)
+
+        if not files:
+            return ""
+
+        content_parts = []
+
+        async with aiohttp.ClientSession() as session:
+            for file in files:
+                try:
+                    # Determine if file is text or audio based on content_type
+                    if file.content_type and file.content_type.startswith('text/'):
+                        # Text file: fetch content from URL
+                        async with session.get(file.url) as response:
+                            if response.status == 200:
+                                text_content = await response.text()
+                                content_parts.append(f"--- File: {file.filename} ---\n{text_content}")
+
+                    elif file.content_type and file.content_type.startswith('audio/'):
+                        # Audio file: get transcription from processing_result
+                        if file.processing_result and isinstance(file.processing_result, dict):
+                            transcription = file.processing_result.get('transcription')
+                            if transcription:
+                                content_parts.append(f"--- File: {file.filename} (Transcription) ---\n{transcription}")
+
+                except Exception as e:
+                    # Log error but continue processing other files
+                    print(f"Error processing file {file.filename}: {str(e)}")
+                    continue
+
+        # Join all content parts with double newlines for separation
+        return "\n\n".join(content_parts)

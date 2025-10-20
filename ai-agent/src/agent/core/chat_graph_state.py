@@ -33,6 +33,7 @@ class ChatGraphState(TypedDict):
     # Inputs - at least one must be provided
     text_input: Optional[str]
     audio_path: Optional[str]
+    files_contents: Optional[str]
 
     # Intermediate and final processed data
     enhanced_transcript: Optional[str]

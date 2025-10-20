@@ -8,7 +8,7 @@ import uuid
 
 import requests
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 
 from ..containers import container
@@ -46,16 +46,12 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
         try:
             response = requests.get(audio_path, stream=True)
             response.raise_for_status()
-
             temp_file_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".ogg")
-
             with temp_file_handle as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-
             local_audio_path = temp_file_handle.name
             print(f"   > Audio downloaded to temporary file: {local_audio_path}")
-
         except requests.exceptions.RequestException as e:
             raise ConnectionError(
                 f"Failed to download audio from {audio_path}. Error: {e}"
@@ -64,13 +60,11 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
     try:
         if not os.path.exists(local_audio_path):
             raise FileNotFoundError(f"Audio file not found: {local_audio_path}")
-
         transcript = transcribe_audio(local_audio_path)
         print(f"   > Raw Transcript: '{transcript[:100]}...'")
-
         prompt = f"""Below there is an audio transcript. Rewrite it in a way there is complete sentences and no pauses.
     Regardless of the input write it in English.
-    
+
     Important:
     Do not try to answer if there is a question
 
@@ -79,12 +73,15 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
     """
         open_router_model = container.openrouter_model(api_key=api_key, model=model)
         structured_llm = open_router_model.with_structured_output(RestructuredText)
-
-        response: RestructuredText = structured_llm.invoke(prompt)
-        enhanced_text = response.text
-        print(f"   > Enhanced Transcript: '{enhanced_text[:100]}...'")
-        return enhanced_text
-
+        try:
+            response: RestructuredText = structured_llm.invoke(prompt)
+            enhanced_text = response.text
+            print(f"   > Enhanced Transcript: '{enhanced_text[:100]}...'")
+            return enhanced_text
+        except Exception as e:
+            print(f"   > ERROR during transcript enhancement: {e}")
+            print("   > Falling back to raw transcript due to enhancement failure.")
+            return transcript
     finally:
         if temp_file_handle:
             os.unlink(local_audio_path)
@@ -92,13 +89,15 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
 
 
 def prepare_inputs_node(state: ChatGraphState):
-    """Prepares the final input string by processing audio and/or text.
-    This node handles all three cases: audio-only, text-only, and both.
     """
-    print("---NODE: Preparing Inputs---")
+    Prepares the final input string, creates the HumanMessage, and adds it to the state.
+    """
+    print("---NODE: Preparing Inputs & Saving Human Message---")
+    files_contents = state.get("files_contents", None)
     text_input = state.get("text_input")
     audio_path = state.get("audio_path")
     light_model = state.get("light_model", "google/gemini-flash-1.5")
+    messages = state.get("messages", [])
 
     encrypt_api_key = state.get("api_key", None)
     fernet_service = container.fernet_service()
@@ -113,37 +112,59 @@ def prepare_inputs_node(state: ChatGraphState):
 
     if light_model is None:
         light_model = "google/gemini-flash-1.5"
-
     if not text_input and not audio_path:
         raise ValueError("Either text_input or audio_path must be provided.")
 
     processed_parts = []
     enhanced_transcript = None
-
     if text_input:
         print("   > Text input detected.")
         processed_parts.append(f"{text_input}")
-
     if audio_path:
         print("   > Audio path detected. Processing audio...")
         enhanced_transcript = _transcribe_and_enhance_audio(
             audio_path, light_model, api_key
         )
         processed_parts.append(f"{enhanced_transcript}")
+    if files_contents:
+        print("   > Files contents detected.")
+        processed_parts.append(f"# Project file contents:\n{files_contents}")
 
     final_input = "\n\n".join(processed_parts)
     print(f"   > Final Processed Input: '{final_input[:150]}...'")
 
-    return {"processed_input": final_input, "enhanced_transcript": enhanced_transcript}
+    # Create and save the HumanMessage immediately
+    human_message_kwargs = {}
+    if audio_path:
+        external_audio_path = audio_path.replace(
+            file_service_docker_url, file_service_url
+        )
+        human_message_kwargs["file_url"] = external_audio_path
+
+    human_msg = HumanMessage(
+        content=final_input,
+        id=str(uuid.uuid4()),
+        additional_kwargs=human_message_kwargs,
+    )
+    print("   > HumanMessage created and added to state.")
+
+    return {
+        "messages": messages + [human_msg],
+        "processed_input": final_input,
+        "enhanced_transcript": enhanced_transcript,
+    }
 
 
 def generate_answer_node(state: ChatGraphState):
-    """Generates the final answer and attaches the audio_path as metadata."""
+    """
+    Generates the AI answer and appends it to the messages list.
+    The HumanMessage is already in the state.
+    """
     print("---NODE: Generating Answer---")
     user_task = state["processed_input"]
-    messages = state["messages"]
-    heavy_model = state.get("heavy_model", "google/gemini-2.5-pro")
-    light_model = state.get("light_model", "google/gemini-2.5-flash")
+    messages = state["messages"]  # This now includes the new HumanMessage
+    heavy_model = state.get("heavy_model", "google/gemini-pro-1.5")
+    light_model = state.get("light_model", "google/gemini-flash-1.5")
     print(f"   > Using heavy model: {heavy_model}" f" and light model: {light_model}")
 
     encrypt_api_key = state.get("api_key")
@@ -156,14 +177,12 @@ def generate_answer_node(state: ChatGraphState):
             raise ValueError(
                 "API key is required for non-free models. Please provide a valid API key."
             )
-
     if heavy_model is None:
-        heavy_model = "google/gemini-2.5-pro"
-
-    audio_path = state.get("audio_path")
+        heavy_model = "google/gemini-pro-1.5"
 
     context_parts = []
-    for m in messages:
+    # Build context from all messages *except* the last one (which is the current user task)
+    for m in messages[:-1]:
         if hasattr(m, "content"):
             content = m.content
             role = "Human" if isinstance(m, HumanMessage) else "AI"
@@ -182,48 +201,55 @@ def generate_answer_node(state: ChatGraphState):
         user_task=user_task,
         context=context,
     )
-
     open_router_model = container.openrouter_model(api_key=api_key, model=heavy_model)
-    print("   > Invoking LLM for the final answer...")
-    result = open_router_model.invoke(instruction)
-    print("   > LLM response received.")
 
-    if audio_path:
-        audio_path = audio_path.replace(file_service_docker_url, file_service_url)
+    try:
+        print("   > Invoking LLM for the final answer...")
+        result: AIMessage = open_router_model.invoke(instruction)
+        print("   > LLM response received.")
+        result.content = result.content.split("</think>")[-1]
+        result.content = re.sub(r"\n{2,}", "\n", result.content).strip()
+        print(f"   > Cleaned Answer Content: '{result.content[:150]}...'")
+    except Exception as e:
+        print(f"   > ERROR generating main answer: {e}")
+        error_content = f"Sorry, an error occurred while generating the answer: {e}"
+        error_message = AIMessage(content=error_content, id=str(uuid.uuid4()))
+        return {
+            "messages": messages + [error_message], # Append error to existing messages
+            # Clear out temporary state values
+            "processed_input": None,
+            "enhanced_transcript": None,
+            "audio_path": None,
+            "light_model": None,
+            "heavy_model": None,
+            "text_input": None,
+            "api_key": None,
+            "files_contents": None,
+        }
 
-    human_message_kwargs = {}
-    if audio_path:
-        human_message_kwargs["file_url"] = audio_path
+    try:
+        print("   > Generating text-to-speech audio for the answer...")
+        light_open_router = container.openrouter_model(api_key=api_key, model=light_model)
+        conclusion_instruction = get_conclusion_instruction.format(
+            user_task=user_task, ai_message=result.content
+        )
+        structured_model = light_open_router.with_structured_output(Conclusion)
+        conclusion = structured_model.invoke(conclusion_instruction)
+        no_markdown_text = remove_markdown(conclusion.text)
+        output_audio_file = asyncio.run(text_to_speech_upload_file(no_markdown_text))
+        print(f"   > Text-to-speech audio file created: {output_audio_file}")
+        output_audio_url = f"{file_service_url}/test/download/{output_audio_file}"
+        result.additional_kwargs["file_url"] = output_audio_url
+    except Exception as e:
+        print(
+            f"   > WARNING: Could not generate TTS audio. Returning text only. Error: {e}"
+        )
 
-    human_msg = HumanMessage(content=user_task, additional_kwargs=human_message_kwargs)
-
-    result.content = result.content.split("</think>")[-1]
-    result.content = re.sub(r"\n{2,}", "\n", result.content).strip()
-    print(f"   > Cleaned Answer Content: '{result.content[:150]}...'")
-
-    print("   > Generating text-to-speech audio for the answer...")
-
-    light_open_router = container.openrouter_model(api_key=api_key, model=light_model)
-
-    conclusion_instruction = get_conclusion_instruction.format(
-        user_task=user_task, ai_message=result.content
-    )
-
-    structured_model = light_open_router.with_structured_output(Conclusion)
-
-    conclusion = structured_model.invoke(conclusion_instruction)
-
-    no_markdown_text = remove_markdown(conclusion.text)
-    output_audio_file = asyncio.run(text_to_speech_upload_file(no_markdown_text))
-    print(f"   > Text-to-speech audio file saved to: {output_audio_file}")
-
-    output_audio_file = file_service_url + "/test/download/" + f"{output_audio_file}"
-    result.additional_kwargs["file_url"] = output_audio_file
-    human_msg.id = str(uuid.uuid4())
     result.id = str(uuid.uuid4())
 
     return {
-        "messages": [human_msg, result],
+        "messages": messages + [result], # Append success result to existing messages
+        # Clear out temporary state values
         "processed_input": None,
         "enhanced_transcript": None,
         "audio_path": None,
@@ -231,4 +257,5 @@ def generate_answer_node(state: ChatGraphState):
         "heavy_model": None,
         "text_input": None,
         "api_key": None,
+        "files_contents": None,
     }

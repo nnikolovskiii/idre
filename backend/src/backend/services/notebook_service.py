@@ -1,5 +1,3 @@
-# backend/services/notebook_service.py
-
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.notebook import Notebook
@@ -8,6 +6,7 @@ from backend.models.chat import Chat
 from backend.models.file import File
 from backend.repositories.notebook_repository import NotebookRepository
 from backend.repositories.thread_repository import ThreadRepository
+from backend.services.notebook_model_service import NotebookModelService
 
 
 class NotebookService:
@@ -18,11 +17,13 @@ class NotebookService:
         self,
         session: AsyncSession,
         notebook_repository: NotebookRepository,
+        notebook_model_service: NotebookModelService,
         thread_repository: ThreadRepository
     ):
         self.session = session
         self.repo = notebook_repository
         self.thread_repo = thread_repository
+        self.notebook_model_service = notebook_model_service
 
     async def create_notebook(self, user_id: str, emoji: str, title: str,
                               date: str, bg_color: str, text_color: str) -> Notebook:
@@ -34,6 +35,15 @@ class NotebookService:
         await self.session.commit()
         await self.session.refresh(notebook)
         return notebook
+
+    async def set_notebook_models(self, user_id: str, notebook_id: str):
+        await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id, model_type="light", user_id=user_id
+        )
+        await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id, model_type="heavy", user_id=user_id
+        )
+
 
     async def update_notebook(self, notebook_id: str, update_data: Dict[str, Any]) -> Optional[Notebook]:
         """Updates a notebook and commits the transaction."""

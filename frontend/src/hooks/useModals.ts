@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useApiKey } from "../contexts/ApiKeyContext";
-import type { ChatSession } from "../components/ChatView";
 
 export interface ModalState {
     isAIModelsSettingsOpen: boolean;

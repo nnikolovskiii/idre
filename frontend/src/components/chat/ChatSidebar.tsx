@@ -7,8 +7,8 @@ import { ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft } from "lucide-rea
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
-import idreLogo from "../../assets/idre_logo_v1.png";
-import idreWhiteLogo from "../../assets/idre-white-v1.png";
+import idreLogo from "../../assets/idre_logo_v2_white.png";
+import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useNotebooks } from "../../hooks/useNotebooks";
 import { useTheme } from "../../context/ThemeContext";
@@ -162,11 +162,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
           </header>
 
-          <div className="flex-grow flex flex-col gap-6 bg-background">
+          <div className="flex-grow flex flex-col gap-6 bg-background min-h-0">
 
             {!collapsed && currentNotebook && (
                 // - Refactored notebook display colors
-                <div className="flex items-center gap-2 p-2 px-3 rounded-md bg-sidebar-accent">
+                <div className="flex items-center gap-2 p-2 px-3 rounded-md bg-sidebar-accent flex-shrink-0">
                   <button
                       className="flex items-center justify-center p-1 rounded-md text-sidebar-foreground hover:bg-sidebar-background"
                       onClick={() => navigate("/notebooks")}
@@ -181,7 +181,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
 
             {!collapsed && (
-                <section className="flex flex-col gap-2">
+                <section className="flex flex-col gap-2 flex-shrink-0">
                   <div className="flex flex-col gap-1">
                     <button
                         // - Refactored active/inactive tab colors to use semantic variables
@@ -214,7 +214,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 </section>
             )}
 
-            <div className={collapsed && !isMobile ? "hidden" : "contents"}>
+            <div className={collapsed && !isMobile ? "hidden" : "flex flex-col flex-1 min-h-0"}>
               <ChatHistory
                   chatSessions={chatSessions}
                   currentChatId={currentChatId}

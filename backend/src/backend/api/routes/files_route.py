@@ -15,6 +15,7 @@ from backend.services.file_service import FileService
 load_dotenv()
 FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL")
 UPLOAD_PASSWORD = os.getenv("UPLOAD_PASSWORD")
+FILE_SERVICE_URL_DOCKER = os.getenv("FILE_SERVICE_URL_DOCKER")
 
 router = APIRouter()
 
@@ -48,11 +49,12 @@ MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 async def upload_file(
         file: UploadFile = FastAPIFile(...),
         notebook_id: str = None,
+        transcribe: bool = True,
         current_user: User = Depends(get_current_user),
         file_service: FileService = Depends(get_file_service),
-        ai_service: AIService = Depends(get_ai_service)
+        ai_service: AIService = Depends(get_ai_service),
 ):
-    if not FILE_SERVICE_URL or not UPLOAD_PASSWORD:
+    if not FILE_SERVICE_URL_DOCKER or not UPLOAD_PASSWORD:
         raise HTTPException(
             status_code=500,
             detail="Server configuration error: File service URL or password not set."
@@ -66,14 +68,20 @@ async def upload_file(
         )
 
     unique_filename = file_service.generate_unique_filename(file.filename)
-    upload_url = f"{FILE_SERVICE_URL}/test/upload"
+    upload_url = f"{FILE_SERVICE_URL_DOCKER}/test/upload"
     headers = {'password': UPLOAD_PASSWORD}
 
     try:
+        # Read the file content to avoid SpooledTemporaryFile serialization issues
+        file_content = await file.read()
+        
+        # Reset file pointer for potential re-reads
+        await file.seek(0)
+        
         form = aiohttp.FormData()
         form.add_field(
             'file',
-            file.file,
+            file_content,
             filename=unique_filename,
             content_type=file.content_type
         )
@@ -88,10 +96,12 @@ async def upload_file(
                         detail=f"Failed to upload file to external service: {response_text}"
                     )
 
+        docker_url=f"{FILE_SERVICE_URL_DOCKER}/test/download/{unique_filename}"
+
         # Only transcribe if the file is an audio file
-        if is_audio_file(file.content_type):
+        if is_audio_file(file.content_type) and transcribe:
             file_record: File = await file_service.create_file_record(
-                user_id=current_user.email,
+                user_id=str(current_user.user_id),
                 filename=file.filename,
                 unique_filename=unique_filename,
                 url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
@@ -102,13 +112,13 @@ async def upload_file(
             )
 
             await ai_service.transcribe_file(
-                user_id=current_user.email,
+                user_id=str(current_user.user_id),
                 notebook_id=notebook_id,
-                request=SendMessageRequest(audio_path=file_record.url, file_id=str(file_record.id))
+                request=SendMessageRequest(audio_path=docker_url, file_id=str(file_record.id))
             )
         else:
             file_record: File = await file_service.create_file_record(
-                user_id=current_user.email,
+                user_id=str(current_user.user_id),
                 filename=file.filename,
                 unique_filename=unique_filename,
                 url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
@@ -144,7 +154,7 @@ async def get_user_files(
 ):
     try:
         files = await file_service.get_files_for_user(
-            user_id=current_user.email,
+            user_id=str(current_user.user_id),
             notebook_id=notebook_id
         )
 
@@ -182,7 +192,7 @@ async def transcribe_file_endpoint(
 ):
     try:
         await ai_service.transcribe_file(
-            user_id=current_user.email,
+            user_id=str(current_user.user_id),
             notebook_id=notebook_id,
             request=request
         )
@@ -199,7 +209,7 @@ async def delete_file(
 ):
     try:
         success = await file_service.delete_file(
-            user_id=current_user.email,
+            user_id=str(current_user.user_id),
             file_id=file_id
         )
         if not success:
@@ -215,3 +225,47 @@ async def delete_file(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.get("/{notebook_id}/content")
+async def get_notebook_content(
+        notebook_id: str,
+        current_user: User = Depends(get_current_user),
+        file_service: FileService = Depends(get_file_service)
+):
+    """
+    Retrieve and concatenate all file contents for a notebook.
+    Text files are fetched from their URLs, audio files use transcriptions.
+    """
+    try:
+        content = await file_service.get_notebook_files_content(
+            user_id=str(current_user.user_id),
+            notebook_id=notebook_id
+        )
+
+        if not content:
+            return {
+                "status": "success",
+                "message": "No files found or no content available",
+                "data": {
+                    "content": "",
+                    "file_count": 0
+                }
+            }
+
+        # Count the number of file sections in the content
+        file_count = content.count("--- File:")
+
+        return {
+            "status": "success",
+            "message": f"Retrieved content from {file_count} file(s)",
+            "data": {
+                "content": content,
+                "file_count": file_count
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while retrieving content: {str(e)}"
+        )

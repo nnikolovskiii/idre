@@ -6,7 +6,8 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
-    func
+    func,
+    Boolean
 )
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,6 +24,8 @@ class Chat(Base):
     notebook_id = Column(UUID(as_uuid=True))
 
     thread_id = Column(UUID(as_uuid=True), ForeignKey('thread.thread_id', ondelete="CASCADE"), nullable=False)
+
+    started = Column(Boolean, nullable=False, default=False, server_default='false')
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

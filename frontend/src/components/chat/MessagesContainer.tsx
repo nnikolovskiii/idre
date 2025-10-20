@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import type { Options } from "react-markdown";
 import type { Message } from "../../types/chat";
 import AudioPlayer from "../ui/AudioPlayer";
-import { Copy, Trash2, Volume2 } from "lucide-react";
+import { Copy, Trash2, Volume2, MessageCircle } from "lucide-react";
 
 interface AudioPlayerHandle {
     play: () => void;
@@ -12,6 +12,7 @@ interface AudioPlayerHandle {
 interface MessagesContainerProps {
     messages: Message[];
     isTyping: boolean;
+    loadingMessages: boolean;
     onDeleteMessage: (messageId: string) => void;
 }
 
@@ -30,7 +31,7 @@ const markdownComponents: Options["components"] = {
     th: ({ ...props }) => <th className="bg-muted p-3 text-left font-semibold border-b border-border" {...props} />,
     td: ({ ...props }) => <td className="p-3 border-b border-border" {...props} />,
     pre: ({ ...props }) => <pre className="bg-muted/50 border border-border p-4 rounded-md my-4 overflow-x-auto text-sm" {...props} />,
-    code: ({ inline, ...props }) => (
+    code: ({ inline, ...props }: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
         inline ? (
             <code className="bg-muted text-foreground px-1.5 py-1 rounded-md text-[0.9rem] border border-border" {...props} />
         ) : (
@@ -44,6 +45,7 @@ const markdownComponents: Options["components"] = {
 const MessagesContainer: React.FC<MessagesContainerProps> = ({
                                                                  messages,
                                                                  isTyping,
+                                                                 loadingMessages,
                                                                  onDeleteMessage,
                                                              }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -123,11 +125,22 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 md:mb-0 mb-[76px]" ref={containerRef}>
+        <div className="flex-1 overflow-y-auto p-4 md:mb-0" ref={containerRef}>
             <div className="mx-auto flex max-w-3xl flex-col gap-6">
-                {messages.map((message) => {
-                    const isUser = message.type === 'human';
-                    return (
+                {loadingMessages ? (
+                    <div className="flex flex-col items-center justify-center gap-4 py-12 text-muted-foreground">
+                        <div className="h-8 w-8 border-4 border-border border-t-primary rounded-full animate-spin"></div>
+                        <span className="text-sm">Loading messages...</span>
+                    </div>
+                ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-4 py-12 text-muted-foreground">
+                        <MessageCircle size={48} className="opacity-50" />
+                        <span className="text-sm">No messages yet. Start a conversation!</span>
+                    </div>
+                ) : (
+                    messages.map((message) => {
+                        const isUser = message.type === 'human';
+                        return (
                         <div
                             key={message.id}
                             className={`group flex max-w-[95%] flex-col md:max-w-[100%] ${
@@ -140,7 +153,7 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                                 className={`w-full rounded-xl px-4 py-1 ${
                                     isUser
                                         ? "bg-primary text-primary-foreground rounded-br-none"
-                                        : "bg-card text-card-foreground rounded-bl-none"
+                                        : "bg-background text-card-foreground rounded-bl-none"
                                 }`}
                             >
                                 <MessageBody message={message} />
@@ -184,8 +197,9 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                                 </MessageActionButton>
                             </div>
                         </div>
-                    );
-                })}
+                        );
+                    })
+                )}
 
                 {/* "AI is typing" indicator, styled with muted colors */}
                 {isTyping && (

@@ -13,15 +13,15 @@ class FileRepository:
         self.session = session
 
     async def create(
-        self,
-        user_id: str,
-        filename: str,
-        unique_filename: str,
-        url: str,
-        content_type: Optional[str] = None,
-        file_size_bytes: Optional[int] = None,
-        notebook_id: Optional[str] = None,
-        processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
+            self,
+            user_id: str,
+            filename: str,
+            unique_filename: str,
+            url: str,
+            content_type: Optional[str] = None,
+            file_size_bytes: Optional[int] = None,
+            notebook_id: Optional[str] = None,
+            processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     ) -> File:
         """
         Creates a new File object and adds it to the session.
@@ -64,10 +64,10 @@ class FileRepository:
         return result.scalars().first()
 
     async def update(
-        self,
-        file_id: str,
-        updates: Dict[str, Any],
-        merge_processing_result: bool = False
+            self,
+            file_id: str,
+            updates: Dict[str, Any],
+            merge_processing_result: bool = False
     ) -> Optional[File]:
         """
         Update a file record with the provided updates dictionary.

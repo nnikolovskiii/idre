@@ -27,9 +27,6 @@ class NotebookModel(Base):
     # Foreign key to the central definition table
     generative_model_id = Column(UUID(as_uuid=True), ForeignKey('generative_models.id'), nullable=False)
 
-    # Unique constraint to enforce one-to-one per user-notebook pair
-    __table_args__ = (UniqueConstraint('user_id', 'notebook_id', name='unique_user_notebook'),)
-
     # Relationship to easily access the model details
     model: Mapped[GenerativeModel] = relationship("GenerativeModel")
 

@@ -1,10 +1,6 @@
 import React from "react";
 
-interface DriveHeaderProps {
-    notebookId: string;
-}
-
-const DriveHeader: React.FC<DriveHeaderProps> = ({ notebookId }) => {
+const DriveHeader: React.FC = () => {
     return (
         <header className="flex justify-between items-center pt-2 pb-4 flex-wrap gap-3">
             <div className="flex items-center gap-1">

@@ -1,26 +1,38 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import idreLogo from "../assets/idre_logo_v1.png";
+import { useAuth } from '../contexts/AuthContext'; // Re-enabled this import
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+
+// This component can be shared or defined in both files
+const IdLogo = () => (
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* SVG paths for the top-left logo */}
+    </svg>
+);
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register } = useAuth(); // Using the REAL register function from your context
+
+  // The dummy register function has been removed.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    setSuccess(false);
 
     try {
+      // This now calls the REAL register function from your AuthContext
       await register(email, username, password, name, surname);
       setSuccess(true);
       setTimeout(() => {
@@ -34,132 +46,85 @@ const Register: React.FC = () => {
   };
 
   return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Logo/Brand */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center mb-4">
-              <img src={idreLogo} alt="Blocks Logo" width={90} height={90} />
+      <div className="relative min-h-screen w-full bg-[#0F0F0F] text-white font-noto-sans overflow-hidden">
+        {/* Background Image Element */}
+        <div
+            className="absolute w-[2200px] h-[1680px] -left-[50px] top-[-120px] z-0"
+            style={{
+              backgroundImage: `url('/login_background.png')`,
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
+              transform: 'rotate(1deg)',
+            }}
+        ></div>
+
+        {/* Content Container */}
+        <div className="relative z-10 min-h-screen w-full grid md:grid-cols-2 bg-black/20 p-8 sm:p-12">
+          {/* Left Section: Branding */}
+          <div className="hidden md:flex flex-col justify-between py-8">
+            <IdLogo />
+            <div className="pl-4">
+              <img src="/login_logo.png" alt="IDRE Logo" className="w-[561px] ml-[65px]" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-600">Join us today and get started</p>
+            <div /> {/* Spacer div */}
           </div>
 
-          {/* Register Card */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            {error && (
-                <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg p-3 mb-6 text-sm flex items-start gap-2">
-                  <span className="text-lg">⚠️</span>
-                  <span className="flex-1">{error}</span>
-                </div>
-            )}
-
-            {success && (
-                <div className="bg-green-50 text-green-600 border border-green-200 rounded-lg p-3 mb-6 text-sm flex items-start gap-2">
-                  <span className="text-lg">✓</span>
-                  <span className="flex-1">Registration successful! Redirecting to login...</span>
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    First Name
-                  </label>
-                  <input
-                      type="text"
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      required
-                      placeholder="John"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="surname" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Last Name
-                  </label>
-                  <input
-                      type="text"
-                      id="surname"
-                      value={surname}
-                      onChange={(e) => setSurname(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      required
-                      placeholder="Doe"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Username
-                </label>
-                <input
-                    type="text"
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    required
-                    placeholder="johndoe"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Email Address
-                </label>
-                <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    required
-                    placeholder="john@example.com"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Password
-                </label>
-                <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    required
-                    placeholder="••••••••"
-                />
-              </div>
-
-              <button
-                  type="submit"
-                  disabled={isLoading || success}
-                  className={`w-full py-3.5 px-6 text-base font-semibold text-white rounded-lg transition-all shadow-lg ${
-                      isLoading || success
-                          ? 'bg-gradient-to-r from-blue-400 to-purple-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-xl transform hover:-translate-y-0.5'
-                  }`}
+          {/* Right Section: Register Form */}
+          <div className="flex items-center justify-center py-10">
+            <div className="w-full max-w-md">
+              <div
+                  className="bg-black/20 border border-white/20 rounded-2xl shadow-xl shadow-black/30 backdrop-blur-lg"
+                  style={{ background: 'linear-gradient(321.23deg, rgba(191, 191, 191, 0.062) 5.98%, rgba(0, 0, 0, 0) 66.28%), rgba(0, 0, 0, 0.14)' }}
               >
-                {isLoading ? 'Creating Account...' : success ? 'Success!' : 'Create Account'}
-              </button>
-            </form>
-          </div>
+                <form onSubmit={handleSubmit} className="p-12 space-y-4">
+                  <div className="mb-6 text-center">
+                    <h2 className="font-montserrat-alt text-4xl font-semibold">Create Account</h2>
+                    <p className="font-montserrat-alt text-white/80 mt-2">Join us to get started</p>
+                  </div>
 
-          {/* Login Link */}
-          <p className="text-center mt-6 text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-              Sign in
-            </Link>
-          </p>
+                  {/* Error and Success Messages */}
+                  {error && (
+                      <div className="bg-red-500/20 text-red-300 border border-red-500/50 rounded-lg p-3 text-sm flex items-start gap-2">
+                        <span>⚠️</span>
+                        <span className="flex-1">{error}</span>
+                      </div>
+                  )}
+                  {success && (
+                      <div className="bg-green-500/20 text-green-300 border border-green-500/50 rounded-lg p-3 text-sm flex items-start gap-2">
+                        <span>✓</span>
+                        <span className="flex-1">Success! Redirecting to login...</span>
+                      </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="First Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                    <input type="text" value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Last Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                  </div>
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                  <div className="relative">
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-4 text-white/70 hover:text-white" aria-label="Toggle password visibility">
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+
+                  <button type="submit" disabled={isLoading || success} className={`w-full py-3 mt-4 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg ${isLoading || success ? 'bg-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#E0E6F6] to-[#9D3D9D] text-black hover:shadow-purple-400/30'}`}>
+                    {isLoading ? 'Creating Account...' : success ? 'Success!' : 'Create Account'}
+                  </button>
+
+                  <hr className="border-t-2 border-[#4D4D4D] !my-6" />
+
+                  <div className="text-center">
+                    <p>
+                      Already have an account?{' '}
+                      <Link to="/login" className="font-semibold hover:underline">Sign in</Link>
+                    </p>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
   );

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { useApiKey } from "../contexts/ApiKeyContext";
 import { chatsService, type ChatResponse } from "../lib/chatsService";
 import type { ChatSession, Message } from "../types/chat";
 import type { MessageResponse } from "../lib/chatsService";
@@ -33,13 +32,14 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
 
 export const useChats = (notebookIdParam?: string) => {
     const { user, isAuthenticated } = useAuth();
-    const { hasApiKey } = useApiKey();
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
     const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [loadingChats, setLoadingChats] = useState(true);
+    const [loadingMessages, setLoadingMessages] = useState(false);
     const [creatingChat, setCreatingChat] = useState(false);
+    const [loadingModels, setLoadingModels] = useState(false);
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
 
     // In useChats hook, update the fetchMessagesForCurrentChat function:
@@ -50,6 +50,7 @@ export const useChats = (notebookIdParam?: string) => {
         }
 
         console.log('Fetching messages for thread:', currentThreadId);
+        setLoadingMessages(true);
 
         try {
             const backendMessages = await chatsService.getThreadMessages(currentThreadId);
@@ -70,12 +71,15 @@ export const useChats = (notebookIdParam?: string) => {
             const errorMessage =
                 err instanceof Error ? err.message : "Could not fetch messages.";
             console.error("Error fetching messages for thread:", errorMessage);
+        } finally {
+            setLoadingMessages(false);
         }
     }, [currentThreadId]); // Only depend on currentThreadId
 
     useEffect(() => {
         const fetchInitialChats = async () => {
             setLoadingChats(true);
+            setLoadingMessages(true); // Set loading for initial messages too
             try {
                 // Use the new chatsService.getChats() method with optional notebook_id
                 const backendChats = await chatsService.getChats(notebookIdParam);
@@ -101,6 +105,7 @@ export const useChats = (notebookIdParam?: string) => {
                 setCurrentThreadId(null);
             } finally {
                 setLoadingChats(false);
+                // Don't set loadingMessages to false here - let fetchMessagesForCurrentChat handle it
             }
         };
 
@@ -117,17 +122,23 @@ export const useChats = (notebookIdParam?: string) => {
     // Determine if the current chat has models configured (chat-level)
     useEffect(() => {
         const checkModels = async () => {
-            // By default, no models configured
-            setHasModelsConfigured(false);
-            if (!currentChatId) return;
+            if (!currentChatId) {
+                setHasModelsConfigured(false);
+                setLoadingModels(false);
+                return;
+            }
+            
+            setLoadingModels(true);
             try {
                 const models = await getChatModels(currentChatId);
                 const hasAny = !!models && (Object.keys(models).length > 0);
                 const hasNamed = !!(models?.["light"]?.model_name || models?.["heavy"]?.model_name);
                 setHasModelsConfigured(hasAny && hasNamed);
-            } catch (e) {
+            } catch {
                 // If fetching fails, assume not configured
                 setHasModelsConfigured(false);
+            } finally {
+                setLoadingModels(false);
             }
         };
         checkModels();
@@ -173,13 +184,14 @@ export const useChats = (notebookIdParam?: string) => {
         const found = chatSessions.find((c) => c.id === chatId);
         if (found) {
             console.log('Found chat with thread_id:', found.thread_id);
+            setLoadingMessages(true); // Set loading immediately when switching
             setCurrentChatId(found.id);
             setCurrentThreadId(found.thread_id);
         } else {
             console.log('Chat not found:', chatId);
         }
     };
-    
+
     const handleDeleteChat = async (chatId: string) => {
         try {
             // Call the backend to delete the chat
@@ -229,8 +241,7 @@ export const useChats = (notebookIdParam?: string) => {
 
     const handleSendMessage = async (
         text?: string,
-        audioPath?: string,
-        onApiKeyRequired?: () => void
+        audioPath?: string
     ) => {
         // if (!hasApiKey) {
         //     onApiKeyRequired?.();
@@ -303,6 +314,8 @@ export const useChats = (notebookIdParam?: string) => {
         currentChat,
         currentChatId,
         loadingChats,
+        loadingMessages,
+        loadingModels,
         creatingChat,
         isTyping,
         hasModelsConfigured,

@@ -1,26 +1,17 @@
 import React, { useState, useEffect } from "react";
 import {
   Plus,
-  Grid,
-  Rows3,
-  ChevronDown,
   MoreVertical,
 } from "lucide-react";
-// Import the new service and types
 
 import { useNavigate } from "react-router-dom";
 import {NotebookService, type NotebookResponse } from "../lib/notebooksService";
 import { useTheme } from "../context/ThemeContext";
 
-// Helper function to convert light theme color to dark theme color
 const convertColorForTheme = (colorClass: string, theme: 'light' | 'dark'): string => {
   if (theme === 'light') {
-    return colorClass; // Return as-is for light theme
+    return colorClass;
   }
-  
-  // Convert light theme colors to dark theme colors
-  // Pattern: bg-{color}-50 -> bg-{color}-900/20
-  // Pattern: text-{color}-800 -> text-{color}-300
   
   if (colorClass.includes('-50')) {
     return colorClass.replace('-50', '-900/20');
@@ -32,11 +23,9 @@ const convertColorForTheme = (colorClass: string, theme: 'light' | 'dark'): stri
   return colorClass;
 };
 
-// Reusable component for displaying a single notebook card (updated for new service)
 const NotebookCard: React.FC<{ notebook: NotebookResponse; theme: 'light' | 'dark' }> = ({
                                                                   notebook, theme,
                                                                 }) => {
-  // Convert colors based on current theme
   const displayBgColor = convertColorForTheme(notebook.bg_color, theme);
   const displayTextColor = convertColorForTheme(notebook.text_color, theme);
   
@@ -60,14 +49,12 @@ const NotebookCard: React.FC<{ notebook: NotebookResponse; theme: 'light' | 'dar
           >
             {notebook.title}
           </h3>
-          {/* Removed sourceCount as it's not in the new service response */}
           <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{notebook.date}</p>
         </div>
       </div>
   );
 };
 
-// Component for the "Create new notebook" card (theme-aware)
 const CreateNewCard: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
   return (
       <div className={`p-4 rounded-xl flex flex-col items-center justify-center h-48 border-2 border-dashed cursor-pointer transition-colors ${
@@ -85,9 +72,7 @@ const CreateNewCard: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
   );
 };
 
-// The main dashboard component that brings everything together (updated)
 const NotebooksDashboard: React.FC = () => {
-  // Use the new NotebookResponse type for state
   const [notebooks, setNotebooks] = useState<NotebookResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,18 +83,16 @@ const NotebooksDashboard: React.FC = () => {
     loadNotebooks();
   }, []);
 
-  // Updated to use the new NotebookService
   const loadNotebooks = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await NotebookService.getAllNotebooks();
-      // The new service returns an object with a `data` property containing the array
       setNotebooks(response.data || []);
     } catch (err) {
       console.error("Error loading notebooks:", err);
       setError(err instanceof Error ? err.message : "Failed to load notebooks");
-      setNotebooks([]); // Ensure notebooks is always an array on error
+      setNotebooks([]);
     } finally {
       setLoading(false);
     }

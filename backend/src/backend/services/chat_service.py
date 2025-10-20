@@ -9,6 +9,7 @@ from backend.models.chat import Chat
 from backend.models.dtos.chat import SendMessageRequest
 from backend.models.notebook_model import NotebookModel
 from backend.services.assistant_service import AssistantService
+from backend.services.file_service import FileService
 from backend.services.model_api_service import ModelApiService
 from backend.services.notebook_model_service import NotebookModelService
 from backend.services.chat_model_service import ChatModelService
@@ -36,7 +37,8 @@ class ChatService:
             model_api_service: ModelApiService,
             notebook_model_service: NotebookModelService,
             chat_model_service: ChatModelService,
-            assistant_service: AssistantService
+            assistant_service: AssistantService,
+            file_service: FileService
     ):
         """
         Initializes the ChatService with all its dependencies.
@@ -58,6 +60,7 @@ class ChatService:
         self.chat_model_service = chat_model_service
         self.assistant_service = assistant_service
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
+        self.file_service = file_service
         self._assistant_id = None
 
     async def _get_assistant_id(self) -> str:
@@ -93,7 +96,7 @@ class ChatService:
         )
 
     async def create_new_chat_and_thread(
-            self, user_id: str, title: str, notebook_id: Optional[str] = None
+            self, user_id: str, title: str = None, notebook_id: Optional[str] = None
     ) -> Chat:
         """
         Orchestrates creating a chat, its thread, and default models in a single transaction.
@@ -164,6 +167,12 @@ class ChatService:
             "heavy_model": models_dict.get("heavy"),
             "api_key": model_api.value if model_api else None,
         }
+
+        if not chat_obj.started:
+            files_contents = await self.file_service.get_notebook_files_content(user_id, str(chat_obj.notebook_id))
+            run_input["files_contents"] = files_contents
+            chat_obj.started = True
+
         if request.message:
             run_input["text_input"] = request.message
         if request.audio_path:

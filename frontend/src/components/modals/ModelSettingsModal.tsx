@@ -4,7 +4,6 @@ import { modelApiService } from "../../lib/modelApiService";
 import { getNotebookModels, updateNotebookModel, type NotebookModel } from "../../lib/notebookModelService";
 import { getChatModels, updateChatModel, type ChatModel } from "../../lib/chatModelService";
 import type { ModelName } from "../../lib/openrouterModelsService";
-import "../../pages/DefaultModels.css"; // We will use the updated CSS
 
 type ActiveTab = "global" | "chat" | "api";
 
@@ -58,17 +57,12 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
     setSuccess(false);
 
     try {
-      // Fetch notebook-level models if notebookId is provided
       if (notebookId) {
         const nbModels = await getNotebookModels(notebookId);
-        console.log(nbModels);
-
         if (nbModels) {
           setNotebookModelsByType(nbModels);
-          const light = nbModels["light"];
-          const heavy = nbModels["heavy"];
-          setGlobalLightModel(light?.model_name || "");
-          setGlobalHeavyModel(heavy?.model_name || "");
+          setGlobalLightModel(nbModels["light"]?.model_name || "");
+          setGlobalHeavyModel(nbModels["heavy"]?.model_name || "");
         } else {
           setNotebookModelsByType(null);
           setGlobalLightModel("");
@@ -80,15 +74,12 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
         setGlobalHeavyModel("");
       }
 
-      // Fetch chat-level models if chatId is provided
       if (chatId) {
         const chModels = await getChatModels(chatId);
         if (chModels) {
           setChatModelsByType(chModels);
-          const cLight = chModels["light"];
-          const cHeavy = chModels["heavy"];
-          setChatLightModel(cLight?.model_name || "");
-          setChatHeavyModel(cHeavy?.model_name || "");
+          setChatLightModel(chModels["light"]?.model_name || "");
+          setChatHeavyModel(chModels["heavy"]?.model_name || "");
         } else {
           setChatModelsByType(null);
           setChatLightModel("");
@@ -109,7 +100,6 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
   const loadAvailableModels = useCallback(async () => {
     setModelsLoading(true);
     try {
-      // Check if user has API key set
       const apiKeyResponse = await modelApiService.getModelApi();
       const models = apiKeyResponse.has_api_key
           ? await openrouterModelsService.getModelNames()
@@ -154,25 +144,22 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
     setSuccess(false);
 
     try {
-      // Update notebook-level models (light/heavy) using notebook models service
       if (!notebookId || !notebookModelsByType) {
         throw new Error("Notebook is not selected. Cannot update notebook models.");
       }
-      const light = notebookModelsByType["light"];
-      const heavy = notebookModelsByType["heavy"];
       const updates: Promise<any>[] = [];
-      if (light?.id) {
-        updates.push(updateNotebookModel(light.id, { generative_model_name: globalLightModel.trim() , generative_model_type: 'light'}));
+      if (notebookModelsByType["light"]?.id) {
+        updates.push(updateNotebookModel(notebookModelsByType["light"].id, { generative_model_name: globalLightModel.trim() , generative_model_type: 'light'}));
       }
-      if (heavy?.id) {
-        updates.push(updateNotebookModel(heavy.id, { generative_model_name: globalHeavyModel.trim(), generative_model_type: 'heavy' }));
+      if (notebookModelsByType["heavy"]?.id) {
+        updates.push(updateNotebookModel(notebookModelsByType["heavy"].id, { generative_model_name: globalHeavyModel.trim(), generative_model_type: 'heavy' }));
       }
       await Promise.all(updates);
 
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        onClose(); // Optional: close modal on success
+        onClose();
       }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update models");
@@ -190,14 +177,12 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
       if (!chatModelsByType) {
         throw new Error("Chat is not selected. Cannot update chat models.");
       }
-      const light = chatModelsByType["light"];
-      const heavy = chatModelsByType["heavy"];
       const updates: Promise<any>[] = [];
-      if (light?.id) {
-        updates.push(updateChatModel(light.id, { generative_model_name: chatLightModel.trim(), generative_model_type: 'light' }));
+      if (chatModelsByType["light"]?.id) {
+        updates.push(updateChatModel(chatModelsByType["light"].id, { generative_model_name: chatLightModel.trim(), generative_model_type: 'light' }));
       }
-      if (heavy?.id) {
-        updates.push(updateChatModel(heavy.id, { generative_model_name: chatHeavyModel.trim(), generative_model_type: 'heavy' }));
+      if (chatModelsByType["heavy"]?.id) {
+        updates.push(updateChatModel(chatModelsByType["heavy"].id, { generative_model_name: chatHeavyModel.trim(), generative_model_type: 'heavy' }));
       }
       await Promise.all(updates);
 
@@ -218,23 +203,18 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
       setApiKeyError("API key cannot be empty.");
       return;
     }
-
     setApiKeySaving(true);
     setApiKeyError(null);
     setApiKeySuccess(null);
-
     try {
       await modelApiService.updateModelApi({ api_key: apiKey.trim() });
       setHasApiKey(true);
       setApiKey("");
       setShowApiKey(false);
       setApiKeySuccess("API key saved successfully!");
-      // Refresh available models since user now has API key
       loadAvailableModels();
     } catch (err) {
-      setApiKeyError(
-          err instanceof Error ? err.message : "Failed to save API key"
-      );
+      setApiKeyError(err instanceof Error ? err.message : "Failed to save API key");
     } finally {
       setApiKeySaving(false);
     }
@@ -244,18 +224,14 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
     setApiKeyDeleting(true);
     setApiKeyError(null);
     setApiKeySuccess(null);
-
     try {
       await modelApiService.deleteModelApi();
       setHasApiKey(false);
       setApiKey("");
       setApiKeySuccess("API key deleted successfully!");
-      // Refresh available models since user no longer has API key
       loadAvailableModels();
     } catch (err) {
-      setApiKeyError(
-          err instanceof Error ? err.message : "Failed to delete API key"
-      );
+      setApiKeyError(err instanceof Error ? err.message : "Failed to delete API key");
     } finally {
       setApiKeyDeleting(false);
     }
@@ -272,6 +248,7 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
           value={value}
           onChange={(e) => setter(e.target.value)}
           disabled={disabled}
+          className="w-full appearance-none rounded-lg border border-border bg-background text-foreground bg-right-2 bg-no-repeat px-4 py-2.5 pr-10 text-base transition-all focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70"
       >
         <option value="">Select a model...</option>
         {value && !availableModels.includes(value) && (
@@ -290,8 +267,8 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
   const renderPanel = (type: ActiveTab) => {
     if (loading) {
       return (
-          <div className="modal-loading-state">
-            <div className="spinner"></div>
+          <div className="flex flex-col items-center justify-center gap-4 p-8 text-gray-500">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"></div>
             <span>Loading settings...</span>
           </div>
       );
@@ -299,14 +276,13 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
 
     if (type === "global") {
       return (
-          <div className="tab-panel">
-            <p className="tab-description">
-              Configure the notebook models that will be automatically used for all
-              new chats in this notebook.
+          <div className="animate-fadeInPanel">
+            <p className="mb-6 mt-0 text-sm leading-relaxed ">
+              Configure the notebook models that will be automatically used for all new chats in this notebook.
             </p>
-            <div className="model-section">
-              <div className="model-field">
-                <label htmlFor="global-light-model">Notebook Light Model</label>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="global-light-model" className="text-sm font-medium text-foreground">Notebook Light Model</label>
                 {renderModelSelector(
                     "global-light-model",
                     globalLightModel,
@@ -314,8 +290,8 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                     modelsLoading || saving
                 )}
               </div>
-              <div className="model-field">
-                <label htmlFor="global-heavy-model">Notebook Heavy Model</label>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="global-heavy-model" className="text-sm font-medium text-foreground">Notebook Heavy Model</label>
                 {renderModelSelector(
                     "global-heavy-model",
                     globalHeavyModel,
@@ -330,80 +306,70 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
 
     if (type === "chat") {
       return (
-        <div className="tab-panel">
-          <p className="tab-description">
-            Configure the models used for this specific chat.
-          </p>
-          {!chatId && (
-            <div className="modal-info">ℹ️ Open a chat to configure chat-level models.</div>
-          )}
-          <div className="model-section">
-            <div className="model-field">
-              <label htmlFor="chat-light-model">Chat Light Model</label>
-              {renderModelSelector(
-                "chat-light-model",
-                chatLightModel,
-                setChatLightModel,
-                modelsLoading || saving || !chatId || !chatModelsByType
-              )}
-            </div>
-            <div className="model-field">
-              <label htmlFor="chat-heavy-model">Chat Heavy Model</label>
-              {renderModelSelector(
-                "chat-heavy-model",
-                chatHeavyModel,
-                setChatHeavyModel,
-                modelsLoading || saving || !chatId || !chatModelsByType
-              )}
+          <div className="animate-fadeInPanel">
+            <p className="mb-6 mt-0 text-sm leading-relaxed text-muted-foreground">
+              Configure the models used for this specific chat.
+            </p>
+            {!chatId && (
+                <div className="mb-4 rounded-md  p-3 text-sm text-blue-700">ℹ️ Open a chat to configure chat-level models.</div>
+            )}
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="chat-light-model" className="text-sm font-medium text-foreground">Chat Light Model</label>
+                {renderModelSelector(
+                    "chat-light-model",
+                    chatLightModel,
+                    setChatLightModel,
+                    modelsLoading || saving || !chatId || !chatModelsByType
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="chat-heavy-model" className="text-sm font-medium text-foreground">Chat Heavy Model</label>
+                {renderModelSelector(
+                    "chat-heavy-model",
+                    chatHeavyModel,
+                    setChatHeavyModel,
+                    modelsLoading || saving || !chatId || !chatModelsByType
+                )}
+              </div>
             </div>
           </div>
-        </div>
       );
     }
 
     if (type === "api") {
       return (
-          <div className="tab-panel">
-            <p className="tab-description">
+          <div className="animate-fadeInPanel">
+            <p className="mb-6 mt-0 text-sm leading-relaxed text-muted-foreground">
               Manage your OpenRouter API key for enhanced functionality.
             </p>
             {apiKeyLoading ? (
-                <div className="modal-loading-state">
-                  <div className="spinner"></div>
+                <div className="flex flex-col items-center justify-center gap-4 p-8 text-muted-foreground">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500"></div>
                   <span>Checking API key status...</span>
                 </div>
             ) : (
-                <div className="api-key-section">
-                  {apiKeyError && (
-                      <div className="modal-error">⚠️ {apiKeyError}</div>
-                  )}
-                  {apiKeySuccess && (
-                      <div className="modal-success">✅ {apiKeySuccess}</div>
-                  )}
-
+                <div className="flex flex-col gap-4">
                   {!hasApiKey && !apiKeySuccess && (
-                      <div className="modal-info">
+                      <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-700">
                         ℹ️ No API key is configured. Add one below to get started.
                       </div>
                   )}
-
-                  <div className="form-group">
-                    <label htmlFor="api-key">API Key</label>
-                    <div className="input-wrapper">
+                  <div className="space-y-1.5">
+                    <label htmlFor="api-key" className="text-sm font-medium text-foreground">API Key</label>
+                    <div className="relative flex items-center">
                       <input
                           id="api-key"
                           type={showApiKey ? "text" : "password"}
                           value={apiKey}
                           onChange={(e) => setApiKey(e.target.value)}
-                          placeholder={
-                            hasApiKey ? "Enter new key to update" : "sk-or-v1-..."
-                          }
+                          placeholder={hasApiKey ? "Enter new key to update" : "sk-or-v1-..."}
                           disabled={apiKeySaving || apiKeyDeleting}
-                          className="input-field"
+                          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 pr-10 text-foreground placeholder:text-muted-foreground transition-all focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
                       />
                       <button
                           type="button"
-                          className="input-adornment-btn"
+                          className="absolute right-2 rounded-md p-1 text-xl text-muted-foreground hover:bg-muted disabled:cursor-not-allowed"
                           onClick={() => setShowApiKey(!showApiKey)}
                           disabled={apiKeySaving || apiKeyDeleting}
                           aria-label={showApiKey ? "Hide API key" : "Show API key"}
@@ -411,13 +377,12 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                         {showApiKey ? "👁️" : "🙈"}
                       </button>
                     </div>
-                    <small className="form-text">
+                    <small className="text-xs text-muted-foreground">
                       Your key is encrypted and stored securely.
                     </small>
                   </div>
-
                   {hasApiKey && (
-                      <div className="api-key-status">
+                      <div className="rounded-md bg-green-50 p-3 text-sm font-medium text-green-700">
                         🔑 An API key is configured and active.
                       </div>
                   )}
@@ -433,13 +398,10 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div
-            className="modal-content model-settings-modal"
-            onClick={(e) => e.stopPropagation()}
-        >
-          <div className="modal-header">
-            <h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+        <div className="flex w-11/12 max-w-xl animate-slideIn flex-col rounded-xl bg-muted shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="relative border-b border-border px-6 py-5">
+            <h2 className="m-0 text-xl font-semibold text-foreground">
               {activeTab === "api" ? (
                   "API Key Settings"
               ) : (
@@ -447,90 +409,69 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                     AI Model Settings
                     {!apiKeyLoading && (
                         <span
-                            className={`model-status ${
-                                hasApiKey ? "full-access" : "free-only"
+                            className={`ml-2 inline-block rounded border px-1.5 py-0.5 text-xs font-normal align-middle leading-none ${
+                                hasApiKey
+                                    ? "border-green-400 bg-green-100 text-green-800"
+                                    : "border-yellow-400 bg-yellow-100 text-yellow-800"
                             }`}
                         >
-                    {hasApiKey ? "(Full Access)" : "(Free Models Only)"}
+                    {hasApiKey ? "Full Access" : "Free Models Only"}
                   </span>
                     )}
                   </>
               )}
             </h2>
-            <button className="modal-close-btn" onClick={onClose}>
+            <button className="absolute right-4 top-4 border-none bg-transparent text-3xl leading-none text-muted-foreground transition-colors hover:text-foreground" onClick={onClose}>
               ×
             </button>
           </div>
 
-          <div className="modal-tabs">
-            <button
-                className={`tab-item ${activeTab === "global" ? "active" : ""}`}
-                onClick={() => setActiveTab("global")}
-            >
+          <div className="flex border-b border-border px-6">
+            <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "global" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("global")}>
               Notebook Models
             </button>
-            <button
-                className={`tab-item ${activeTab === "chat" ? "active" : ""}`}
-                onClick={() => setActiveTab("chat")}
-            >
+            <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "chat" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("chat")}>
               Chat Models
             </button>
-            <button
-                className={`tab-item ${activeTab === "api" ? "active" : ""}`}
-                onClick={() => setActiveTab("api")}
-            >
+            <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "api" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("api")}>
               API Key
             </button>
           </div>
 
-          <div className="modal-body">{renderPanel(activeTab)}</div>
+          <div className="flex-grow p-6">{renderPanel(activeTab)}</div>
 
-          <div className="modal-footer">
-            <div className="modal-messages">
+          <div className="rounded-b-xl bg-muted p-4 px-6">
+            <div className="mb-3 min-h-[24px] text-sm">
               {activeTab === "api" ? (
                   <>
-                    {apiKeyError && (
-                        <div className="modal-error">⚠️ {apiKeyError}</div>
-                    )}
-                    {apiKeySuccess && (
-                        <div className="modal-success">✅ {apiKeySuccess}</div>
-                    )}
+                    {apiKeyError && <div className="text-red-600">⚠️ {apiKeyError}</div>}
+                    {apiKeySuccess && <div className="text-green-600">✅ {apiKeySuccess}</div>}
                   </>
               ) : (
                   <>
-                    {error && <div className="modal-error">⚠️ {error}</div>}
-                    {success && (
-                        <div className="modal-success">✅ Settings saved!</div>
-                    )}
+                    {error && <div className="text-red-600">⚠️ {error}</div>}
+                    {success && <div className="text-green-600">✅ Settings saved!</div>}
                   </>
               )}
             </div>
-            <div className="modal-actions">
+            <div className="flex justify-end gap-3">
               {activeTab === "api" ? (
                   <>
                     {hasApiKey && (
-                        <button
-                            className="modal-btn danger"
-                            onClick={handleApiKeyDelete}
-                            disabled={apiKeySaving || apiKeyDeleting}
-                        >
+                        <button className="flex items-center justify-center gap-2 rounded-lg border border-red-600 bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:enabled:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleApiKeyDelete} disabled={apiKeySaving || apiKeyDeleting}>
                           {apiKeyDeleting ? (
                               <>
-                                <div className="button-spinner"></div> Deleting...
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-current"></div> Deleting...
                               </>
                           ) : (
                               "Delete Key"
                           )}
                         </button>
                     )}
-                    <button
-                        className="modal-btn primary"
-                        onClick={handleApiKeySave}
-                        disabled={apiKeySaving || apiKeyDeleting || !apiKey.trim()}
-                    >
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-transparent bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:enabled:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleApiKeySave} disabled={apiKeySaving || apiKeyDeleting || !apiKey.trim()}>
                       {apiKeySaving ? (
                           <>
-                            <div className="button-spinner"></div> Saving...
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-current"></div> Saving...
                           </>
                       ) : hasApiKey ? (
                           "Update Key"
@@ -541,21 +482,13 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                   </>
               ) : activeTab === "chat" ? (
                   <>
-                    <button
-                        className="modal-btn secondary"
-                        onClick={onClose}
-                        disabled={saving}
-                    >
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-5 py-2.5 text-sm font-semibold text-foreground transition-all hover:enabled:bg-secondary disabled:cursor-not-allowed disabled:opacity-60" onClick={onClose} disabled={saving}>
                       Cancel
                     </button>
-                    <button
-                        className="modal-btn primary"
-                        onClick={handleChatSave}
-                        disabled={saving || loading || !chatId || !chatModelsByType}
-                    >
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-transparent bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:enabled:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleChatSave} disabled={saving || loading || !chatId || !chatModelsByType}>
                       {saving ? (
                           <>
-                            <div className="button-spinner"></div> Saving...
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-current"></div> Saving...
                           </>
                       ) : (
                           "Save Changes"
@@ -564,21 +497,13 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                   </>
               ) : (
                   <>
-                    <button
-                        className="modal-btn secondary"
-                        onClick={onClose}
-                        disabled={saving}
-                    >
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-5 py-2.5 text-sm font-semibold text-foreground transition-all hover:enabled:bg-secondary disabled:cursor-not-allowed disabled:opacity-60" onClick={onClose} disabled={saving}>
                       Cancel
                     </button>
-                    <button
-                        className="modal-btn primary"
-                        onClick={handleSave}
-                        disabled={saving || loading}
-                    >
+                    <button className="flex items-center justify-center gap-2 rounded-lg border border-transparent bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:enabled:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60" onClick={handleSave} disabled={saving || loading}>
                       {saving ? (
                           <>
-                            <div className="button-spinner"></div> Saving...
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-current"></div> Saving...
                           </>
                       ) : (
                           "Save Changes"

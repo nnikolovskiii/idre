@@ -83,8 +83,12 @@ async def send_message_to_thread(
             user_id=str(current_user.user_id),
             request=request
         )
+        # Commit the transaction after successful message send
+        await chat_service.session.commit()
         return {"status": "success", "message": "Message sent successfully"}
     except Exception as e:
+        # Rollback on error
+        await chat_service.session.rollback()
         raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
 
 

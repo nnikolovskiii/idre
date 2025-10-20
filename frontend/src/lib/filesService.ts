@@ -45,13 +45,18 @@ export const fileService = {
      * Upload a file
      * Endpoint: POST /files/upload
      */
-    uploadFile: async (file: File, notebook_id?: string): Promise<FileUploadResponse> => {
+    uploadFile: async (file: File, notebook_id?: string | undefined, transcribe: boolean = true): Promise<FileUploadResponse> => {
         const formData = new FormData();
         formData.append('file', file);
 
         let uploadUrl = `${FILE_SERVICE_URL}/upload`;
+        const params = new URLSearchParams();
         if (notebook_id) {
-            uploadUrl += `?notebook_id=${encodeURIComponent(notebook_id)}`;
+            params.append('notebook_id', notebook_id);
+        }
+        params.append('transcribe', transcribe.toString());
+        if (params.toString()) {
+            uploadUrl += `?${params.toString()}`;
         }
 
         const response = await fetch(uploadUrl, {

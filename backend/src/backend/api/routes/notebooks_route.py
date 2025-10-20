@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.api.dependencies import get_notebook_service
+from backend.api.dependencies import get_notebook_service, get_chat_service
 from backend.models import User
 from backend.api.routes.auth_route import get_current_user
 from backend.models.dtos.notebook_dtos import NotebookResponse, NotebookCreate, NotebooksListResponse, NotebookUpdate
+from backend.services.chat_service import ChatService
 from backend.services.notebook_service import NotebookService
 
 router = APIRouter()
@@ -13,7 +14,8 @@ router = APIRouter()
 async def create_notebook(
         notebook_data: NotebookCreate,
         current_user: User = Depends(get_current_user),
-        notebook_service: NotebookService = Depends(get_notebook_service)
+        notebook_service: NotebookService = Depends(get_notebook_service),
+        chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Create a new notebook.
@@ -29,6 +31,13 @@ async def create_notebook(
             date=notebook_data.date,
             bg_color=notebook_data.bg_color,
             text_color=notebook_data.text_color,
+        )
+
+        await notebook_service.set_notebook_models(user_id=current_user.email, notebook_id=str(notebook.id))
+
+        await chat_service.create_new_chat_and_thread(
+            user_id=str(current_user.user_id),
+            notebook_id=notebook.id,
         )
 
         return NotebookResponse(

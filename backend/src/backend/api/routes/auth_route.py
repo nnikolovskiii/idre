@@ -68,7 +68,8 @@ async def register(
     response.set_cookie(
         key="access_token",
         value=f"Bearer {jwt_token}",
-        samesite='lax',
+        samesite='none',
+        secure=True,
         httponly=True,
         max_age=24 * 60 * 60,  # 24 hours in seconds
         expires=expires
@@ -127,7 +128,8 @@ async def login(
     response.set_cookie(
         key="access_token",
         value=f"Bearer {jwt_token}",
-        samesite='lax',
+        samesite='none',
+        secure=True,
         httponly=True,
         max_age=max_age,
         expires=expires
@@ -191,7 +193,8 @@ async def google_auth(
         response.set_cookie(
             key="access_token",
             value=f"Bearer {jwt_token}",
-            samesite='lax',
+            samesite='none',
+            secure=True,
             httponly=True,
             max_age=365 * 24 * 60 * 60,  # 1 year in seconds
             expires=expires
