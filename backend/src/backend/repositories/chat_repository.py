@@ -26,6 +26,18 @@ class ChatRepository:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def get_by_id(self, chat_id: str) -> Optional[Chat]:
+        """Gets a specific chat by its chat_id."""
+        try:
+            chat_uuid = uuid.UUID(chat_id)
+        except ValueError:
+            return None
+        stmt = select(Chat).options(
+            selectinload(Chat.models).selectinload(ChatModel.model)
+        ).where(Chat.chat_id == chat_uuid)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
     async def list_by_user_id(self, user_id: str, notebook_id: Optional[str] = None) -> List[Chat]:
         """Gets all chats for a user, optionally filtered by notebook."""
         stmt = select(Chat).where(Chat.user_id == user_id)
@@ -35,7 +47,7 @@ class ChatRepository:
         return result.scalars().all()
 
     async def create(
-        self, user_id: str, thread_id: str, notebook_id: Optional[str] = None
+        self, user_id: str, thread_id: str, notebook_id: Optional[str] = None, title: Optional[str] = None
     ) -> Chat:
         """
         Creates a new Chat object and adds it to the session.
@@ -46,11 +58,21 @@ class ChatRepository:
             thread_id=uuid.UUID(thread_id),
             notebook_id=notebook_id,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
+            title=title
         )
         self.session.add(new_chat)
         await self.session.flush()
         return new_chat
+
+    async def update(self, chat: Chat) -> Chat:
+        """
+        Updates an existing Chat object in the session.
+        Note: This method does NOT commit. The updated_at timestamp is automatically handled by SQLAlchemy.
+        """
+        self.session.add(chat)
+        await self.session.flush()
+        return chat
 
     async def delete_by_id(self, chat_id: str) -> bool:
         """

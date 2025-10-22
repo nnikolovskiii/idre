@@ -220,7 +220,7 @@ const MyDriveView = () => {
             onFileSubmit={handleFileSubmit}
             onModelsRequired={() => {}}
             hasModelsConfigured={true}
-            disabled={!currentChatId || creatingChat || isTyping}
+            // disabled={!currentChatId || creatingChat || isTyping}
         />
       </div>
   );

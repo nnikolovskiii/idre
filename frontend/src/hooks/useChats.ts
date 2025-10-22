@@ -23,7 +23,7 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
         .map((chat) => ({
             id: chat.chat_id,
             thread_id: chat.thread_id,
-            title: `Chat ${chat.chat_id.substring(0, 8)}`,
+            title: chat.title,
             messages: [],
             createdAt: new Date(chat.created_at),
         }))
@@ -41,6 +41,8 @@ export const useChats = (notebookIdParam?: string) => {
     const [creatingChat, setCreatingChat] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
+    const [eventSource, setEventSource] = useState<EventSource | null>(null);
+    const [isTemporaryChat, setIsTemporaryChat] = useState(false);
 
     // In useChats hook, update the fetchMessagesForCurrentChat function:
     const fetchMessagesForCurrentChat = useCallback(async () => {
@@ -127,7 +129,7 @@ export const useChats = (notebookIdParam?: string) => {
                 setLoadingModels(false);
                 return;
             }
-            
+
             setLoadingModels(true);
             try {
                 const models = await getChatModels(currentChatId);
@@ -144,11 +146,12 @@ export const useChats = (notebookIdParam?: string) => {
         checkModels();
     }, [currentChatId]);
 
-    const createNewChat = async (notebookId?: string) => {
+    const createNewChat = async (notebookId?: string, text?: string) => {
         setCreatingChat(true);
         try {
             const newThreadData = await chatsService.createThread({
                 title: `New Chat`,
+                text: text,
                 notebook_id: notebookId || notebookIdParam,
             });
 
@@ -170,13 +173,32 @@ export const useChats = (notebookIdParam?: string) => {
             setChatSessions((prev) => [newChat, ...prev]);
             setCurrentChatId(newChat.id);
             setCurrentThreadId(newChat.thread_id);
+            setIsTemporaryChat(false);
+            return newChat;
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "Failed to create new chat.";
             console.error("Error creating new chat:", errorMessage);
+            throw err;
         } finally {
             setCreatingChat(false);
         }
+    };
+
+    const createTemporaryChat = () => {
+        const tempChatId = "temp_" + Date.now();
+        const tempChat: ChatSession = {
+            id: tempChatId,
+            thread_id: "",
+            title: "New Chat",
+            messages: [],
+            createdAt: new Date(),
+        };
+
+        setChatSessions((prev) => [tempChat, ...prev]);
+        setCurrentChatId(tempChatId);
+        setCurrentThreadId(null);
+        setIsTemporaryChat(true);
     };
 
     const switchToChat = (chatId: string) => {
@@ -187,14 +209,34 @@ export const useChats = (notebookIdParam?: string) => {
             setLoadingMessages(true); // Set loading immediately when switching
             setCurrentChatId(found.id);
             setCurrentThreadId(found.thread_id);
+            setIsTemporaryChat(found.id.startsWith("temp_"));
         } else {
             console.log('Chat not found:', chatId);
         }
     };
 
     const handleDeleteChat = async (chatId: string) => {
+        // If it's a temporary chat, just remove it from local state
+        if (chatId.startsWith("temp_")) {
+            setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
+            
+            if (currentChatId === chatId) {
+                const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
+                if (remainingChats.length > 0) {
+                    setCurrentChatId(remainingChats[0].id);
+                    setCurrentThreadId(remainingChats[0].thread_id);
+                    setIsTemporaryChat(remainingChats[0].id.startsWith("temp_"));
+                } else {
+                    setCurrentChatId(null);
+                    setCurrentThreadId(null);
+                    setIsTemporaryChat(false);
+                }
+            }
+            return;
+        }
+
+        // For real chats, call the backend
         try {
-            // Call the backend to delete the chat
             await chatsService.deleteChat(chatId);
 
             // Remove from local state
@@ -206,10 +248,12 @@ export const useChats = (notebookIdParam?: string) => {
                 if (remainingChats.length > 0) {
                     setCurrentChatId(remainingChats[0].id);
                     setCurrentThreadId(remainingChats[0].thread_id);
+                    setIsTemporaryChat(remainingChats[0].id.startsWith("temp_"));
                 } else {
                     // Do not auto-create a new chat after deleting the last one
                     setCurrentChatId(null);
                     setCurrentThreadId(null);
+                    setIsTemporaryChat(false);
                 }
             }
         } catch (err) {
@@ -243,35 +287,98 @@ export const useChats = (notebookIdParam?: string) => {
         text?: string,
         audioPath?: string
     ) => {
-        // if (!hasApiKey) {
-        //     onApiKeyRequired?.();
-        //     return;
-        // }
+        if (!text?.trim() && !audioPath) return;
 
+        // If this is a temporary chat, create the real chat first
+        if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
+            try {
+                setCreatingChat(true);
+                
+                // Add optimistic message to temporary chat FIRST for instant feedback
+                const optimisticText = text || "Audio message sent...";
+                const optimisticMessage: Message = {
+                    id: "msg_optimistic_" + Date.now(),
+                    type: "human",
+                    content: optimisticText,
+                    audioUrl: audioPath,
+                    timestamp: new Date(),
+                };
+
+                setChatSessions((prev) =>
+                    prev.map((chat) =>
+                        chat.id === currentChatId
+                            ? { ...chat, messages: [...chat.messages, optimisticMessage] }
+                            : chat
+                    )
+                );
+
+                const newChat = await createNewChat(notebookIdParam, text);
+                
+                if (!newChat) {
+                    console.error("Failed to create chat");
+                    return;
+                }
+
+                // Transfer the optimistic message to the new chat and remove temporary chat
+                setChatSessions((prev) => {
+                    const filtered = prev.filter((chat) => !chat.id.startsWith("temp_"));
+                    return filtered.map((chat) =>
+                        chat.id === newChat.id
+                            ? { ...chat, messages: [...chat.messages, optimisticMessage] }
+                            : chat
+                    );
+                });
+
+                await chatsService.sendMessageToThread(
+                    newChat.thread_id,
+                    text,
+                    audioPath
+                );
+
+                setIsTyping(true);
+            } catch (err) {
+                const errorMessage =
+                    err instanceof Error ? err.message : "An unknown error occurred.";
+                console.error("Error creating chat and sending message:", errorMessage);
+                
+                // Remove optimistic message on error
+                setChatSessions((prev) =>
+                    prev.map((chat) =>
+                        chat.id === currentChatId
+                            ? {
+                                ...chat,
+                                messages: chat.messages.filter(
+                                    (msg: Message) => !msg.id.startsWith("msg_optimistic_")
+                                ),
+                            }
+                            : chat
+                    )
+                );
+                setIsTemporaryChat(false);
+            } finally {
+                setCreatingChat(false);
+            }
+            return;
+        }
+
+        // Normal flow for existing chats
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) {
             console.error("No active chat session selected.");
             return;
         }
 
-        if (!text?.trim() && !audioPath) return;
-
         const optimisticText = text || "Audio message sent...";
         addOptimisticMessage(optimisticText, audioPath);
 
         try {
-            const result = await chatsService.sendMessageToThread(
+            await chatsService.sendMessageToThread(
                 currentChat.thread_id,
                 text,
-                audioPath,
-                (isLoading: boolean) => {
-                    setIsTyping(isLoading);
-                }
+                audioPath
             );
 
-            if (result.status === "success" || result.status === "interrupted") {
-                await fetchMessagesForCurrentChat();
-            }
+            setIsTyping(true);
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "An unknown error occurred.";
@@ -290,8 +397,107 @@ export const useChats = (notebookIdParam?: string) => {
                         : chat
                 )
             );
+            setIsTyping(false);
         }
     };
+
+    // Set up SSE connection for real-time updates
+    useEffect(() => {
+        if (!currentThreadId) {
+            // Close existing connection if no thread
+            if (eventSource) {
+                eventSource.close();
+                setEventSource(null);
+            }
+            return;
+        }
+
+        // Close existing connection before creating new one
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        const apiUrl = window.ENV?.VITE_API_BASE_URL || 'http://localhost:8001';
+        const url = `${apiUrl}/chats/sse/${currentThreadId}`;
+        
+        console.log('Connecting to SSE:', url);
+        const es = new EventSource(url);
+
+        es.onopen = () => {
+            console.log('SSE connection opened for thread:', currentThreadId);
+        };
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('SSE message received:', data);
+
+                if (data.event === 'message_update') {
+                    const messages = data.data.messages || [];
+                    const convertedMessages = convertBackendMessages(messages);
+                    
+                    setChatSessions((prev) =>
+                        prev.map((chat) => {
+                            if (chat.thread_id === currentThreadId) {
+                                // Get current optimistic messages
+                                const optimisticMessages = chat.messages.filter(
+                                    (msg: Message) => msg.id.startsWith("msg_optimistic_")
+                                );
+                                
+                                // If we have optimistic messages and backend messages, check if the user message is in backend
+                                if (optimisticMessages.length > 0 && convertedMessages.length > 0) {
+                                    const optimisticMsg = optimisticMessages[0];
+                                    
+                                    // If backend has a human message with same content, remove optimistic
+                                    const backendHasUserMessage = convertedMessages.some(
+                                        (msg: Message) => msg.type === 'human' && msg.content === optimisticMsg.content
+                                    );
+                                    
+                                    if (backendHasUserMessage) {
+                                        // Backend has saved the message, use backend messages only
+                                        return { ...chat, messages: convertedMessages };
+                                    } else {
+                                        // Backend hasn't saved user message yet, keep optimistic
+                                        return { ...chat, messages: [...optimisticMessages, ...convertedMessages] };
+                                    }
+                                }
+                                
+                                // If no optimistic messages, just use backend messages
+                                if (optimisticMessages.length === 0) {
+                                    return { ...chat, messages: convertedMessages };
+                                }
+                                
+                                // If we have optimistic but no backend messages yet, keep optimistic
+                                return { ...chat, messages: [...optimisticMessages, ...convertedMessages] };
+                            }
+                            return chat;
+                        })
+                    );
+                    
+                    setIsTyping(false);
+                } else if (data.event === 'error') {
+                    console.error('SSE error event:', data.data.error);
+                    setIsTyping(false);
+                }
+            } catch (err) {
+                console.error('Error parsing SSE message:', err);
+            }
+        };
+
+        es.onerror = (error) => {
+            console.error('SSE connection error:', error);
+            es.close();
+            setIsTyping(false);
+        };
+
+        setEventSource(es);
+
+        // Cleanup on unmount or thread change
+        return () => {
+            console.log('Closing SSE connection for thread:', currentThreadId);
+            es.close();
+        };
+    }, [currentThreadId]);
 
     const handleDeleteMessage = async (messageId: string) => {
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
@@ -321,7 +527,9 @@ export const useChats = (notebookIdParam?: string) => {
         hasModelsConfigured,
         isAuthenticated,
         user,
+        isTemporaryChat,
         createNewChat,
+        createTemporaryChat,
         switchToChat,
         handleDeleteChat,
         handleSendMessage,

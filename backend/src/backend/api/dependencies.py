@@ -190,32 +190,6 @@ def get_chat_model_service(
     return container.chat_model_service(session=session, chat_model_repository=chat_model_repo, generative_model_service=generative_model_service)
 
 
-# --- Provider for ChatService ---
-def get_chat_service(
-        session: AsyncSession = Depends(get_db_session),
-        chat_repo: ChatRepository = Depends(get_chat_repository),
-        thread_repo: ThreadRepository = Depends(get_thread_repository),
-        model_api_service: ModelApiService = Depends(get_model_api_service),
-        notebook_model_service: NotebookModelService = Depends(get_notebook_model_service),
-        chat_model_service: ChatModelService = Depends(get_chat_model_service),
-        assistant_service: AssistantService = Depends(get_assistant_service),
-        file_service: FileService = Depends(get_file_service)
-) -> ChatService:
-    """Dependency provider for the ChatService."""
-    return container.chat_service(
-        session=session,
-        chat_repository=chat_repo,
-        thread_repository=thread_repo,
-        model_api_service=model_api_service,
-        notebook_model_service=notebook_model_service,
-        chat_model_service=chat_model_service,
-        assistant_service=assistant_service,
-        file_service=file_service,
-    )
-
-    # model_api_service: ModelApiService,
-    # notebook_model_service: NotebookModelService,
-    # assistant_service: AssistantService,
 
 def get_ai_service(
         session: AsyncSession = Depends(get_db_session),
@@ -228,6 +202,31 @@ def get_ai_service(
         model_api_service=model_api_service,
         notebook_model_service=notebook_model_service,
         assistant_service=assistant_service
+    )
+
+
+def get_chat_service(
+        session: AsyncSession = Depends(get_db_session),
+        chat_repo: ChatRepository = Depends(get_chat_repository),
+        thread_repo: ThreadRepository = Depends(get_thread_repository),
+        model_api_service: ModelApiService = Depends(get_model_api_service),
+        notebook_model_service: NotebookModelService = Depends(get_notebook_model_service),
+        chat_model_service: ChatModelService = Depends(get_chat_model_service),
+        assistant_service: AssistantService = Depends(get_assistant_service),
+        file_service: FileService = Depends(get_file_service),
+        ai_service: AIService = Depends(get_ai_service)
+) -> ChatService:
+    """Dependency provider for the ChatService."""
+    return container.chat_service(
+        session=session,
+        chat_repository=chat_repo,
+        thread_repository=thread_repo,
+        model_api_service=model_api_service,
+        notebook_model_service=notebook_model_service,
+        chat_model_service=chat_model_service,
+        assistant_service=assistant_service,
+        file_service=file_service,
+        ai_service=ai_service
     )
 
 

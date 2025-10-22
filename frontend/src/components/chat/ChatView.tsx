@@ -24,10 +24,9 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         loadingModels,
         creatingChat,
         isTyping,
-        hasModelsConfigured,
         isAuthenticated,
         user,
-        createNewChat,
+        createTemporaryChat,
         switchToChat,
         handleDeleteChat,
         handleSendMessage,
@@ -89,7 +88,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             onAudioSubmit={handleAudioSubmit}
             onFileSubmit={handleFileSubmit}
             disabled={!currentChatId || creatingChat || isTyping}
-            hasModelsConfigured={hasModelsConfigured}
+            hasModelsConfigured={true}
             loadingMessages={loadingMessages}
             loadingModels={loadingModels}
             onModelsRequired={handleModelsRequired}
@@ -118,7 +117,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             isTyping={isTyping}
             isAuthenticated={isAuthenticated}
             user={user}
-            createNewChat={createNewChat}
+            createNewChat={createTemporaryChat}
             switchToChat={switchToChat}
             handleDeleteChat={handleDeleteChat}
         />

@@ -6,8 +6,9 @@ from langgraph_sdk import get_client
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.chat import Chat
-from backend.models.dtos.chat import SendMessageRequest
+from backend.models.dtos.chat import SendMessageRequest, CreateThreadRequest
 from backend.models.notebook_model import NotebookModel
+from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.file_service import FileService
 from backend.services.model_api_service import ModelApiService
@@ -18,6 +19,7 @@ from backend.repositories.thread_repository import ThreadRepository
 
 load_dotenv()
 LANGGRAPH_URL = os.getenv("LANGGRAPH_URL")
+webhook_url = os.getenv("LANGGRAPH_WEBHOOK_URL") + "/chat-response"
 
 
 class ChatService:
@@ -38,7 +40,8 @@ class ChatService:
             notebook_model_service: NotebookModelService,
             chat_model_service: ChatModelService,
             assistant_service: AssistantService,
-            file_service: FileService
+            file_service: FileService,
+            ai_service: AIService
     ):
         """
         Initializes the ChatService with all its dependencies.
@@ -62,6 +65,7 @@ class ChatService:
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
         self.file_service = file_service
         self._assistant_id = None
+        self.ai_service = ai_service
 
     async def _get_assistant_id(self) -> str:
         """Lazy loads the assistant ID and returns it as a string."""
@@ -96,7 +100,7 @@ class ChatService:
         )
 
     async def create_new_chat_and_thread(
-            self, user_id: str, title: str = None, notebook_id: Optional[str] = None
+            self, user_id: str, request: CreateThreadRequest
     ) -> Chat:
         """
         Orchestrates creating a chat, its thread, and default models in a single transaction.
@@ -105,22 +109,28 @@ class ChatService:
         thread = await self.langgraph_client.threads.create()
         thread_id = thread['thread_id']
 
-        # 2. Use repositories to prepare local database records
         new_chat = await self.chat_repo.create(
-            user_id=user_id, thread_id=thread_id, notebook_id=notebook_id
+            user_id=user_id, thread_id=thread_id, notebook_id=request.notebook_id, title=request.title
         )
-
+        try:
+            await self.ai_service.generate_chat_name(
+                request.notebook_id,
+                user_id,
+                SendMessageRequest(first_message=request.text, chat_id=str(new_chat.chat_id))
+            )
+        except Exception as e:
+            print(e)
         await self.session.flush()
         # Track created models for potential later refresh
         created_models = []
 
         # 3. Get notebook models if notebook_id is provided
-        if notebook_id:
+        if request.notebook_id:
             notebook_light_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
-                notebook_id=notebook_id, model_type="light", user_id=user_id
+                notebook_id=request.notebook_id, model_type="light", user_id=user_id
             )
             notebook_heavy_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
-                notebook_id=notebook_id, model_type="heavy", user_id=user_id
+                notebook_id=request.notebook_id, model_type="heavy", user_id=user_id
             )
 
             # 4. Create chat models based on notebook models (no commits here)
@@ -179,10 +189,12 @@ class ChatService:
             run_input["audio_path"] = request.audio_path
 
         assistant_id = await self._get_assistant_id()
-        await self.langgraph_client.runs.wait(
+        background_run = await self.langgraph_client.runs.create(
             thread_id=thread_id,
             assistant_id=assistant_id,
             input=run_input,
+            webhook=webhook_url,  # Optional: For notification when done
+            metadata={"user_id": user_id}  # Optional: Add custom metadata
         )
 
     # --- Data Retrieval and Deletion Methods (delegated to repository) ---
@@ -190,6 +202,16 @@ class ChatService:
     async def get_chats_for_user(self, user_id: str, notebook_id: Optional[str] = None) -> List[Chat]:
         """Gets all chats for a user by calling the repository."""
         return await self.chat_repo.list_by_user_id(user_id, notebook_id)
+
+    async def get_chat_by_id(self, chat_id: str) -> Optional[Chat]:
+        """Gets a chat by its ID by calling the repository."""
+        return await self.chat_repo.get_by_id(chat_id)
+
+    async def update_chat(self, chat: Chat) -> Chat:
+        """Updates a chat by calling the repository."""
+        updated_chat = await self.chat_repo.update(chat)
+        await self.session.commit()
+        return updated_chat
 
     async def delete_chat(self, chat_id: str) -> bool:
         """

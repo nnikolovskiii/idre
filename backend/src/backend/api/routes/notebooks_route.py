@@ -35,11 +35,6 @@ async def create_notebook(
 
         await notebook_service.set_notebook_models(user_id=current_user.email, notebook_id=str(notebook.id))
 
-        await chat_service.create_new_chat_and_thread(
-            user_id=str(current_user.user_id),
-            notebook_id=notebook.id,
-        )
-
         return NotebookResponse(
             id=str(notebook.id),
             emoji=notebook.emoji,

@@ -29,12 +29,12 @@ echo "Stopping any process on port 8001..."
 lsof -ti:8001 | xargs kill -9 2>/dev/null || true
 
 # Go to backend directory and run poetry command in background
-echo "Starting backend..."
-cd backend
-poetry lock
-poetry install
-poetry run python src/backend/main.py &
-cd ..
+# echo "Starting backend..."
+# cd backend
+# poetry lock
+# poetry install
+# poetry run python src/backend/main.py &
+# cd ..
 
 # Stop any process on port 5173
 echo "Stopping any process on port 5173..."

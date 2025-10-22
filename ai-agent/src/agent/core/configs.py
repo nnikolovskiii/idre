@@ -4,7 +4,8 @@ from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 
 from agent.core.chat_graph_state import ChatGraphState
-from agent.core.transcription_graph import transcribe_and_enhance_audio_node
+from agent.core.chat_name_graph import generate_chat_name_node, ChatNameGraphState
+from agent.core.transcription_graph import transcribe_and_enhance_audio_node, TranscriptionGraphState
 from src.agent.core.agent import (
     llm_call,
     next_step,
@@ -79,7 +80,6 @@ def action():
     graph.add_node("segment_into_steps", segment_into_steps)
     graph.add_node("next_step", next_step)
 
-
     graph.add_edge(START, "segment_into_steps")
     graph.add_edge("segment_into_steps", "llm_call")
 
@@ -96,7 +96,6 @@ def action():
     graph.add_edge("next_step", "llm_call")
 
     return graph
-
 
 
 def route_input(state: State) -> Literal["question", "task"]:
@@ -122,7 +121,6 @@ def explore_plan_action():
     graph.add_node("build_context", build_context)
     graph.add_node("make_plan", make_plan)
     graph.add_node("push_to_git", push_to_git)
-
 
     # Start with file exploration
     graph.add_edge(START, "llm_file_explore")
@@ -160,7 +158,6 @@ def explore_plan_action():
     graph.add_edge("next_step", "llm_call")
     graph.add_edge("push_to_git", END)
 
-
     return graph
 
 
@@ -178,8 +175,9 @@ def simple_graph():
 
     return workflow
 
+
 def transcription_graph():
-    workflow = StateGraph(ChatGraphState)
+    workflow = StateGraph(TranscriptionGraphState)
 
     workflow.add_node("transcribe_and_enhance_audio_node", transcribe_and_enhance_audio_node)
 
@@ -189,6 +187,16 @@ def transcription_graph():
     return workflow
 
 
+def chat_name_graph():
+    workflow = StateGraph(ChatNameGraphState)
+
+    workflow.add_node("generate_chat_name_node", generate_chat_name_node)
+
+    workflow.set_entry_point("generate_chat_name_node")
+    workflow.add_edge("generate_chat_name_node", END)
+
+    return workflow
+
 
 # Build and compile transcription graph
 transcription_builder = transcription_graph()
@@ -197,3 +205,6 @@ transcription_graph = transcription_builder.compile()
 # Build and compile chat graph
 chat_builder = simple_graph()
 chat_graph = chat_builder.compile()
+
+chat_name_builder = chat_name_graph()
+chat_name_graph_compiled = chat_name_builder.compile()

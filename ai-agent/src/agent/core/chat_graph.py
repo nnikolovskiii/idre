@@ -149,7 +149,7 @@ def prepare_inputs_node(state: ChatGraphState):
     print("   > HumanMessage created and added to state.")
 
     return {
-        "messages": messages + [human_msg],
+        "messages": [human_msg],
         "processed_input": final_input,
         "enhanced_transcript": enhanced_transcript,
     }
@@ -248,7 +248,7 @@ def generate_answer_node(state: ChatGraphState):
     result.id = str(uuid.uuid4())
 
     return {
-        "messages": messages + [result], # Append success result to existing messages
+        "messages": [result], # Append success result to existing messages
         # Clear out temporary state values
         "processed_input": None,
         "enhanced_transcript": None,

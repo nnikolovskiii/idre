@@ -33,7 +33,9 @@ dependencies = [
     "pymongo (>=4.15.1,<5.0.0)",
     "python-pptx (>=1.0.2,<2.0.0)",
     "rembg (>=2.0.67,<3.0.0)",
-    "onnxruntime (>=1.23.0,<2.0.0)"
+    "onnxruntime (>=1.23.0,<2.0.0)",
+    "redis (>=5.0.0,<6.0.0)",
+    "pytest (>=8.4.2,<9.0.0)"
 ]
 
 [tool.poetry]

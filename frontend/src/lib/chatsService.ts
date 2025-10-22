@@ -21,6 +21,7 @@ export interface ChatResponse {
   thread_id: string;
   created_at: string;
   updated_at: string;
+  title: string
 }
 
 export interface MessageResponse {
@@ -32,6 +33,7 @@ export interface MessageResponse {
 
 export interface CreateThreadRequest {
   title: string;
+  text?: string;
   notebook_id?: string;
 }
 
@@ -53,7 +55,12 @@ export interface SendMessageRequest {
 export interface SendMessageResponse {
   status: string;
   message: string;
+  run_id?: string;  // Added: Returned by backend for async runs
   data?: any;
+}
+
+export interface RunStatusResponse {
+  status: string;  // e.g., 'pending', 'success', 'error', 'interrupted'
 }
 
 export interface AIModelsResponse {
@@ -144,8 +151,7 @@ export const chatsService = {
   sendMessageToThread: async (
       threadId: string,
       message?: string,
-      audioPath?: string,
-      onLoadingUpdate?: (isLoading: boolean) => void
+      audioPath?: string
   ): Promise<SendMessageResponse> => {
     const payload: SendMessageRequest = {};
 
@@ -158,41 +164,42 @@ export const chatsService = {
       payload.audio_path = audioPath;
     }
 
-    // Signal that processing is starting
-    if (onLoadingUpdate) {
-      onLoadingUpdate(true);
+    const response = await fetch(sendMessageToThreadUrl(threadId), {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to send message: ${response.statusText} (${errorText})`);
     }
 
-    try {
-      const response = await fetch(sendMessageToThreadUrl(threadId), {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+    return response.json();
+  },
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to send message: ${response.statusText} (${errorText})`);
-      }
+  /**
+   * Get the status of a LangGraph run
+   * Endpoint: GET /runs/{run_id}/status (adjust if your backend endpoint differs)
+   */
+  getRunStatus: async (runId: string): Promise<RunStatusResponse> => {
+    const response = await fetch(`/runs/${runId}/status`, {  // Adjust URL to match your backend endpoint
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-      const result = await response.json();
-
-      // Signal that processing is complete
-      if (onLoadingUpdate) {
-        onLoadingUpdate(false);
-      }
-
-      return result;
-    } catch (error) {
-      // Make sure to turn off loading indicator on error
-      if (onLoadingUpdate) {
-        onLoadingUpdate(false);
-      }
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch run status: ${response.statusText} (${errorText})`);
     }
+
+    return response.json();
   },
 
   /**

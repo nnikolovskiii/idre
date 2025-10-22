@@ -11,6 +11,7 @@ class ChatResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     notebook_id: Optional[str] = None
+    title: Optional[str] = None
 
 
 class MessageResponse(BaseModel):
@@ -26,10 +27,13 @@ class SendMessageRequest(BaseModel):
     light_model: Optional[str] = None
     heavy_model: Optional[str] = None
     file_id : Optional[str] = None
+    first_message: Optional[str] = False
+    chat_id: Optional[str] = None
 
 
 class CreateThreadRequest(BaseModel):
     title: str
+    text: str
     notebook_id: Optional[str] = None
 
 

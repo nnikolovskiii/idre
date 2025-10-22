@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import type { Options } from "react-markdown";
 import type { Message } from "../../types/chat";
 import AudioPlayer from "../ui/AudioPlayer";
-import { Copy, Trash2, Volume2, MessageCircle } from "lucide-react";
+import { Copy, Trash2, Volume2 } from "lucide-react";
 
 interface AudioPlayerHandle {
     play: () => void;
@@ -131,11 +131,6 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                     <div className="flex flex-col items-center justify-center gap-4 py-12 text-muted-foreground">
                         <div className="h-8 w-8 border-4 border-border border-t-primary rounded-full animate-spin"></div>
                         <span className="text-sm">Loading messages...</span>
-                    </div>
-                ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-4 py-12 text-muted-foreground">
-                        <MessageCircle size={48} className="opacity-50" />
-                        <span className="text-sm">No messages yet. Start a conversation!</span>
                     </div>
                 ) : (
                     messages.map((message) => {

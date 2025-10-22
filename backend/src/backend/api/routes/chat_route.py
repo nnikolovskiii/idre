@@ -1,13 +1,17 @@
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
+import asyncio
+import json
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from backend.api.dependencies import get_chat_service
 from backend.models import User
 from backend.api.routes.auth_route import get_current_user
 from backend.models.dtos.chat import ChatResponse, MessageResponse, SendMessageRequest, CreateThreadRequest
 from backend.services.chat_service import ChatService
+from backend.container import container
 
 router = APIRouter()
 load_dotenv()
@@ -32,7 +36,8 @@ async def get_chats(
                 user_id=chat.user_id,
                 thread_id=str(chat.thread_id),
                 created_at=chat.created_at,
-                updated_at=chat.updated_at
+                updated_at=chat.updated_at,
+                title=chat.title
             ) for chat in chats
         ]
     except Exception as e:
@@ -104,8 +109,7 @@ async def create_new_thread(
     try:
         new_chat = await chat_service.create_new_chat_and_thread(
             user_id=str(current_user.user_id),
-            title=request.title,
-            notebook_id=request.notebook_id
+            request=request
         )
 
         return {
@@ -153,3 +157,37 @@ async def delete_message_from_thread_endpoint(
         return {"status": "success", "message": "Message deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting message: {str(e)}")
+
+
+@router.get("/sse/{thread_id}")
+async def sse_endpoint(thread_id: str):
+    """
+    Server-Sent Events endpoint for real-time chat updates.
+    Subscribes to Redis pub/sub channel for the specific thread.
+    """
+    redis_client = container.redis_client()
+    channel = f"sse:thread:{thread_id}"
+    
+    async def event_generator() -> AsyncGenerator[str, None]:
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe(channel)
+        
+        try:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    yield message["data"]
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )

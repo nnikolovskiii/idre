@@ -21,6 +21,7 @@ class Chat(Base):
 
     chat_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(Text, nullable=False)
+    title = Column(Text, nullable=False)
     notebook_id = Column(UUID(as_uuid=True))
 
     thread_id = Column(UUID(as_uuid=True), ForeignKey('thread.thread_id', ondelete="CASCADE"), nullable=False)

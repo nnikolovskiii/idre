@@ -16,6 +16,7 @@ load_dotenv()
 LANGGRAPH_URL = os.getenv("LANGGRAPH_URL")
 LANGGRAPH_WEBHOOK_URL = os.getenv("LANGGRAPH_WEBHOOK_URL")
 
+
 class AIService:
     """
     Orchestrates chat-related business logic.
@@ -49,30 +50,40 @@ class AIService:
         self.notebook_model_service = notebook_model_service
         self.assistant_service = assistant_service
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
-        self._assistant_id = None
+        # Remove _assistant_id; we'll handle this per-method now for flexibility
 
-    async def _get_assistant_id(self) -> str:
-        """Lazy loads the assistant ID and returns it as a string."""
-        if self._assistant_id is None:
-            print("DEBUG: Fetching assistant...")
-            assistant = await self.assistant_service.get_assistant_by_graph_id("transcription_agent")
-            print(f"DEBUG: Got assistant: {assistant}")
+    async def _get_assistant_id(self, graph_id: str) -> str:
+        """Lazy loads the assistant ID for a given graph_id and returns it as a string."""
+        print(f"DEBUG: Fetching assistant for graph_id '{graph_id}'...")
+        assistant = await self.assistant_service.get_assistant_by_graph_id(graph_id)
+        print(f"DEBUG: Got assistant: {assistant}")
 
-            if assistant is None:
-                raise ValueError("Assistant with graph_id 'chat_agent' not found.")
+        if assistant is None:
+            raise ValueError(f"Assistant with graph_id '{graph_id}' not found.")
 
-            print(f"DEBUG: Assistant ID: {assistant.assistant_id}")
-            self._assistant_id = str(assistant.assistant_id)
-            print(f"DEBUG: Stored assistant_id as string: {self._assistant_id}")
+        print(f"DEBUG: Assistant ID: {assistant.assistant_id}")
+        assistant_id = str(assistant.assistant_id)
+        print(f"DEBUG: Returning assistant_id as string: {assistant_id}")
 
-        return self._assistant_id
+        return assistant_id
 
-    async def transcribe_file(self, notebook_id: str, user_id: str, request: SendMessageRequest):
+    async def transcribe_file(self, notebook_id: str, user_id: str, request: SendMessageRequest,
+                              graph_id: str = "transcription_agent"):
         """
         Orchestrates sending a message by gathering all data and invoking LangGraph.
-        """
+        Now accepts a graph_id for flexibility (defaults to 'transcription_agent' for backward compatibility).
 
-        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(notebook_id=notebook_id, model_type="light", user_id=user_id)
+        Args:
+            notebook_id: ID of the notebook.
+            user_id: ID of the user.
+            request: The send message request.
+            graph_id: The graph ID for the assistant (e.g., "transcription_agent").
+        """
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
 
         if not notebook_model:
             raise ValueError(f"No notebook model found for: {notebook_id}")
@@ -80,17 +91,17 @@ class AIService:
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
         run_input = {
-            "light_model":notebook_model.model.name,
+            "light_model": notebook_model.model.name,
             "api_key": model_api.value if model_api else None,
         }
 
         if request.audio_path:
             run_input["audio_path"] = request.audio_path
 
-        assistant_id = await self._get_assistant_id()
+        assistant_id = await self._get_assistant_id(graph_id)  # Now dynamic
 
         # Start background run with webhook for completion notification
-        webhook_url = LANGGRAPH_WEBHOOK_URL
+        webhook_url = LANGGRAPH_WEBHOOK_URL + "/lol"
         # In your transcribe_file or wherever you start the run
         background_run = await self.langgraph_client.runs.create(
             thread_id=None,  # Stateless
@@ -101,7 +112,7 @@ class AIService:
             on_completion="keep",  # Preserve thread for webhook fetch
         )
 
-        return { "status": "started"}
+        return {"status": "started"}
 
         # final_state = await self.langgraph_client.runs.wait(
         #     thread_id=None,
@@ -110,3 +121,44 @@ class AIService:
         # )
         #
         # print("lol")
+
+    # Example: Add a new method for a different assistant (e.g., chat)
+    async def generate_chat_name(self, notebook_id: str, user_id: str, request: SendMessageRequest, graph_id: str = "chat_name_agent"):
+        """
+        Example method for a chat operation using a different assistant.
+
+        Args:
+            user_id: ID of the user.
+            message: The chat message.
+            graph_id: The graph ID for the assistant (e.g., "chat_agent").
+        """
+        # Gather inputs specific to chat...
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
+
+        if not notebook_model:
+            raise ValueError(f"No notebook model found for: {notebook_id}")
+
+        model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
+
+        run_input = {
+            "light_model": notebook_model.model.name,
+            "api_key": model_api.value if model_api else None,
+            "first_message": request.first_message,
+        }
+
+        assistant_id = await self._get_assistant_id(graph_id)
+
+        background_run = await self.langgraph_client.runs.create(
+            thread_id=None,
+            assistant_id=assistant_id,
+            input=run_input,
+            webhook=LANGGRAPH_WEBHOOK_URL+"/chat-name-creation",
+            metadata={"chat_id": request.chat_id, "temp_thread": True},
+            on_completion="keep",
+        )
+
+        return {"status": "started"}

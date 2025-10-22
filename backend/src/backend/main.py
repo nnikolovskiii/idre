@@ -54,11 +54,16 @@ async def lifespan(app: FastAPI):
     print("INFO:     Application startup: Creating database tables...")
     await postgres_db.create_tables()
     print("INFO:     Application startup: Database tables created/verified.")
+    
+    # Initialize Redis client
+    redis_client = container.redis_client()
+    print("INFO:     Application startup: Redis client initialized.")
 
     yield
 
     # --- Shutdown ---
-    # You can add cleanup code here if needed, like closing the engine pool
+    print("INFO:     Application shutdown: Closing Redis connection...")
+    await redis_client.close()
     print("INFO:     Application shutdown: Disposing database engine.")
     await postgres_db.engine.dispose()
 

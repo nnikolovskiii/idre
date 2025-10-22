@@ -3,10 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from langgraph_sdk import get_client
 import os
 from dotenv import load_dotenv
-from backend.api.dependencies import get_file_service
+from pydantic import BaseModel
+import json
+
+from backend.api.dependencies import get_file_service, get_chat_service
 from backend.models.file import ProcessingStatus
+from backend.services.chat_service import ChatService
 from backend.services.file_service import FileService
 from fastapi import FastAPI, Request, BackgroundTasks
+from backend.container import container
 
 router = APIRouter()
 load_dotenv()
@@ -94,3 +99,99 @@ async def handle_langgraph_webhook(
         # Define retry_fetch_and_update as a helper func elsewhere
 
     return {"received": "ok", "run_id": run_id}
+
+
+class WebhookPayload(BaseModel):
+    run_id: str
+    thread_id: str
+    status: str  # e.g., 'success', 'error'
+    values: dict  # The final graph state or outputs
+
+@router.post("/chat-response")
+async def handle_langgraph_chat_response_webhook(
+    request: Request,
+) -> Dict[str, str]:
+    redis_client = container.redis_client()
+    
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        thread_id = validated_payload.thread_id
+        status = validated_payload.status
+
+        if status == "success":
+            full_messages = validated_payload.values.get("messages", [])
+            delta = full_messages[-1:] if full_messages else []
+
+            event_data = {
+                "event": "message_update",
+                "data": {
+                    "thread_id": thread_id,
+                    "messages": full_messages,
+                    "delta": delta,
+                    "status": "completed",
+                    "run_id": run_id
+                }
+            }
+
+            # Publish to Redis channel for this thread
+            channel = f"sse:thread:{thread_id}"
+            event_json = json.dumps(event_data)
+            sse_formatted = f"data: {event_json}\n\n"
+
+            await redis_client.publish(channel, sse_formatted)
+            print(f"Published SSE update to Redis channel {channel}")
+        
+        elif status == "error":
+            error_data = {
+                "event": "error",
+                "data": {
+                    "thread_id": thread_id,
+                    "error": validated_payload.values.get("error", "Unknown error")
+                }
+            }
+            channel = f"sse:thread:{thread_id}"
+            sse_formatted = f"data: {json.dumps(error_data)}\n\n"
+            await redis_client.publish(channel, sse_formatted)
+            print(f"Published error to Redis channel {channel}")
+
+        return {"status": "received"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+
+
+@router.post("/chat-name-creation")
+async def handle_chat_name_creation(
+        request: Request,
+        chat_service: ChatService = Depends(get_chat_service),
+) -> Dict[str, str]:
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        thread_id = validated_payload.thread_id
+        status = validated_payload.status
+        metadata = payload.get("metadata", {})
+
+        if status == "success":
+            chat_id = metadata.get("chat_id")
+            title = validated_payload.values.get("title", "Chat")
+            chat = await chat_service.get_chat_by_id(chat_id)
+            chat.title = title
+            await chat_service.update_chat(chat)
+
+        elif status == "error":
+            error_data = {
+                "event": "error",
+                "data": {
+                    "thread_id": thread_id,
+                    "error": validated_payload.values.get("error", "Unknown error")
+                }
+            }
+
+        return {"status": "received"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")

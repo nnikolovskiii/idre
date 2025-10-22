@@ -6,6 +6,7 @@ from dependency_injector import containers, providers
 from sqlalchemy.ext.asyncio import AsyncSession
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+import redis.asyncio as redis
 
 from backend.databases.postgres_db import AsyncPostgreSQLDatabase
 from backend.repositories.app_settings_repository import AppSettingsRepository
@@ -43,10 +44,17 @@ def create_fernet() -> Fernet:
     return Fernet(encryption_key.encode())
 
 
+def create_redis_client() -> redis.Redis:
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    return redis.from_url(redis_url, decode_responses=True)
+
+
 class Container(containers.DeclarativeContainer):
     db = providers.Singleton(AsyncPostgreSQLDatabase)
 
     fernet = providers.Singleton(create_fernet)
+    
+    redis_client = providers.Singleton(create_redis_client)
 
     chat_repository = providers.Factory(ChatRepository)
     thread_repository = providers.Factory(ThreadRepository)
@@ -109,6 +117,13 @@ class Container(containers.DeclarativeContainer):
         generative_model_service=generative_model_service,
     )
 
+    ai_service = providers.Factory(
+        AIService,
+        model_api_service=model_api_service,
+        notebook_model_service=notebook_model_service,
+        assistant_service=assistant_service,
+    )
+
     chat_service = providers.Factory(
         ChatService,
         model_api_service=model_api_service,
@@ -118,13 +133,7 @@ class Container(containers.DeclarativeContainer):
         chat_model_service=chat_model_service,
         assistant_service=assistant_service,
         file_service=file_service,
-    )
-
-    ai_service = providers.Factory(
-        AIService,
-        model_api_service=model_api_service,
-        notebook_model_service=notebook_model_service,
-        assistant_service=assistant_service,
+        ai_service=ai_service,
     )
 
     user_repository = providers.Factory(UserRepository)

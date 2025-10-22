@@ -2,7 +2,7 @@ import os
 
 from langchain_core.runnables import RunnableConfig
 
-from agent.core.configs import graph
+from agent.core.configs import chat_name_graph_compiled
 
 audio_path = "https://files.nikolanikolovski.com/test/download/test123.ogg"
 
@@ -10,14 +10,14 @@ audio_path = "https://files.nikolanikolovski.com/test/download/test123.ogg"
 config = RunnableConfig(recursion_limit=250)
 
 # Invoke the graph with audio input
-state = graph.invoke(
+state = chat_name_graph_compiled.invoke(
     {
-        "audio_path": audio_path,
-        "light_model": "google/gemini-2.5-flash",  # Optional: specify model
-        "api_key": os.getenv("OPENROUTER_API_KEY")  # Optional: provide API key
+        "light_model": "google/gemini-2.5-flash",
+        # "api_key": os.getenv("OPENROUTER_API_KEY"),
+        "first_message": "Can you explain to me what docker is?",
     },
     config=config
 )
 
 # Output the enhanced transcript
-print("Enhanced Transcript:", state.get("enhanced_transcript"))
+print("Enhanced Transcript:", state.get("title"))
