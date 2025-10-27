@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { fileService } from "../../lib/filesService";
 
 interface FileViewerModalProps {
     isOpen: boolean;
     onClose: () => void;
     fileName: string;
+    fileId: string;
     fileUrl: string;
     contentType: string;
 }
@@ -12,10 +14,12 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
                                                              isOpen,
                                                              onClose,
                                                              fileName,
+                                                             fileId,
                                                              fileUrl,
                                                              contentType,
                                                          }) => {
     const [fileContent, setFileContent] = useState<string>("");
+    const [blobUrl, setBlobUrl] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,12 +27,17 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(fileUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch file: ${response.status}`);
+            const blob = await fileService.downloadFile(fileId);
+            
+            // For text files, read the blob as text
+            if (contentType.startsWith("text/")) {
+                const text = await blob.text();
+                setFileContent(text);
+            } else {
+                // For other files (images, audio), create a blob URL
+                const url = URL.createObjectURL(blob);
+                setBlobUrl(url);
             }
-            const text = await response.text();
-            setFileContent(text);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load file");
         } finally {
@@ -37,10 +46,17 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
     };
 
     useEffect(() => {
-        if (isOpen && contentType.startsWith("text/")) {
+        if (isOpen) {
             fetchFileContent();
         }
-    }, [isOpen, contentType, fileUrl]);
+        
+        // Cleanup blob URL when component unmounts or modal closes
+        return () => {
+            if (blobUrl) {
+                URL.revokeObjectURL(blobUrl);
+            }
+        };
+    }, [isOpen, fileId]);
 
 
     if (!isOpen) return null;
@@ -71,15 +87,15 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
                             <button onClick={fetchFileContent} className="bg-blue-600 text-white border-none rounded px-4 py-2 cursor-pointer text-sm hover:bg-blue-700 transition-colors">Retry</button>
                         </div>
                     )}
-                    {isImage && !loading && (
+                    {isImage && !loading && blobUrl && (
                         <img
-                            src={fileUrl}
+                            src={blobUrl}
                             alt={fileName}
                             className="max-w-full max-h-[70vh] object-contain rounded"
                             onError={() => setError("Failed to load image")}
                         />
                     )}
-                    {isAudio && !loading && !error && (
+                    {isAudio && !loading && !error && blobUrl && (
                         <div className="w-full">
                             <audio
                                 controls
@@ -87,7 +103,7 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
                                 className="w-full"
                                 onError={() => setError("Failed to load audio")}
                             >
-                                <source src={fileUrl} type={contentType} />
+                                <source src={blobUrl} type={contentType} />
                                 Your browser does not support the audio element.
                             </audio>
                             <div className="mt-4 text-sm text-gray-600">

@@ -29,8 +29,6 @@ async def create_notebook(
             emoji=notebook_data.emoji,
             title=notebook_data.title,
             date=notebook_data.date,
-            bg_color=notebook_data.bg_color,
-            text_color=notebook_data.text_color,
         )
 
         await notebook_service.set_notebook_models(user_id=current_user.email, notebook_id=str(notebook.id))
@@ -40,8 +38,6 @@ async def create_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            bg_color=notebook.bg_color,
-            text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,
             updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
         )
@@ -70,8 +66,6 @@ async def get_all_notebooks(
                 emoji=notebook.emoji,
                 title=notebook.title,
                 date=notebook.date,
-                bg_color=notebook.bg_color,
-                text_color=notebook.text_color,
                 created_at=notebook.created_at.isoformat() if notebook.created_at else None,
                 updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
             )
@@ -109,8 +103,6 @@ async def get_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            bg_color=notebook.bg_color,
-            text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,
             updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
         )
@@ -142,8 +134,6 @@ async def update_notebook(
                 "emoji": notebook_data.emoji,
                 "title": notebook_data.title,
                 "date": notebook_data.date,
-                "bg_color": notebook_data.bg_color,
-                "text_color": notebook_data.text_color,
             }
         )
 
@@ -155,8 +145,6 @@ async def update_notebook(
             emoji=notebook.emoji,
             title=notebook.title,
             date=notebook.date,
-            bg_color=notebook.bg_color,
-            text_color=notebook.text_color,
             created_at=notebook.created_at.isoformat() if notebook.created_at else None,
             updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
         )

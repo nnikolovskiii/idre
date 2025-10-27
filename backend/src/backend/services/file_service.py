@@ -1,12 +1,21 @@
+# backend/services/file_service.py
+
+import os
 import uuid
 import time
 from typing import List, Optional, Dict, Any
 
 import aiohttp
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.file import File, ProcessingStatus
 from backend.repositories.file_repository import FileRepository
+
+load_dotenv()
+docker_files_url = os.getenv("FILE_SERVICE_URL_DOCKER")
+files_url = os.getenv("FILE_SERVICE_URL")
+upload_password = os.getenv("UPLOAD_PASSWORD")
 
 
 class FileService:
@@ -90,24 +99,35 @@ class FileService:
 
     async def update_file(
             self,
+            user_id: str,  # <-- ADDED: For security check
             file_id: str,
             updates: Dict[str, Any],
             merge_processing_result: bool = False
     ) -> Optional[File]:
         """
-        (Orchestration) Update a file record with the provided updates.
+        (Orchestration) Update a file record for a specific user.
+        First verifies ownership, then applies the updates.
         If 'processing_result' is in updates and merge_processing_result is True,
-        it will be merged into the existing result (or set as new if none exists).
+        it will be merged into the existing result.
         Commits the changes.
         """
+        # --- MODIFICATION START ---
+        # First, verify the user owns the file.
+        file_to_update = await self.repo.get_by_id_and_user(file_id=file_id, user_id=user_id)
+        if not file_to_update:
+            return None  # Return None if not found or not owned by user
+        # --- MODIFICATION END ---
+
         file_record = await self.repo.update(
             file_id=file_id,
             updates=updates,
             merge_processing_result=merge_processing_result
         )
+
         if file_record:
             await self.session.commit()
             await self.session.refresh(file_record)
+
         return file_record
 
     async def delete_file(self, user_id: str, file_id: str) -> bool:
@@ -125,7 +145,6 @@ class FileService:
         if success:
             await self.session.commit()
         return success
-
 
     async def get_notebook_files_content(self, user_id: str, notebook_id: str) -> str:
         """
@@ -149,16 +168,27 @@ class FileService:
 
         content_parts = []
 
+        # Prepare the headers for the file service request
+        if not upload_password:
+            print("Error: UPLOAD_PASSWORD environment variable not set. File fetching will likely fail.")
+            headers = {}
+        else:
+            headers = {"password": upload_password}
+
         async with aiohttp.ClientSession() as session:
             for file in files:
+                new_url = file.url.replace(files_url, docker_files_url)
                 try:
                     # Determine if file is text or audio based on content_type
                     if file.content_type and file.content_type.startswith('text/'):
-                        # Text file: fetch content from URL
-                        async with session.get(file.url) as response:
+                        # Text file: fetch content from URL, including the auth password
+                        async with session.get(new_url, headers=headers) as response:
                             if response.status == 200:
                                 text_content = await response.text()
                                 content_parts.append(f"--- File: {file.filename} ---\n{text_content}")
+                            else:
+                                print(f"Error fetching file {file.filename}: Status {response.status}")
+
 
                     elif file.content_type and file.content_type.startswith('audio/'):
                         # Audio file: get transcription from processing_result

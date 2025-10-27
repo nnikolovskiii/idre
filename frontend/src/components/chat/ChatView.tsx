@@ -5,6 +5,7 @@ import {useChats} from "../../hooks/useChats.ts";
 import InputArea from "./InputArea.tsx";
 import MessagesContainer from "./MessagesContainer.tsx";
 import Layout from "../layout/Layout.tsx";
+import ModelInfo from "./ModelInfo.tsx";
 import {fileService} from "../../lib/filesService.ts";
 
 type ChatViewProps = {
@@ -26,6 +27,8 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         isTyping,
         isAuthenticated,
         user,
+        isTemporaryChat,
+        currentChatModels,
         createTemporaryChat,
         switchToChat,
         handleDeleteChat,
@@ -95,6 +98,13 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         />
     );
 
+    const modelInfo = (
+        <ModelInfo
+            models={currentChatModels}
+            loading={loadingModels}
+        />
+    );
+
     const children = (
         <MessagesContainer
             messages={currentChat?.messages || []}
@@ -109,6 +119,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             notebookId={currentNotebookId}
             children={children}
             inputArea={inputArea}
+            modelInfo={modelInfo}
             title={currentChat?.title || "AI Assistant"}
             chatSessions={chatSessions}
             currentChatId={currentChatId}
@@ -117,6 +128,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             isTyping={isTyping}
             isAuthenticated={isAuthenticated}
             user={user}
+            isTemporaryChat={isTemporaryChat}
             createNewChat={createTemporaryChat}
             switchToChat={switchToChat}
             handleDeleteChat={handleDeleteChat}

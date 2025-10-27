@@ -48,15 +48,15 @@ const Register: React.FC = () => {
   return (
       <div className="relative min-h-screen w-full bg-[#0F0F0F] text-white font-noto-sans overflow-hidden">
         {/* Background Image Element */}
-        <div
-            className="absolute w-[2200px] h-[1680px] -left-[50px] top-[-120px] z-0"
-            style={{
-              backgroundImage: `url('/login_background.png')`,
-              backgroundSize: 'contain',
-              backgroundRepeat: 'no-repeat',
-              transform: 'rotate(1deg)',
-            }}
-        ></div>
+          <div
+              className="absolute w-[2200px] h-[1680px] -left-[150px] top-[-350px] z-0"
+              style={{
+                  backgroundImage: `url('/login_background.png')`, // Path from the public folder
+                  backgroundSize: 'contain',
+                  backgroundRepeat: 'no-repeat',
+                  transform: 'rotate(1deg)',
+              }}
+          ></div>
 
         {/* Content Container */}
         <div className="relative z-10 min-h-screen w-full grid md:grid-cols-2 bg-black/20 p-8 sm:p-12">
@@ -97,19 +97,19 @@ const Register: React.FC = () => {
                   )}
 
                   <div className="grid grid-cols-2 gap-4">
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="First Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
-                    <input type="text" value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Last Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="First Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-[#E0E6F6] transition" />
+                    <input type="text" value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Last Name" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-[#E0E6F6] transition" />
                   </div>
-                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-[#E0E6F6] transition" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-[#E0E6F6] transition" />
                   <div className="relative">
-                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition" />
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-[#E0E6F6] transition" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-4 text-white/70 hover:text-white" aria-label="Toggle password visibility">
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
                     </button>
                   </div>
 
-                  <button type="submit" disabled={isLoading || success} className={`w-full py-3 mt-4 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg ${isLoading || success ? 'bg-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#E0E6F6] to-[#9D3D9D] text-black hover:shadow-purple-400/30'}`}>
+                  <button type="submit" disabled={isLoading || success} className={`w-full py-3 mt-4 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg ${isLoading || success ? 'bg-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#E0E6F6] to-[#E0E6F6] text-black hover:shadow-purple-400/30'}`}>
                     {isLoading ? 'Creating Account...' : success ? 'Success!' : 'Create Account'}
                   </button>
 

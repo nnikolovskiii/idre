@@ -7,10 +7,13 @@ import LoginModal from "../modals/LoginModal";
 import RegisterModal from "../modals/RegisterModal";
 import type { ChatSession } from "../../types/chat";
 import ChatHeader from "../chat/ChatHeader";
+import idreLogo from "../../assets/idre_logo_v2_white.png";
+import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
 
 interface LayoutProps {
     children: React.ReactNode;
     inputArea?: React.ReactNode;
+    modelInfo?: React.ReactNode;
     notebookId?: string;
     title: string;
     chatSessions: ChatSession[];
@@ -20,6 +23,7 @@ interface LayoutProps {
     isTyping: boolean;
     isAuthenticated?: boolean;
     user?: { name?: string; surname?: string; email?: string; username?: string } | null;
+    isTemporaryChat?: boolean;
     createNewChat: (notebookId?: string) => void;
     switchToChat: (chatId: string) => void;
     handleDeleteChat: (chatId: string) => void;
@@ -28,6 +32,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({
                                            children,
                                            inputArea,
+                                           modelInfo,
                                            notebookId,
                                            title,
                                            chatSessions,
@@ -36,6 +41,7 @@ const Layout: React.FC<LayoutProps> = ({
                                            creatingChat,
                                            isAuthenticated,
                                            user,
+                                           isTemporaryChat = false,
                                            createNewChat,
                                            switchToChat,
                                            handleDeleteChat,
@@ -96,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({
             </div>
 
             {/* Main Content Area - this will inherit the `bg-background` color */}
-            <main className="flex-1 flex flex-col h-full min-w-0 relative">
+            <main className={`flex-1 flex flex-col h-full min-w-0 relative ${isTemporaryChat ? 'justify-center items-center' : ''}`}>
                 <div className="md:hidden">
                     <ChatHeader
                         title={title}
@@ -104,8 +110,27 @@ const Layout: React.FC<LayoutProps> = ({
                         onSettingsClick={handleOpenAIModelsSettings}
                     />
                 </div>
-                {children}
-                {inputArea}
+                {isTemporaryChat ? (
+                    <div className="flex flex-col items-center gap-8 w-full max-w-3xl px-4">
+                        <img 
+                            src={idreLogo}
+                            alt="Logo" 
+                            className="w-60 h-auto dark:hidden"
+                        />
+                        <img 
+                            src={idreWhiteLogo}
+                            alt="Logo" 
+                            className="w-60 h-auto hidden dark:block"
+                        />
+                        {inputArea}
+                    </div>
+                ) : (
+                    <>
+                        {children}
+                        {inputArea}
+                        {modelInfo}
+                    </>
+                )}
             </main>
 
             {/* Modals */}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { chatsService, type ChatResponse } from "../lib/chatsService";
 import type { ChatSession, Message } from "../types/chat";
@@ -31,6 +31,7 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
 };
 
 export const useChats = (notebookIdParam?: string) => {
+    const initialFetchDone = useRef(false);
     const { user, isAuthenticated } = useAuth();
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export const useChats = (notebookIdParam?: string) => {
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
     const [eventSource, setEventSource] = useState<EventSource | null>(null);
     const [isTemporaryChat, setIsTemporaryChat] = useState(false);
+    const [currentChatModels, setCurrentChatModels] = useState<Record<string, any>>({});
 
     // In useChats hook, update the fetchMessagesForCurrentChat function:
     const fetchMessagesForCurrentChat = useCallback(async () => {
@@ -61,9 +63,23 @@ export const useChats = (notebookIdParam?: string) => {
             console.log('Fetched messages:', convertedMessages.length);
 
             setChatSessions((prev) => {
+                // Find the current chat in the previous state
+                const currentChat = prev.find(chat => chat.thread_id === currentThreadId);
+
+                // Get any existing optimistic messages from that chat
+                const optimisticMessages = currentChat
+                    ? currentChat.messages.filter(msg => msg.id.startsWith("msg_optimistic_"))
+                    : [];
+
+                // Combine the messages from the backend with our existing optimistic messages
+                // This prevents the fetch from wiping out the user's immediate feedback.
+                // The SSE event will later replace the optimistic message with the real one.
+                const finalMessages = [...convertedMessages, ...optimisticMessages];
+
                 const updated = prev.map((chat) =>
                     chat.thread_id === currentThreadId
-                        ? { ...chat, messages: convertedMessages }
+                        // Use the newly combined message list
+                        ? { ...chat, messages: finalMessages }
                         : chat
                 );
                 console.log('Updated chatSessions');
@@ -81,7 +97,7 @@ export const useChats = (notebookIdParam?: string) => {
     useEffect(() => {
         const fetchInitialChats = async () => {
             setLoadingChats(true);
-            setLoadingMessages(true); // Set loading for initial messages too
+            setLoadingMessages(true);
             try {
                 // Use the new chatsService.getChats() method with optional notebook_id
                 const backendChats = await chatsService.getChats(notebookIdParam);
@@ -92,26 +108,29 @@ export const useChats = (notebookIdParam?: string) => {
                     setCurrentChatId(convertedChats[0].id);
                     setCurrentThreadId(convertedChats[0].thread_id);
                 } else {
-                    // Do not auto-create a new chat; wait for user to click Add
-                    setChatSessions([]);
-                    setCurrentChatId(null);
-                    setCurrentThreadId(null);
+                    // No chats found, so create a temporary one automatically.
+                    createTemporaryChat();
+                    setLoadingMessages(false);
                 }
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
                 console.error("Error fetching chats:", errorMessage);
-                // Do not auto-create a new chat on error; user can create manually
-                setChatSessions([]);
-                setCurrentChatId(null);
-                setCurrentThreadId(null);
+                // Also create a temp chat on error so the user isn't blocked
+                createTemporaryChat();
+                setLoadingMessages(false);
             } finally {
                 setLoadingChats(false);
-                // Don't set loadingMessages to false here - let fetchMessagesForCurrentChat handle it
             }
         };
 
-        fetchInitialChats();
+        // =======================================================
+        // THE FIX IS HERE
+        // =======================================================
+        if (initialFetchDone.current === false) {
+            fetchInitialChats();
+            initialFetchDone.current = true;
+        }
     }, [notebookIdParam]);
 
     useEffect(() => {
@@ -127,6 +146,7 @@ export const useChats = (notebookIdParam?: string) => {
             if (!currentChatId) {
                 setHasModelsConfigured(false);
                 setLoadingModels(false);
+                setCurrentChatModels({});
                 return;
             }
 
@@ -136,9 +156,11 @@ export const useChats = (notebookIdParam?: string) => {
                 const hasAny = !!models && (Object.keys(models).length > 0);
                 const hasNamed = !!(models?.["light"]?.model_name || models?.["heavy"]?.model_name);
                 setHasModelsConfigured(hasAny && hasNamed);
+                setCurrentChatModels(models || {});
             } catch {
                 // If fetching fails, assume not configured
                 setHasModelsConfigured(false);
+                setCurrentChatModels({});
             } finally {
                 setLoadingModels(false);
             }
@@ -219,7 +241,7 @@ export const useChats = (notebookIdParam?: string) => {
         // If it's a temporary chat, just remove it from local state
         if (chatId.startsWith("temp_")) {
             setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
-            
+
             if (currentChatId === chatId) {
                 const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
                 if (remainingChats.length > 0) {
@@ -293,7 +315,7 @@ export const useChats = (notebookIdParam?: string) => {
         if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
             try {
                 setCreatingChat(true);
-                
+
                 // Add optimistic message to temporary chat FIRST for instant feedback
                 const optimisticText = text || "Audio message sent...";
                 const optimisticMessage: Message = {
@@ -313,7 +335,7 @@ export const useChats = (notebookIdParam?: string) => {
                 );
 
                 const newChat = await createNewChat(notebookIdParam, text);
-                
+
                 if (!newChat) {
                     console.error("Failed to create chat");
                     return;
@@ -340,7 +362,7 @@ export const useChats = (notebookIdParam?: string) => {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
                 console.error("Error creating chat and sending message:", errorMessage);
-                
+
                 // Remove optimistic message on error
                 setChatSessions((prev) =>
                     prev.map((chat) =>
@@ -419,7 +441,7 @@ export const useChats = (notebookIdParam?: string) => {
 
         const apiUrl = window.ENV?.VITE_API_BASE_URL || 'http://localhost:8001';
         const url = `${apiUrl}/chats/sse/${currentThreadId}`;
-        
+
         console.log('Connecting to SSE:', url);
         const es = new EventSource(url);
 
@@ -435,45 +457,19 @@ export const useChats = (notebookIdParam?: string) => {
                 if (data.event === 'message_update') {
                     const messages = data.data.messages || [];
                     const convertedMessages = convertBackendMessages(messages);
-                    
+
                     setChatSessions((prev) =>
                         prev.map((chat) => {
                             if (chat.thread_id === currentThreadId) {
-                                // Get current optimistic messages
-                                const optimisticMessages = chat.messages.filter(
-                                    (msg: Message) => msg.id.startsWith("msg_optimistic_")
-                                );
-                                
-                                // If we have optimistic messages and backend messages, check if the user message is in backend
-                                if (optimisticMessages.length > 0 && convertedMessages.length > 0) {
-                                    const optimisticMsg = optimisticMessages[0];
-                                    
-                                    // If backend has a human message with same content, remove optimistic
-                                    const backendHasUserMessage = convertedMessages.some(
-                                        (msg: Message) => msg.type === 'human' && msg.content === optimisticMsg.content
-                                    );
-                                    
-                                    if (backendHasUserMessage) {
-                                        // Backend has saved the message, use backend messages only
-                                        return { ...chat, messages: convertedMessages };
-                                    } else {
-                                        // Backend hasn't saved user message yet, keep optimistic
-                                        return { ...chat, messages: [...optimisticMessages, ...convertedMessages] };
-                                    }
-                                }
-                                
-                                // If no optimistic messages, just use backend messages
-                                if (optimisticMessages.length === 0) {
-                                    return { ...chat, messages: convertedMessages };
-                                }
-                                
-                                // If we have optimistic but no backend messages yet, keep optimistic
-                                return { ...chat, messages: [...optimisticMessages, ...convertedMessages] };
+                                // The SSE stream is now the source of truth for this chat's messages.
+                                // By replacing the entire messages array with the one from the backend,
+                                // we automatically remove the optimistic message once the real data arrives.
+                                return { ...chat, messages: convertedMessages };
                             }
                             return chat;
                         })
                     );
-                    
+
                     setIsTyping(false);
                 } else if (data.event === 'error') {
                     console.error('SSE error event:', data.data.error);
@@ -525,6 +521,7 @@ export const useChats = (notebookIdParam?: string) => {
         creatingChat,
         isTyping,
         hasModelsConfigured,
+        currentChatModels,
         isAuthenticated,
         user,
         isTemporaryChat,

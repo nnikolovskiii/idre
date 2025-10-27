@@ -1,0 +1,112 @@
+backend/ddl
+# ===================================================================
+# A good, comprehensive, and well-commented .gitignore file
+#
+# Created by: A helpful AI
+# More templates available at: https://github.com/github/gitignore
+# Or generate one for your stack: https://www.toptal.com/developers/gitignore
+# ===================================================================
+
+# --- Operating System Files ---
+# Ignore OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- IDEs and Editors ---
+# Ignore editor-specific configurations and metadata
+.idea/
+.vscode/
+# Note: You might want to track some .vscode files like settings.json
+# To do so, un-ignore them like this:
+# !.vscode/settings.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.swp
+*~
+*.orig
+
+# --- Dependencies / Package Managers ---
+# Ignore directories for dependencies installed by package managers
+# These should be installed by running `npm install`, `pip install`, etc.
+/node_modules/
+/bower_components/
+/vendor/
+/jspm_packages/
+
+# Python
+/venv/
+/env/
+/.venv/
+/.env/
+__pycache__/
+*.pyc
+
+# --- Build Artifacts & Compiled Files ---
+# Ignore build output directories and compiled files
+/build/
+/dist/
+/out/
+/target/
+/bin/
+*.o
+*.obj
+*.class
+*.jar
+*.war
+*.ear
+
+# --- Log Files ---
+# Ignore log files, which can grow large and contain sensitive info
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Sensitive Information ---
+# CRITICAL: Ignore files containing secrets, API keys, and credentials.
+# These files should NEVER be committed to a public or private repository.
+.env
+.env.local
+.env.*.local
+config.local.js
+credentials.*
+secrets.*
+*.pem
+*.key
+private.key
+
+# --- Temporary Files & Archives ---
+# Ignore temporary files, cached data, and local archives
+*.tmp
+*.temp
+*.cache
+*.zip
+*.tar.gz
+*.rar
+
+# --- Testing ---
+# Ignore test reports and coverage data
+/coverage/
+.nyc_output/
+.pytest_cache/
+.tox/
+
+# --- Local User Uploads ---
+# Ignore user-uploaded content in a development environment
+/uploads/
+/media/
+
+
+mobile/

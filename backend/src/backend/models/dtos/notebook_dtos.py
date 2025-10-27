@@ -5,25 +5,18 @@ class NotebookCreate(BaseModel):
     emoji: str = Field(..., min_length=1, max_length=10)
     title: str = Field(..., min_length=1, max_length=255)
     date: str = Field(..., min_length=1, max_length=50)
-    bg_color: str = Field(..., min_length=1, max_length=20)
-    text_color: str = Field(..., min_length=1, max_length=20)
 
 
 class NotebookUpdate(BaseModel):
     emoji: str = Field(None, min_length=1, max_length=10)
     title: str = Field(None, min_length=1, max_length=255)
     date: str = Field(None, min_length=1, max_length=50)
-    bg_color: str = Field(None, min_length=1, max_length=20)
-    text_color: str = Field(None, min_length=1, max_length=20)
-
 
 class NotebookResponse(BaseModel):
     id: str
     emoji: str
     title: str
     date: str
-    bg_color: str
-    text_color: str
     created_at: str
     updated_at: str
 

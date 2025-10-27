@@ -4,8 +4,6 @@ export interface NotebookCreate {
     emoji: string;
     title: string;
     date: string;
-    bg_color: string;
-    text_color: string;
 }
 
 export interface NotebookUpdate {

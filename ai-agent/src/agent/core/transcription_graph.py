@@ -11,6 +11,9 @@ from ..containers import container
 from ..tools.audio_utils import transcribe_audio
 
 load_dotenv()
+file_service_url = os.getenv("FILE_SERVICE_URL")
+file_service_docker_url = os.getenv("FILE_SERVICE_URL_DOCKER")
+upload_password = os.getenv("UPLOAD_PASSWORD")
 
 class RestructuredText(BaseModel):
     text: str = Field(..., description="Enhanced transcript text")
@@ -53,10 +56,16 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
     local_audio_path = audio_path
     temp_file_handle = None
 
+    if audio_path:
+        audio_path = audio_path.replace(
+            file_service_url, file_service_docker_url
+        )
+
     if audio_path.startswith(("http://", "https://")):
         print(f"   > URL detected. Downloading audio from {audio_path}...")
         try:
-            response = requests.get(audio_path, stream=True)
+            headers = {"password": upload_password}
+            response = requests.get(audio_path, stream=True, headers=headers)
             response.raise_for_status()
             temp_file_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".ogg")
             with temp_file_handle as f:

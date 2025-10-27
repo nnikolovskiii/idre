@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
     MdInsertDriveFile, MdImage, MdAudiotrack, MdPictureAsPdf,
-    MdCode, MdDescription, MdVideocam,
+    MdCode, MdDescription, MdVideocam, MdEdit, MdCheck, MdClose,
 } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import type { FileData } from "../../lib/filesService";
@@ -11,11 +11,15 @@ interface DriveFileItemProps {
     onFileClick: (item: FileData) => void;
     onViewTranscription?: (item: FileData) => void;
     onDelete?: (item: FileData) => void;
+    onEdit?: (item: FileData, newFilename: string) => void;
 }
 
-const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onViewTranscription, onDelete }) => {
+const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onViewTranscription, onDelete, onEdit }) => {
     const [showMenu, setShowMenu] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editFilename, setEditFilename] = useState(item.filename);
     const menuRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleClick = () => onFileClick(item);
 
@@ -28,6 +32,35 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
         e.stopPropagation();
         onDelete?.(item);
         setShowMenu(false);
+    };
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsEditing(true);
+        setEditFilename(item.filename);
+        setShowMenu(false);
+        setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (editFilename.trim() && editFilename !== item.filename) {
+            onEdit?.(item, editFilename.trim());
+        }
+        setIsEditing(false);
+    };
+
+    const handleEditCancel = (e?: React.MouseEvent | React.FocusEvent) => {
+        e?.stopPropagation();
+        setIsEditing(false);
+        setEditFilename(item.filename);
+    };
+
+    const handleEditKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            handleEditCancel(e as any);
+        }
     };
 
     useEffect(() => {
@@ -100,7 +133,43 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
     const fileIdentifier = (
         <div className="flex items-center gap-4 min-w-0">
             <Icon size={24} style={{ color: iconColor, flexShrink: 0 }} />
-            <span className="truncate font-medium">{item.filename}</span>
+            {isEditing ? (
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={editFilename}
+                        onChange={(e) => setEditFilename(e.target.value)}
+                        onKeyDown={handleEditKeyDown}
+                        className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditSubmit(e as React.FormEvent);
+                        }}
+                        className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                        title="Approve"
+                    >
+                        <MdCheck size={16} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditCancel(e);
+                        }}
+                        className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                        title="Cancel"
+                    >
+                        <MdClose size={16} />
+                    </button>
+                </div>
+            ) : (
+                <span className="truncate font-medium">{item.filename}</span>
+            )}
         </div>
     );
 
@@ -111,7 +180,14 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
             </button>
             {showMenu && (
                 <div className="absolute top-full right-0 bg-muted  hover:bg-muted/20 rounded-lg shadow-lg z-10 min-w-[140px] border">
-                    <button className="block w-full text-left px-4 py-2 text-sm " onClick={handleDelete}>
+                    <button 
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-muted/80 flex items-center gap-2" 
+                        onClick={handleEdit}
+                    >
+                        <MdEdit size={16} />
+                        Edit
+                    </button>
+                    <button className="block w-full text-left px-4 py-2 text-sm hover:bg-muted/80" onClick={handleDelete}>
                         Delete
                     </button>
                 </div>

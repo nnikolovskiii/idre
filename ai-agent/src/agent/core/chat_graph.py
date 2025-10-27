@@ -24,6 +24,7 @@ from .chat_graph_state import ChatGraphState
 load_dotenv()
 file_service_url = os.getenv("FILE_SERVICE_URL")
 file_service_docker_url = os.getenv("FILE_SERVICE_URL_DOCKER")
+upload_password = os.getenv("UPLOAD_PASSWORD")
 
 
 class RestructuredText(BaseModel):
@@ -44,7 +45,8 @@ def _transcribe_and_enhance_audio(audio_path: str, model: str, api_key: str) -> 
     if audio_path.startswith(("http://", "https://")):
         print(f"   > URL detected. Downloading audio from {audio_path}...")
         try:
-            response = requests.get(audio_path, stream=True)
+            headers = {"password": upload_password}
+            response = requests.get(audio_path, stream=True, headers=headers)
             response.raise_for_status()
             temp_file_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".ogg")
             with temp_file_handle as f:
@@ -114,6 +116,11 @@ def prepare_inputs_node(state: ChatGraphState):
         light_model = "google/gemini-flash-1.5"
     if not text_input and not audio_path:
         raise ValueError("Either text_input or audio_path must be provided.")
+
+    if audio_path:
+        audio_path = audio_path.replace(
+            file_service_url, file_service_docker_url
+        )
 
     processed_parts = []
     enhanced_transcript = None

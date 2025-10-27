@@ -44,6 +44,8 @@ async def handle_langgraph_webhook(
             values = thread_state.get("values", {})
 
             file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+
             if not file_id:
                 raise HTTPException(status_code=400, detail="Missing file_id in metadata")
 
@@ -53,6 +55,7 @@ async def handle_langgraph_webhook(
 
             await file_service.update_file(
                 file_id=file_id,
+                user_id=user_id,
                 updates={
                     "processing_result": {"transcription": transcription},
                     "processing_status": ProcessingStatus.COMPLETED

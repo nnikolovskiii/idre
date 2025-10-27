@@ -108,7 +108,7 @@ class AIService:
             assistant_id=assistant_id,
             input=run_input,
             webhook=webhook_url,
-            metadata={"file_id": request.file_id, "temp_thread": True},  # Flag for cleanup
+            metadata={"file_id": request.file_id, "temp_thread": True, "user_id": user_id},  # Flag for cleanup
             on_completion="keep",  # Preserve thread for webhook fetch
         )
 

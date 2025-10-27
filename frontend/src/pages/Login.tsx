@@ -42,7 +42,7 @@ const Login: React.FC = () => {
 
         {/* Background Image Element */}
         <div
-            className="absolute w-[2200px] h-[1680px] -left-[50px] top-[-120px] z-0"
+            className="absolute w-[2200px] h-[1680px] -left-[150px] top-[-350px] z-0"
             style={{
               backgroundImage: `url('/login_background.png')`, // Path from the public folder
               backgroundSize: 'contain',
@@ -93,7 +93,7 @@ const Login: React.FC = () => {
                       onChange={(e) => setIdentifier(e.target.value)}
                       placeholder="Username or Email"
                       required
-                      className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+                      className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white transition"
                   />
 
                   <div className="relative">
@@ -103,7 +103,7 @@ const Login: React.FC = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
                         required
-                        className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+                        className="w-full px-4 py-3 bg-transparent border border-white/80 rounded-xl placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white transition"
                     />
                     <button
                         type="button"
@@ -121,7 +121,7 @@ const Login: React.FC = () => {
                       <input type="checkbox" className="form-checkbox bg-transparent border-white/80 text-[#9D3D9D] focus:ring-purple-400" />
                       Remember me
                     </label>
-                    <Link to="/forgot-password" className="hover:underline text-white/90">Forgot password ?</Link>
+                    {/*<Link to="/forgot-password" className="hover:underline text-white/90">Forgot password ?</Link>*/}
                   </div>
 
                   {/* Login Button */}
@@ -131,7 +131,7 @@ const Login: React.FC = () => {
                       className={`w-full py-3 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg ${
                           isLoading
                               ? 'bg-gray-500 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-[#E0E6F6] to-[#9D3D9D] text-black hover:shadow-purple-400/30'
+                              : 'bg-gradient-to-r from-[#E0E6F6] to-[#E0E6F6] text-black hover:shadow-purple-400/30'
                       }`}
                   >
                     {isLoading ? 'Logging in...' : 'Login'}
@@ -145,11 +145,11 @@ const Login: React.FC = () => {
                       Don’t have an account ?{' '}
                       <Link to="/register" className="font-semibold hover:underline">Signup</Link>
                     </p>
-                    <div className="flex justify-between items-center text-sm text-white/70">
-                      <Link to="/terms" className="hover:underline">Terms & Conditions</Link>
-                      <Link to="/support" className="hover:underline">Support</Link>
-                      <Link to="/care" className="hover:underline">Customer Care</Link>
-                    </div>
+                    {/*<div className="flex justify-between items-center text-sm text-white/70">*/}
+                    {/*  <Link to="/terms" className="hover:underline">Terms & Conditions</Link>*/}
+                    {/*  <Link to="/support" className="hover:underline">Support</Link>*/}
+                    {/*  <Link to="/care" className="hover:underline">Customer Care</Link>*/}
+                    {/*</div>*/}
                   </div>
                 </form>
               </div>

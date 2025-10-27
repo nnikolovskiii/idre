@@ -1,3 +1,5 @@
+// src/services/file.ts
+
 import {API_CONFIG} from "./api.ts";
 
 export interface ProcessingResult {
@@ -35,6 +37,44 @@ export interface FileListResponse {
     message: string;
     data: Array<FileData>;
 }
+
+// --- NEW INTERFACES START ---
+
+/**
+ * The payload for updating a file's details.
+ * All fields are optional.
+ */
+export interface UpdateFilePayload {
+    filename?: string;
+    notebook_id?: string;
+}
+
+/**
+ * The structure of the 'data' object in the update file API response.
+ */
+export interface UpdatedFileData {
+    file_id: string;
+    filename: string;
+    unique_filename: string;
+    url: string;
+    content_type: string | null;
+    file_size: string;
+    processing_status: string;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+/**
+ * The full API response for a successful file update.
+ */
+export interface UpdateFileApiResponse {
+    status: string;
+    message: string;
+    data: UpdatedFileData;
+}
+
+// --- NEW INTERFACES END ---
+
 
 // Configuration
 const FILE_SERVICE_URL = API_CONFIG.getApiUrl() + '/files'
@@ -119,6 +159,47 @@ export const fileService = {
             const errorText = await response.text();
             throw new Error(`Transcription failed: ${response.statusText} (${errorText})`);
         }
+    },
+
+    /**
+     * Update a file's details.
+     * Endpoint: PATCH /files/{file_id}
+     */
+    updateFile: async (file_id: string, updates: UpdateFilePayload): Promise<UpdateFileApiResponse> => {
+        const response = await fetch(`${FILE_SERVICE_URL}/${file_id}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update file: ${response.statusText} (${errorText})`);
+        }
+
+        return response.json();
+    },
+
+    /**
+     * Download a file by file_id
+     * Endpoint: GET /files/download/{file_id}
+     * Returns the file content as a Blob
+     */
+    downloadFile: async (file_id: string): Promise<Blob> => {
+        const response = await fetch(`${FILE_SERVICE_URL}/download/${file_id}`, {
+            method: 'GET',
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`File download failed: ${response.statusText} (${errorText})`);
+        }
+
+        return response.blob();
     },
 
     /**

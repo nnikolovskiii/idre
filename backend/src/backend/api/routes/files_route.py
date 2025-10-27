@@ -2,6 +2,9 @@ import os
 import aiohttp
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, UploadFile, File as FastAPIFile, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, constr
+from typing import Optional
 
 from backend.api.dependencies import get_file_service, get_ai_service
 from backend.models import User, File
@@ -11,13 +14,28 @@ from backend.models.file import ProcessingStatus
 from backend.services.ai_service import AIService
 from backend.services.file_service import FileService
 
-
 load_dotenv()
 FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL")
 UPLOAD_PASSWORD = os.getenv("UPLOAD_PASSWORD")
 FILE_SERVICE_URL_DOCKER = os.getenv("FILE_SERVICE_URL_DOCKER")
 
 router = APIRouter()
+
+
+# --- NEW CODE START ---
+
+class UpdateFileRequest(BaseModel):
+    """
+    Defines the request body for updating a file.
+    All fields are optional for partial updates (PATCH).
+    """
+    filename: Optional[constr(min_length=1, max_length=255)] = None
+    notebook_id: Optional[str] = None
+    # Add other user-updatable fields here if necessary
+
+
+# --- NEW CODE END ---
+
 
 # Define audio MIME types
 AUDIO_MIME_TYPES = {
@@ -44,6 +62,7 @@ def is_audio_file(content_type: str) -> bool:
 
 
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
 
 @router.post("/upload")
 async def upload_file(
@@ -74,10 +93,10 @@ async def upload_file(
     try:
         # Read the file content to avoid SpooledTemporaryFile serialization issues
         file_content = await file.read()
-        
+
         # Reset file pointer for potential re-reads
         await file.seek(0)
-        
+
         form = aiohttp.FormData()
         form.add_field(
             'file',
@@ -96,7 +115,7 @@ async def upload_file(
                         detail=f"Failed to upload file to external service: {response_text}"
                     )
 
-        docker_url=f"{FILE_SERVICE_URL_DOCKER}/test/download/{unique_filename}"
+        docker_url = f"{FILE_SERVICE_URL_DOCKER}/test/download/{unique_filename}"
 
         # Only transcribe if the file is an audio file
         if is_audio_file(file.content_type) and transcribe:
@@ -135,7 +154,8 @@ async def upload_file(
                 "filename": file.filename,
                 "unique_filename": file_record.unique_filename,
                 "url": file_record.url,
-                "file_size": file_service.format_file_size(file_record.file_size_bytes) if file_record.file_size_bytes else "0 B",
+                "file_size": file_service.format_file_size(
+                    file_record.file_size_bytes) if file_record.file_size_bytes else "0 B",
                 "processing_status": file_record.processing_status,
                 "is_audio": is_audio_file(file.content_type)
             }
@@ -175,12 +195,142 @@ async def get_user_files(
                     "created_at": file.created_at.isoformat() if file.created_at else None,
                     "updated_at": file.updated_at.isoformat() if file.updated_at else None,
                     "processing_result": file.processing_result if file.processing_result else None
-            }
+                }
                 for file in files
             ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.get("/download/{file_id}")
+async def download_file_proxy(
+        file_id: str,
+        current_user: User = Depends(get_current_user),
+        file_service: FileService = Depends(get_file_service),
+):
+    """
+    Downloads a file by proxying the request to the secure file system service.
+    This ensures that the user is authenticated and authorized to access the file.
+    """
+    try:
+        # First, verify the user owns the file by trying to retrieve it.
+        # This is the authorization step. We can access the repo via the service.
+        file_record = await file_service.repo.get_by_id_and_user(
+            file_id=file_id, user_id=str(current_user.user_id)
+        )
+        if not file_record:
+            raise HTTPException(
+                status_code=404,
+                detail="File not found or access denied"
+            )
+
+        # Check for necessary configuration
+        if not FILE_SERVICE_URL_DOCKER or not UPLOAD_PASSWORD:
+            raise HTTPException(
+                status_code=500,
+                detail="Server configuration error: File service URL or password not set."
+            )
+
+        # Construct the URL to the actual file on the file service
+        download_url = f"{FILE_SERVICE_URL_DOCKER}/test/download/{file_record.unique_filename}"
+        headers = {'password': UPLOAD_PASSWORD}
+
+        http_session = aiohttp.ClientSession()
+        resp = await http_session.get(download_url, headers=headers)
+
+        if resp.status != 200:
+            error_text = await resp.text()
+            print(f"Error from file service for {file_record.unique_filename}: {resp.status} - {error_text}")
+            await http_session.close()
+            raise HTTPException(status_code=502, detail="Could not retrieve file from storage.")
+
+        # Create an async generator to stream the content and ensure the session is closed
+        async def stream_content_and_close():
+            try:
+                async for chunk in resp.content.iter_any():
+                    yield chunk
+            finally:
+                await http_session.close()
+
+        # Get the media type from the file service response
+        media_type = resp.headers.get("Content-Type", "application/octet-stream")
+        # Set the Content-Disposition header to suggest the original filename for download
+        content_disposition = f'attachment; filename="{file_record.filename}"'
+
+        response_headers = {
+            "Content-Type": media_type,
+            "Content-Disposition": content_disposition
+        }
+
+        return StreamingResponse(stream_content_and_close(), headers=response_headers)
+
+    except aiohttp.ClientError as e:
+        raise HTTPException(status_code=502, detail=f"Network error communicating with file service: {e}")
+    except HTTPException:
+        raise  # Re-raise our own HTTPExceptions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+# --- NEW ENDPOINT ---
+@router.patch("/{file_id}")
+async def update_file_details(
+        file_id: str,
+        request: UpdateFileRequest,
+        current_user: User = Depends(get_current_user),
+        file_service: FileService = Depends(get_file_service)
+):
+    """
+    Update a file's details, such as its filename or notebook association.
+    Only the owner of the file can perform this action.
+    """
+    # Create a dictionary of updates, excluding any fields that were not sent
+    updates = request.dict(exclude_unset=True)
+
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided to update."
+        )
+
+    try:
+        updated_file = await file_service.update_file(
+            user_id=str(current_user.user_id),
+            file_id=file_id,
+            updates=updates
+        )
+
+        if not updated_file:
+            raise HTTPException(
+                status_code=404,
+                detail="File not found or access denied"
+            )
+
+        # Return the updated file data in a consistent format
+        return {
+            "status": "success",
+            "message": "File updated successfully",
+            "data": {
+                "file_id": str(updated_file.id),
+                "filename": updated_file.filename,
+                "unique_filename": updated_file.unique_filename,
+                "url": updated_file.url,
+                "content_type": updated_file.content_type,
+                "file_size": file_service.format_file_size(
+                    updated_file.file_size_bytes) if updated_file.file_size_bytes else "0 B",
+                "processing_status": updated_file.processing_status,
+                "created_at": updated_file.created_at.isoformat() if updated_file.created_at else None,
+                "updated_at": updated_file.updated_at.isoformat() if updated_file.updated_at else None,
+            }
+        }
+    except HTTPException:
+        raise  # Re-raise exceptions we've already handled (like 404)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+# --- END NEW ENDPOINT ---
 
 
 @router.post("/transcribe/{notebook_id}")

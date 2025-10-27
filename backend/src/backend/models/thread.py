@@ -19,13 +19,8 @@ class Thread(Base):
 
     thread_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Foreign key to link thread to a notebook
-    notebook_id = Column(UUID(as_uuid=True), ForeignKey('notebooks.id', ondelete="CASCADE"), nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationship to notebook
-    notebook = relationship("Notebook", back_populates="threads")
 
     chats = relationship("Chat", back_populates="thread")

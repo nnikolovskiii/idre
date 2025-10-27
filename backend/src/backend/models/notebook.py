@@ -34,21 +34,12 @@ class Notebook(Base):
     # Creation date
     date = Column(String(50), nullable=False)
 
-    # Background color for the notebook
-    bg_color = Column(String(20), nullable=False)
-
-    # Text color for the notebook
-    text_color = Column(String(20), nullable=False)
-
     # --- Timestamps ---
 
     # Automatically set the creation time on the database side.
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # Automatically updates the timestamp on any modification.
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    # Relationship to threads (which contain chats and files)
-    threads = relationship("Thread", back_populates="notebook", cascade="all, delete-orphan")
 
     # One-to-one relationship to the default model for this notebook
     default_model = relationship("NotebookModel", back_populates="notebook", uselist=False, cascade="all, delete-orphan")

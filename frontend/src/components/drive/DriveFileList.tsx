@@ -7,9 +7,10 @@ interface DriveFileListProps {
     onFileClick: (item: FileData) => void;
     onViewTranscription?: (item: FileData) => void;
     onDelete?: (item: FileData) => void;
+    onEdit?: (item: FileData, newFilename: string) => void;
 }
 
-const DriveFileList: React.FC<DriveFileListProps> = ({ items, onFileClick, onViewTranscription, onDelete }) => {
+const DriveFileList: React.FC<DriveFileListProps> = ({ items, onFileClick, onViewTranscription, onDelete, onEdit }) => {
     return (
         <div className="w-full">
             {/* Desktop Header: Hidden on mobile */}
@@ -32,6 +33,7 @@ const DriveFileList: React.FC<DriveFileListProps> = ({ items, onFileClick, onVie
                         onFileClick={onFileClick}
                         onViewTranscription={onViewTranscription}
                         onDelete={onDelete}
+                        onEdit={onEdit}
                     />
                 ))}
             </div>

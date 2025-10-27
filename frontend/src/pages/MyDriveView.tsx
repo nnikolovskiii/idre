@@ -135,6 +135,17 @@ const MyDriveView = () => {
     }
   }, [fileToDelete, fetchFiles]);
 
+  // Handle file name editing
+  const handleEdit = useCallback(async (file: FileData, newFilename: string) => {
+    try {
+      await fileService.updateFile(file.file_id, { filename: newFilename });
+      await fetchFiles(); // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to update file name";
+      alert(errorMessage);
+    }
+  }, [fetchFiles]);
+
 
   const handleViewTranscription = useCallback((file: FileData) => {
     setSelectedTranscription(file.processing_result?.transcription || '');
@@ -205,8 +216,8 @@ const MyDriveView = () => {
                 items={files}
                 onFileClick={handleFileClick}
                 onViewTranscription={handleViewTranscription}
-                // 3. Pass the new function to the component
                 onDelete={handleDeleteRequest}
+                onEdit={handleEdit}
             />
         )}
       </div>
@@ -248,6 +259,7 @@ const MyDriveView = () => {
                 isOpen={fileViewerOpen}
                 onClose={closeFileViewer}
                 fileName={selectedFile.filename}
+                fileId={selectedFile.file_id}
                 fileUrl={selectedFile.url}
                 contentType={selectedFile.content_type}
             />
