@@ -71,7 +71,8 @@ class FileService:
             content_type: Optional[str] = None,
             file_size_bytes: Optional[int] = None,
             notebook_id: Optional[str] = None,
-            processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
+            processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING,
+            content: Optional[str] = None
     ) -> File:
         """
         (Orchestration) Create a file record using the repository and commit.
@@ -84,7 +85,8 @@ class FileService:
             content_type=content_type,
             file_size_bytes=file_size_bytes,
             notebook_id=notebook_id,
-            processing_status=processing_status
+            processing_status=processing_status,
+            content=content
         )
         await self.session.commit()
         await self.session.refresh(file_record)
@@ -99,10 +101,10 @@ class FileService:
 
     async def update_file(
             self,
-            user_id: str,  # <-- ADDED: For security check
+            user_id: str,
             file_id: str,
             updates: Dict[str, Any],
-            merge_processing_result: bool = False
+            merge_processing_result: bool = False,
     ) -> Optional[File]:
         """
         (Orchestration) Update a file record for a specific user.
@@ -111,13 +113,9 @@ class FileService:
         it will be merged into the existing result.
         Commits the changes.
         """
-        # --- MODIFICATION START ---
-        # First, verify the user owns the file.
         file_to_update = await self.repo.get_by_id_and_user(file_id=file_id, user_id=user_id)
         if not file_to_update:
-            return None  # Return None if not found or not owned by user
-        # --- MODIFICATION END ---
-
+            return None
         file_record = await self.repo.update(
             file_id=file_id,
             updates=updates,

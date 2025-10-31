@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { modelApiService } from '../lib/modelApiService';
+import { modelApiService } from '../services/modelApiService';
 
 interface ApiKeyContextType {
   hasApiKey: boolean;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { modelApiService } from '../lib/modelApiService';
-import type { UpdateModelApiRequest } from '../lib/modelApiService';
+import { modelApiService } from '../services/modelApiService';
+import type { UpdateModelApiRequest } from '../services/modelApiService';
 import './ModelApiSettings.css';
 
 const ModelApiSettings: React.FC = () => {

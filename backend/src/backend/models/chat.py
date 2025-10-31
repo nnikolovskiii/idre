@@ -30,6 +30,7 @@ class Chat(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    web_search = Column(Boolean, nullable=False, default=True, server_default='true')
 
     thread = relationship("Thread", back_populates="chats")
 

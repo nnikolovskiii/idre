@@ -4,7 +4,7 @@ import {
     MdCode, MdDescription, MdVideocam, MdEdit, MdCheck, MdClose,
 } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
-import type { FileData } from "../../lib/filesService";
+import type { FileData } from "../../services/filesService";
 
 interface DriveFileItemProps {
     item: FileData;
@@ -12,9 +12,11 @@ interface DriveFileItemProps {
     onViewTranscription?: (item: FileData) => void;
     onDelete?: (item: FileData) => void;
     onEdit?: (item: FileData, newFilename: string) => void;
+    // CHANGED: Add isSelected prop to know if this item is the active one
+    isSelected?: boolean;
 }
 
-const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onViewTranscription, onDelete, onEdit }) => {
+const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onViewTranscription, onDelete, onEdit, isSelected = false }) => {
     const [showMenu, setShowMenu] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editFilename, setEditFilename] = useState(item.filename);
@@ -76,7 +78,7 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "—";
         const date = new Date(dateString);
-        return date.toLocaleDateString(); // Simpler format for mobile
+        return date.toLocaleDateString();
     };
 
     const formatDateTime = (dateString: string | null) => {
@@ -129,11 +131,11 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
 
     const { icon: Icon, color: iconColor } = getFileIcon();
 
-    // Shared content variables
     const fileIdentifier = (
         <div className="flex items-center gap-4 min-w-0">
             <Icon size={24} style={{ color: iconColor, flexShrink: 0 }} />
             {isEditing ? (
+                // ... (editing UI remains the same)
                 <div className="flex-1 min-w-0 flex items-center gap-2">
                     <input
                         ref={inputRef}
@@ -151,7 +153,7 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
                             handleEditSubmit(e as React.FormEvent);
                         }}
                         className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
-                        title="Approve"
+
                     >
                         <MdCheck size={16} />
                     </button>
@@ -162,26 +164,30 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
                             handleEditCancel(e);
                         }}
                         className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
-                        title="Cancel"
+
                     >
                         <MdClose size={16} />
                     </button>
                 </div>
             ) : (
-                <span className="truncate font-medium">{item.filename}</span>
+                // CHANGED: Apply conditional styling to the filename
+                <span className={`truncate ${isSelected ? 'font-semibold text-primary' : 'font-medium'}`}>
+                    {item.filename}
+                </span>
             )}
         </div>
     );
 
     const actionMenu = (
+        // ... (action menu remains the same)
         <div className="relative" ref={menuRef}>
             <button onClick={handleMenuToggle} className="p-2 rounded-full hover:bg-muted">
                 <BsThreeDotsVertical size={18} />
             </button>
             {showMenu && (
                 <div className="absolute top-full right-0 bg-muted  hover:bg-muted/20 rounded-lg shadow-lg z-10 min-w-[140px] border">
-                    <button 
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-muted/80 flex items-center gap-2" 
+                    <button
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-muted/80 flex items-center gap-2"
                         onClick={handleEdit}
                     >
                         <MdEdit size={16} />
@@ -198,7 +204,11 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
     return (
         <div className="group text-sm">
             {/* Mobile Card Layout */}
-            <div onClick={handleClick} className="md:hidden flex flex-col gap-3 p-4 border rounded-lg cursor-pointer">
+            {/* CHANGED: Apply conditional background color */}
+            <div
+                onClick={handleClick}
+                className={`md:hidden flex flex-col gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted/50'}`}
+            >
                 <div className="flex justify-between items-start">
                     {fileIdentifier}
                     {actionMenu}
@@ -216,15 +226,17 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
             </div>
 
             {/* Desktop Table Row Layout */}
+            {/* CHANGED: Apply conditional background color */}
             <div
                 onClick={handleClick}
-                className="hidden md:grid grid-cols-[minmax(250px,_2fr)_1fr_1fr_1.2fr_60px] border-b items-center cursor-pointer hover:bg-muted transition-colors"
+                className={`hidden md:grid grid-cols-[minmax(250px,_2fr)_1fr_1fr_1.2fr_60px] border-b items-center cursor-pointer transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted'}`}
             >
                 <div className="p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{fileIdentifier}</div>
                 <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{formatDateTime(item.updated_at || item.created_at)}</div>
                 <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{item.file_size || "—"}</div>
                 <div className="p-3 flex items-center">{renderTranscriptionContent()}</div>
-                <div className="p-3 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* CHANGED: Removed opacity-0 and group-hover:opacity-100 to make the menu always visible */}
+                <div className="p-3 flex items-center justify-center">
                     {actionMenu}
                 </div>
             </div>

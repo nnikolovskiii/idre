@@ -1,4 +1,4 @@
-// Path: frontend/src/lib/api.ts
+// Path: frontend/src/services/api.ts
 
 // Centralized API configuration
 
@@ -75,6 +75,11 @@ export const sendMessageToThreadUrl = (threadId: string) => {
     return getChatsUrl(`/${threadId}/send`);
 };
 
+export const toggleWebSearchUrl = (chatId: string) => {
+    return getChatsUrl(`/${chatId}/web-search`);
+};
+
+
 export const getChatAIModelsUrl = (chatId: string) => {
     return getChatsUrl(`/${chatId}/ai-models`);
 };
@@ -105,6 +110,10 @@ export const updateDefaultAIModelsUrl = () => {
 // OpenRouter Models API functions
 export const getOpenRouterModelsUrl = () => {
     return buildApiUrl('/openrouter-models/');
+};
+
+export const getGenerativeModelsUrl = () => {
+    return buildApiUrl('/generative-models/');
 };
 
 // --- END OF REFACTORED CODE ---

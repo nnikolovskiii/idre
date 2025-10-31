@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Save, X } from "lucide-react";
-import {NotebookService, type NotebookCreate} from "../lib/notebooksService.ts";
+import {NotebookService, type NotebookCreate} from "../services/notebooksService.ts";
 import { useTheme } from "../context/ThemeContext.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
 

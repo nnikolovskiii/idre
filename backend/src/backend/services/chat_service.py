@@ -82,11 +82,12 @@ class ChatService:
             print(f"DEBUG: Stored assistant_id as string: {self._assistant_id}")
 
         return self._assistant_id
+
     # --- LangGraph Methods (External API Interaction) ---
 
     async def get_messages_for_thread(self, thread_id: str) -> List[dict]:
         """Gets all messages from a thread in LangGraph."""
-        thread_state = await self.langgraph_client.threads.get_state(thread_id=thread_id,)
+        thread_state = await self.langgraph_client.threads.get_state(thread_id=thread_id, )
         return thread_state.get('values', {}).get('messages', [])
 
     async def delete_message_from_thread(self, thread_id: str, message_id_to_delete: str):
@@ -110,7 +111,11 @@ class ChatService:
         thread_id = thread['thread_id']
 
         new_chat = await self.chat_repo.create(
-            user_id=user_id, thread_id=thread_id, notebook_id=request.notebook_id, title=request.title
+            user_id=user_id,
+            thread_id=thread_id,
+            notebook_id=request.notebook_id,
+            title=request.title,
+            web_search=request.web_search
         )
         try:
             await self.ai_service.generate_chat_name(
@@ -176,12 +181,13 @@ class ChatService:
             "light_model": models_dict.get("light"),
             "heavy_model": models_dict.get("heavy"),
             "api_key": model_api.value if model_api else None,
+            "web_search": chat_obj.web_search,
         }
 
-        if not chat_obj.started:
-            files_contents = await self.file_service.get_notebook_files_content(user_id, str(chat_obj.notebook_id))
-            run_input["files_contents"] = files_contents
-            chat_obj.started = True
+        # if not chat_obj.started:
+        #     files_contents = await self.file_service.get_notebook_files_content(user_id, str(chat_obj.notebook_id))
+        #     run_input["files_contents"] = files_contents
+        #     chat_obj.started = True
 
         if request.message:
             run_input["text_input"] = request.message
@@ -222,3 +228,24 @@ class ChatService:
         if was_deleted:
             await self.session.commit()
         return was_deleted
+
+    async def toggle_web_search(self, chat_id: str, enabled: bool) -> Optional[Chat]:
+        """
+        Enables or disables the web search feature for a specific chat.
+
+        Args:
+            chat_id (str): The ID of the chat to update.
+            enabled (bool): The new status for web search (True for enabled, False for disabled).
+
+        Returns:
+            The updated Chat object if found, otherwise None.
+        """
+        chat_obj = await self.chat_repo.get_by_id(chat_id)
+        if not chat_obj:
+            return None  # The controller will handle the 404 response
+
+        chat_obj.web_search = enabled
+        updated_chat = await self.chat_repo.update(chat_obj)
+        await self.session.commit()
+        await self.session.refresh(updated_chat)
+        return updated_chat

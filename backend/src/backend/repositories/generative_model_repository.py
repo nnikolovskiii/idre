@@ -77,3 +77,9 @@ class GenerativeModelRepository:
         """Checks if a generative model with the given ID exists."""
         model = await self.get_by_id(model_id)
         return model is not None
+
+    async def get_by_access_status(self, is_open_access: bool) -> List[GenerativeModel]:
+        """Retrieves all generative models with the specified access status."""
+        stmt = select(GenerativeModel).where(GenerativeModel.is_open_access == is_open_access)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()

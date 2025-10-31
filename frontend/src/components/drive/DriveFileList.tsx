@@ -1,5 +1,5 @@
 import React from "react";
-import type { FileData } from "../../lib/filesService";
+import type { FileData } from "../../services/filesService";
 import DriveFileItem from "./DriveFileItem";
 
 interface DriveFileListProps {

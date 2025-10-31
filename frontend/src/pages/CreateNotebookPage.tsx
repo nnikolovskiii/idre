@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {NotebookService, type NotebookCreate} from "../lib/notebooksService.ts";
+import {NotebookService, type NotebookCreate} from "../services/notebooksService.ts";
 import { useTheme } from "../context/ThemeContext.tsx";
 import { Icon, type IconName } from "../components/Icon.tsx";
 // Import the new service and types

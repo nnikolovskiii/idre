@@ -1,5 +1,5 @@
 import React, {createContext, useState, useContext, useEffect, type ReactNode} from 'react';
-import { getAuthUrl } from '../lib/api';
+import { getAuthUrl } from '../services/api';
 
 interface User {
   email: string;

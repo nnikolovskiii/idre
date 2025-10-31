@@ -12,6 +12,7 @@ from backend.api.routes.webhook_route import router as webhook_router
 from backend.api.routes.chat_route import router as chat_router
 from backend.api.routes.model_api_route import router as model_api_router
 from backend.api.routes.openrouter_models_route import router as openrouter_models_router
+from backend.api.routes.generative_model_route import router as generative_models_router
 from backend.api.routes.notebook_models_route import router as notebook_models_router
 from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
@@ -100,6 +101,8 @@ app.include_router(notebook_models_router, prefix="/notebook-models", tags=["Not
 app.include_router(chat_models_router, prefix="/chat-models", tags=["Chat Model API"])
 
 app.include_router(openrouter_models_router, prefix="/openrouter-models", tags=["OpenRouter Models"])
+
+app.include_router(generative_models_router, prefix="/generative-models", tags=["Generative Models"])
 app.include_router(notebooks_router, prefix="/notebooks", tags=["Notebooks"])
 
 

@@ -47,7 +47,12 @@ class ChatRepository:
         return result.scalars().all()
 
     async def create(
-        self, user_id: str, thread_id: str, notebook_id: Optional[str] = None, title: Optional[str] = None
+            self,
+            user_id: str,
+            thread_id: str,
+            notebook_id: Optional[str] = None,
+            title: Optional[str] = None,
+            web_search: Optional[bool] = True
     ) -> Chat:
         """
         Creates a new Chat object and adds it to the session.
@@ -59,7 +64,8 @@ class ChatRepository:
             notebook_id=notebook_id,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            title=title
+            title=title,
+            web_search=web_search
         )
         self.session.add(new_chat)
         await self.session.flush()

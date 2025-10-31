@@ -12,6 +12,7 @@ class ChatResponse(BaseModel):
     updated_at: Optional[datetime] = None
     notebook_id: Optional[str] = None
     title: Optional[str] = None
+    web_search: Optional[bool] = True
 
 
 class MessageResponse(BaseModel):
@@ -35,6 +36,7 @@ class CreateThreadRequest(BaseModel):
     title: str
     text: str
     notebook_id: Optional[str] = None
+    web_search: Optional[bool] = True
 
 
 class UpdateAIModelsRequest(BaseModel):
@@ -44,3 +46,7 @@ class UpdateAIModelsRequest(BaseModel):
 class AIModelResponse(BaseModel):
     light_model: str
     heavy_model: str
+
+class UpdateWebSearchRequest(BaseModel):
+    """Request model for updating the web search setting of a chat."""
+    enabled: bool

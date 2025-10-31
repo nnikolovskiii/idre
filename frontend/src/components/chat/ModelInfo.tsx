@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ChatModel } from '../../lib/chatModelService';
+import type { ChatModel } from '../../services/chatModelService';
 
 interface ModelInfoProps {
   models: Record<string, ChatModel>;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { openrouterModelsService } from "../../lib/openrouterModelsService";
-import { modelApiService } from "../../lib/modelApiService";
-import { getNotebookModels, updateNotebookModel, type NotebookModel } from "../../lib/notebookModelService";
-import { getChatModels, updateChatModel, type ChatModel } from "../../lib/chatModelService";
-import type { ModelName } from "../../lib/openrouterModelsService";
+import { generativeModelService } from "../../services/generativeModelService.ts";
+import { modelApiService } from "../../services/modelApiService";
+import { getNotebookModels, updateNotebookModel, type NotebookModel } from "../../services/notebookModelService";
+import { getChatModels, updateChatModel, type ChatModel } from "../../services/chatModelService";
+import type { ModelName } from "../../services/openrouterModelsService";
 
 type ActiveTab = "global" | "chat" | "api";
 
@@ -12,6 +12,7 @@ interface ModelSettingsModalProps {
     onClose: () => void;
     notebookId?: string; // NotebookId to manage notebook-level models
     chatId?: string; // ChatId to manage chat-level models
+    isTemporaryChat?: boolean;
 }
 
 // Props interface for our new SearchableSelect component
@@ -142,6 +143,7 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                                                                    onClose,
                                                                    notebookId,
                                                                    chatId,
+                                                                   isTemporaryChat = false,
                                                                }) => {
     // State for which tab is active
     const [activeTab, setActiveTab] = useState<ActiveTab>("global");
@@ -197,7 +199,8 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                 setGlobalHeavyModel("");
             }
 
-            if (chatId) {
+            // CHANGE: Only fetch chat models if it's not a temporary chat
+            if (chatId && !isTemporaryChat) {
                 const chModels = await getChatModels(chatId);
                 if (chModels) {
                     setChatModelsByType(chModels);
@@ -218,15 +221,15 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
         } finally {
             setLoading(false);
         }
-    }, [notebookId, chatId]);
+    }, [notebookId, chatId, isTemporaryChat]); // CHANGE: Add isTemporaryChat to dependency array
 
     const loadAvailableModels = useCallback(async () => {
         setModelsLoading(true);
         try {
             const apiKeyResponse = await modelApiService.getModelApi();
             const models = apiKeyResponse.has_api_key
-                ? await openrouterModelsService.getModelNames()
-                : await openrouterModelsService.getFreeModelNames();
+                ? await generativeModelService.getModelNames()
+                : await generativeModelService.getFreeModelNames();
             setAvailableModels(models);
         } catch (err) {
             console.warn("Failed to load available models:", err);
@@ -542,9 +545,11 @@ const ModelSettingsModal: React.FC<ModelSettingsModalProps> = ({
                     <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "global" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("global")}>
                         Notebook Models
                     </button>
-                    <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "chat" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("chat")}>
-                        Chat Models
-                    </button>
+                    {!isTemporaryChat && (
+                        <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "chat" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("chat")}>
+                            Chat Models
+                        </button>
+                    )}
                     <button className={`-mb-px border-b-2 bg-transparent px-2 py-3 text-sm font-semibold transition-all hover:text-ring ${activeTab === "api" ? "border-ring text-ring" : "border-transparent text-muted-foreground"}`} onClick={() => setActiveTab("api")}>
                         API Key
                     </button>

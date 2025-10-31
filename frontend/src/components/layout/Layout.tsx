@@ -66,11 +66,8 @@ const Layout: React.FC<LayoutProps> = ({
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
 
     return (
-        // The main layout container.
-        // CHANGE: Replaced hardcoded `bg-[#f8f7f6]` with `bg-background`.
-        // This makes the entire app's background color respect the current theme.
         <div className="h-dvh w-screen flex bg-background text-foreground overflow-hidden">
-            {/* Mobile Overlay - `bg-black/50` is a standard, acceptable overlay color */}
+            {/* Mobile Overlay */}
             <div
                 className={`fixed inset-0 bg-black/50 z-[999] transition-opacity md:hidden ${
                     isSidebarOpen
@@ -101,8 +98,8 @@ const Layout: React.FC<LayoutProps> = ({
                 />
             </div>
 
-            {/* Main Content Area - this will inherit the `bg-background` color */}
-            <main className={`flex-1 flex flex-col h-full min-w-0 relative ${isTemporaryChat ? 'justify-center items-center' : ''}`}>
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col h-full min-w-0 relative">
                 <div className="md:hidden">
                     <ChatHeader
                         title={title}
@@ -110,23 +107,38 @@ const Layout: React.FC<LayoutProps> = ({
                         onSettingsClick={handleOpenAIModelsSettings}
                     />
                 </div>
+
+                {/* 
+                  CHANGE: We now use a ternary to render two completely different layouts
+                  within the <main> tag based on the isTemporaryChat flag.
+                */}
                 {isTemporaryChat ? (
-                    <div className="flex flex-col items-center gap-8 w-full max-w-3xl px-4">
-                        <img 
-                            src={idreLogo}
-                            alt="Logo" 
-                            className="w-60 h-auto dark:hidden"
-                        />
-                        <img 
-                            src={idreWhiteLogo}
-                            alt="Logo" 
-                            className="w-60 h-auto hidden dark:block"
-                        />
-                        {inputArea}
+                    // LAYOUT 1: Temporary Chat (Logo + Input are centered together)
+                    // This container will grow to fill space and center its content.
+                    <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto p-4">
+                        <div className="flex flex-col items-center gap-8 w-full max-w-3xl">
+                            <img
+                                src={idreLogo}
+                                alt="Logo"
+                                className="w-60 h-auto dark:hidden"
+                            />
+                            <img
+                                src={idreWhiteLogo}
+                                alt="Logo"
+                                className="w-60 h-auto hidden dark:block"
+                            />
+                            {/* The input area is now INSIDE the centered block */}
+                            {inputArea}
+                        </div>
                     </div>
                 ) : (
+                    // LAYOUT 2: Regular Chat (Messages scroll, Input is fixed at the bottom)
                     <>
-                        {children}
+                        {/* This container holds the scrollable chat messages */}
+                        <div className="flex-1 w-full overflow-y-auto">
+                            {children}
+                        </div>
+                        {/* The input area is a sibling, anchoring it to the bottom */}
                         {inputArea}
                         {modelInfo}
                     </>
@@ -144,6 +156,7 @@ const Layout: React.FC<LayoutProps> = ({
                     handleCloseAIModelsSettings();
                     handleCloseDefaultModelsModal();
                 }}
+                isTemporaryChat={isTemporaryChat}
             />
             <LoginModal
                 isOpen={modals.isLoginModalOpen}

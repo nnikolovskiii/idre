@@ -169,6 +169,8 @@ def generate_answer_node(state: ChatGraphState):
     """
     print("---NODE: Generating Answer---")
     user_task = state["processed_input"]
+    web_search = state["web_search"]
+    print(f"   > Web search: '{web_search}'")
     messages = state["messages"]  # This now includes the new HumanMessage
     heavy_model = state.get("heavy_model", "google/gemini-pro-1.5")
     light_model = state.get("light_model", "google/gemini-flash-1.5")
@@ -208,6 +210,11 @@ def generate_answer_node(state: ChatGraphState):
         user_task=user_task,
         context=context,
     )
+
+    if web_search and encrypt_api_key:
+        print("Online....")
+        heavy_model = heavy_model + ":online"
+
     open_router_model = container.openrouter_model(api_key=api_key, model=heavy_model)
 
     try:
@@ -222,7 +229,7 @@ def generate_answer_node(state: ChatGraphState):
         error_content = f"Sorry, an error occurred while generating the answer: {e}"
         error_message = AIMessage(content=error_content, id=str(uuid.uuid4()))
         return {
-            "messages": messages + [error_message], # Append error to existing messages
+            "messages": [error_message],  # Append error to existing messages
             # Clear out temporary state values
             "processed_input": None,
             "enhanced_transcript": None,
@@ -232,30 +239,31 @@ def generate_answer_node(state: ChatGraphState):
             "text_input": None,
             "api_key": None,
             "files_contents": None,
+            "web_search": None,
         }
 
-    try:
-        print("   > Generating text-to-speech audio for the answer...")
-        light_open_router = container.openrouter_model(api_key=api_key, model=light_model)
-        conclusion_instruction = get_conclusion_instruction.format(
-            user_task=user_task, ai_message=result.content
-        )
-        structured_model = light_open_router.with_structured_output(Conclusion)
-        conclusion = structured_model.invoke(conclusion_instruction)
-        no_markdown_text = remove_markdown(conclusion.text)
-        output_audio_file = asyncio.run(text_to_speech_upload_file(no_markdown_text))
-        print(f"   > Text-to-speech audio file created: {output_audio_file}")
-        output_audio_url = f"{file_service_url}/test/download/{output_audio_file}"
-        result.additional_kwargs["file_url"] = output_audio_url
-    except Exception as e:
-        print(
-            f"   > WARNING: Could not generate TTS audio. Returning text only. Error: {e}"
-        )
+    # try:
+    #     print("   > Generating text-to-speech audio for the answer...")
+    #     light_open_router = container.openrouter_model(api_key=api_key, model=light_model)
+    #     conclusion_instruction = get_conclusion_instruction.format(
+    #         user_task=user_task, ai_message=result.content
+    #     )
+    #     structured_model = light_open_router.with_structured_output(Conclusion)
+    #     conclusion = structured_model.invoke(conclusion_instruction)
+    #     no_markdown_text = remove_markdown(conclusion.text)
+    #     output_audio_file = asyncio.run(text_to_speech_upload_file(no_markdown_text))
+    #     print(f"   > Text-to-speech audio file created: {output_audio_file}")
+    #     output_audio_url = f"{file_service_url}/test/download/{output_audio_file}"
+    #     result.additional_kwargs["file_url"] = output_audio_url
+    # except Exception as e:
+    #     print(
+    #         f"   > WARNING: Could not generate TTS audio. Returning text only. Error: {e}"
+    #     )
 
     result.id = str(uuid.uuid4())
 
     return {
-        "messages": [result], # Append success result to existing messages
+        "messages": [result],  # Append success result to existing messages
         # Clear out temporary state values
         "processed_input": None,
         "enhanced_transcript": None,
@@ -265,4 +273,5 @@ def generate_answer_node(state: ChatGraphState):
         "text_input": None,
         "api_key": None,
         "files_contents": None,
+        "web_search": None,
     }

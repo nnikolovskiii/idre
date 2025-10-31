@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fileService } from "../../lib/filesService";
+import { fileService } from "../../services/filesService";
 
 interface FileViewerModalProps {
     isOpen: boolean;

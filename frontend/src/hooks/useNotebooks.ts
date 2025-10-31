@@ -4,7 +4,7 @@ import {
     type NotebookCreate,
     type NotebookResponse,
     type NotebookUpdate, type NotebooksListResponse
-} from '../lib/notebooksService';
+} from '../services/notebooksService';
 
 
 interface UseNotebooksState {

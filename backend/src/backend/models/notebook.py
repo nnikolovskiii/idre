@@ -5,7 +5,8 @@ from sqlalchemy import (
     DateTime,
     Integer,
     func,
-    UniqueConstraint
+    UniqueConstraint,
+    Text
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -26,10 +27,10 @@ class Notebook(Base):
     user_id = Column(String(255), nullable=False, index=True)
 
     # Notebook emoji icon
-    emoji = Column(String(10), nullable=False)
+    emoji = Column(Text, nullable=False)
 
     # Notebook title
-    title = Column(String(255), nullable=False)
+    title = Column(Text, nullable=False)
 
     # Creation date
     date = Column(String(50), nullable=False)

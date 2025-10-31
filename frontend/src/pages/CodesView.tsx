@@ -8,7 +8,7 @@ import {
     FaTimes,
     FaExternalLinkAlt
 } from 'react-icons/fa';
-import { buildApiUrl } from '../lib/api';
+import { buildApiUrl } from '../services/api';
 
 // Types
 interface CodeData {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { modelApiService } from '../../lib/modelApiService';
+import { modelApiService } from '../../services/modelApiService';
 import clsx from 'clsx'; // A tiny utility for constructing className strings conditionally. `npm install clsx`
 
 // --- Icon Components (can be moved to a separate file if reused) ---

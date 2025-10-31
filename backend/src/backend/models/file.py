@@ -33,6 +33,8 @@ class File(Base):
 
     url = Column(String(500), nullable=False)
 
+    content = Column(Text, nullable=True)
+
     filename = Column(String(255), nullable=False)
 
     unique_filename = Column(String(255), nullable=False, unique=True)

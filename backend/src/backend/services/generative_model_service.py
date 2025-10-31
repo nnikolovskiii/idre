@@ -81,3 +81,17 @@ class GenerativeModelService:
     async def deactivate_model(self, model_id: str) -> Optional[GenerativeModel]:
         """Deactivates a generative model."""
         return await self.update_model_active_status(model_id, False)
+
+    # Add this method to GenerativeModelService class
+    async def get_unique_model_names(self, open_access: bool) -> List[str]:
+        """
+        Returns a dictionary with two lists of unique model names:
+        - 'open_access': List of model names with is_open_access=True
+        - 'all': List of all model names regardless of access status
+        """
+        if not open_access:
+            all_models = await self.repo.list_all()
+            return list(set(model.name for model in all_models))
+        else:
+            open_access_models = await self.repo.get_by_access_status(True)
+            return list(set(model.name for model in open_access_models))

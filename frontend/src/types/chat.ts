@@ -13,6 +13,7 @@ export interface ChatSession {
     title: string;
     messages: Message[];
     createdAt: Date;
+    web_search: boolean;
 }
 
 export interface BackendMessage {

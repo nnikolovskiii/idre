@@ -31,6 +31,7 @@ class UpdateFileRequest(BaseModel):
     """
     filename: Optional[constr(min_length=1, max_length=255)] = None
     notebook_id: Optional[str] = None
+    content: Optional[str] = None
     # Add other user-updatable fields here if necessary
 
 
@@ -136,6 +137,15 @@ async def upload_file(
                 request=SendMessageRequest(audio_path=docker_url, file_id=str(file_record.id))
             )
         else:
+            # Determine content to store: decode to text only if it's a text file
+            content_to_store = None
+            if file.content_type and file.content_type.startswith('text/'):
+                try:
+                    content_to_store = file_content.decode('utf-8')
+                except UnicodeDecodeError:
+                    # If decoding fails, don't store content (treat as binary)
+                    content_to_store = None
+
             file_record: File = await file_service.create_file_record(
                 user_id=str(current_user.user_id),
                 filename=file.filename,
@@ -143,7 +153,8 @@ async def upload_file(
                 url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
                 content_type=file.content_type,
                 file_size_bytes=file.size,
-                notebook_id=notebook_id
+                notebook_id=notebook_id,
+                content=content_to_store
             )
 
         return {
@@ -194,7 +205,8 @@ async def get_user_files(
                     "run_id": file.run_id,
                     "created_at": file.created_at.isoformat() if file.created_at else None,
                     "updated_at": file.updated_at.isoformat() if file.updated_at else None,
-                    "processing_result": file.processing_result if file.processing_result else None
+                    "processing_result": file.processing_result if file.processing_result else None,
+                    "content": file.content,
                 }
                 for file in files
             ]

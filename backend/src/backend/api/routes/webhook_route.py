@@ -58,9 +58,10 @@ async def handle_langgraph_webhook(
                 user_id=user_id,
                 updates={
                     "processing_result": {"transcription": transcription},
-                    "processing_status": ProcessingStatus.COMPLETED
+                    "processing_status": ProcessingStatus.COMPLETED,
+                    "content": transcription
                 },
-                merge_processing_result=True
+                merge_processing_result=True,
             )
 
             # # Manual cleanup: Queue deletion (non-blocking)
@@ -77,7 +78,8 @@ async def handle_langgraph_webhook(
                     file_id=file_id,
                     updates={
                         "processing_status": ProcessingStatus.FAILED,
-                        "processing_result": {"error": error_details}
+                        "processing_result": {"error": error_details},
+                        "content": "Error processing file"
                     },
                     merge_processing_result=True
                 )

@@ -14,7 +14,7 @@ import {
     FaDownload
 } from 'react-icons/fa';
 import './FileUpload.css'
-import { getFilesUrl } from '../lib/api';
+import { getFilesUrl } from '../services/api';
 
 // Types
 interface FileWithPreview extends File {

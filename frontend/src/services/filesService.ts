@@ -25,6 +25,7 @@ export interface FileData {
     content_type: string;
     file_size: string;
     processing_status: string;
+    content: string;
     thread_id: string | null;
     run_id: string | null;
     created_at: string | null;
@@ -47,6 +48,7 @@ export interface FileListResponse {
 export interface UpdateFilePayload {
     filename?: string;
     notebook_id?: string;
+    content?: string;
 }
 
 /**

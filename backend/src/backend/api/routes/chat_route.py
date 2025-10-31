@@ -9,7 +9,8 @@ from fastapi.responses import StreamingResponse
 from backend.api.dependencies import get_chat_service
 from backend.models import User
 from backend.api.routes.auth_route import get_current_user
-from backend.models.dtos.chat import ChatResponse, MessageResponse, SendMessageRequest, CreateThreadRequest
+from backend.models.dtos.chat import ChatResponse, MessageResponse, SendMessageRequest, CreateThreadRequest, \
+    UpdateWebSearchRequest
 from backend.services.chat_service import ChatService
 from backend.container import container
 
@@ -37,7 +38,8 @@ async def get_chats(
                 thread_id=str(chat.thread_id),
                 created_at=chat.created_at,
                 updated_at=chat.updated_at,
-                title=chat.title
+                title=chat.title,
+                web_search=chat.web_search
             ) for chat in chats
         ]
     except Exception as e:
@@ -116,7 +118,8 @@ async def create_new_thread(
             "chat_id": str(new_chat.chat_id),
             "thread_id": str(new_chat.thread_id),
             "title": request.title,
-            "created_at": new_chat.created_at.isoformat() if new_chat.created_at else ""
+            "created_at": new_chat.created_at.isoformat() if new_chat.created_at else "",
+            "web_search": new_chat.web_search
         }
     except Exception as e:
         error_message = f"Error creating thread: {str(e)}"
@@ -191,3 +194,35 @@ async def sse_endpoint(thread_id: str):
             "X-Accel-Buffering": "no"
         }
     )
+
+@router.put("/{chat_id}/web-search")
+async def toggle_chat_web_search(
+        chat_id: str,
+        request: UpdateWebSearchRequest,
+        current_user: User = Depends(get_current_user),
+        chat_service: ChatService = Depends(get_chat_service)
+):
+    """
+    Handles the HTTP request to enable or disable web search for a specific chat.
+    """
+    try:
+        # Optional but recommended: Authorize that the user owns this chat
+        chat_to_update = await chat_service.get_chat_by_id(chat_id)
+        if not chat_to_update or chat_to_update.user_id != str(current_user.user_id):
+            raise HTTPException(status_code=404, detail="Chat not found or access denied")
+
+        updated_chat = await chat_service.toggle_web_search(chat_id, request.enabled)
+        # The service already handles the "not found" case, but this double-check is safe
+        if not updated_chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        return {
+            "status": "success",
+            "message": f"Web search for chat {chat_id} is now {'enabled' if request.enabled else 'disabled'}.",
+            "web_search_enabled": updated_chat.web_search
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await chat_service.session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating web search status: {str(e)}")

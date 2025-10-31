@@ -2,8 +2,8 @@ from typing import List
 from pydantic import BaseModel, Field
 
 class NotebookCreate(BaseModel):
-    emoji: str = Field(..., min_length=1, max_length=10)
-    title: str = Field(..., min_length=1, max_length=255)
+    emoji: str
+    title: str
     date: str = Field(..., min_length=1, max_length=50)
 
 

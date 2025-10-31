@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { defaultAIModelsService } from '../lib/defaultAIModelsService';
-import type { UpdateDefaultAIModelsRequest } from '../lib/defaultAIModelsService';
+import { defaultAIModelsService } from '../services/defaultAIModelsService';
+import type { UpdateDefaultAIModelsRequest } from '../services/defaultAIModelsService';
 import './DefaultModels.css';
 
 const DefaultModels: React.FC = () => {
