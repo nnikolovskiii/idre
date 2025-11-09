@@ -17,6 +17,7 @@ import CreateNotebookPage from "./pages/CreateNotebookPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
+import WhiteboardView from "./pages/WhiteboardView";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
@@ -45,6 +46,14 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <MyDriveView />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/whiteboard/:notebookId"
+                                element={
+                                    <ProtectedRoute>
+                                        <WhiteboardView />
                                     </ProtectedRoute>
                                 }
                             />

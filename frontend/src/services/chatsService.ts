@@ -1,3 +1,5 @@
+// /home/nnikolovskii/dev/general-chat/frontend/src/services/chatsService.ts:
+
 import {
     getChatsUrl,
     getThreadMessagesUrl,
@@ -37,7 +39,8 @@ export interface CreateThreadRequest {
     title: string;
     text?: string;
     notebook_id?: string;
-    web_search?: boolean
+    web_search?: boolean;
+    mode?: string;
 }
 
 export interface CreateThreadResponse {
@@ -54,6 +57,7 @@ export interface SendMessageRequest {
     ai_model?: string;
     light_model?: string;
     heavy_model?: string;
+    mode?: string;
 }
 
 export interface SendMessageResponse {
@@ -190,7 +194,8 @@ export const chatsService = {
     sendMessageToThread: async (
         threadId: string,
         message?: string,
-        audioPath?: string
+        audioPath?: string,
+        mode?: string,
     ): Promise<SendMessageResponse> => {
         const payload: SendMessageRequest = {};
 
@@ -201,6 +206,10 @@ export const chatsService = {
 
         if (audioPath) {
             payload.audio_path = audioPath;
+        }
+
+        if (mode) {
+            payload.mode = mode;
         }
 
         const response = await fetch(sendMessageToThreadUrl(threadId), {

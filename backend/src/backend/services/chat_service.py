@@ -54,6 +54,8 @@ class ChatService:
             notebook_model_service (NotebookModelService): Service for managing notebook models.
             chat_model_service (ChatModelService): Service for managing chat models.
             assistant_service (AssistantService): Service for managing assistants.
+            file_service (FileService): Service for handling file operations.
+            ai_service (AIService): Service for AI-related tasks.
         """
         self.session = session
         self.chat_repo = chat_repository
@@ -64,24 +66,46 @@ class ChatService:
         self.assistant_service = assistant_service
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
         self.file_service = file_service
-        self._assistant_id = None
+        self._assistant_ids = {}  # Cache for assistant IDs by mode
         self.ai_service = ai_service
 
-    async def _get_assistant_id(self) -> str:
-        """Lazy loads the assistant ID and returns it as a string."""
-        if self._assistant_id is None:
-            print("DEBUG: Fetching assistant...")
-            assistant = await self.assistant_service.get_assistant_by_graph_id("chat_agent")
+    async def _get_assistant_id(self, mode: str) -> str:
+        """
+        Lazy loads the assistant ID for a given mode and returns it as a string.
+
+        Args:
+            mode (str): The mode of operation, e.g., "brainstorm" or "consult".
+
+        Returns:
+            str: The assistant ID as a string.
+
+        Raises:
+            ValueError: If the mode is invalid or the corresponding assistant is not found.
+        """
+        graph_id_map = {
+            "brainstorm": "brainstorm_graph",
+            "consult": "chat_agent"
+        }
+
+        graph_id = graph_id_map.get(mode)
+        if not graph_id:
+            raise ValueError(f"Invalid mode specified: '{mode}'. Valid modes are: {list(graph_id_map.keys())}")
+
+        # Check cache first
+        if self._assistant_ids.get(mode) is None:
+            print(f"DEBUG: Fetching assistant for mode '{mode}' with graph_id '{graph_id}'...")
+            assistant = await self.assistant_service.get_assistant_by_graph_id(graph_id)
             print(f"DEBUG: Got assistant: {assistant}")
 
             if assistant is None:
-                raise ValueError("Assistant with graph_id 'chat_agent' not found.")
+                raise ValueError(f"Assistant with graph_id '{graph_id}' not found for mode '{mode}'.")
 
-            print(f"DEBUG: Assistant ID: {assistant.assistant_id}")
-            self._assistant_id = str(assistant.assistant_id)
-            print(f"DEBUG: Stored assistant_id as string: {self._assistant_id}")
+            assistant_id_str = str(assistant.assistant_id)
+            print(f"DEBUG: Assistant ID: {assistant_id_str}")
+            self._assistant_ids[mode] = assistant_id_str
+            print(f"DEBUG: Stored assistant_id for mode '{mode}': {self._assistant_ids[mode]}")
 
-        return self._assistant_id
+        return self._assistant_ids[mode]
 
     # --- LangGraph Methods (External API Interaction) ---
 
@@ -169,6 +193,12 @@ class ChatService:
     async def send_message_to_graph(self, thread_id: str, user_id: str, request: SendMessageRequest):
         """
         Orchestrates sending a message by gathering all data and invoking LangGraph.
+
+        Args:
+            thread_id (str): The ID of the LangGraph thread.
+            user_id (str): The ID of the user sending the message.
+            request (SendMessageRequest): The DTO containing message details.
+            mode (str): The operational mode ("consult" or "brainstorm") to determine the assistant.
         """
         chat_obj = await self.chat_repo.get_by_thread_id(thread_id=thread_id)
         if not chat_obj:
@@ -194,13 +224,15 @@ class ChatService:
         if request.audio_path:
             run_input["audio_path"] = request.audio_path
 
-        assistant_id = await self._get_assistant_id()
+        # Get the correct assistant ID based on the specified mode
+        assistant_id = await self._get_assistant_id(request.mode.lower())
+
         background_run = await self.langgraph_client.runs.create(
             thread_id=thread_id,
             assistant_id=assistant_id,
             input=run_input,
-            webhook=webhook_url,  # Optional: For notification when done
-            metadata={"user_id": user_id}  # Optional: Add custom metadata
+            webhook=webhook_url,
+            metadata={"user_id": user_id}
         )
 
     # --- Data Retrieval and Deletion Methods (delegated to repository) ---

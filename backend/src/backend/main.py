@@ -16,7 +16,7 @@ from backend.api.routes.generative_model_route import router as generative_model
 from backend.api.routes.notebook_models_route import router as notebook_models_router
 from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
-
+    
 postgres_db = container.db()
 
 # File size limit for middleware (100MB)

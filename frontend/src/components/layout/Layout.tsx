@@ -27,6 +27,7 @@ interface LayoutProps {
     createNewChat: (notebookId?: string) => void;
     switchToChat: (chatId: string) => void;
     handleDeleteChat: (chatId: string) => void;
+    isThreadTyping?: (threadId: string) => boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -45,6 +46,7 @@ const Layout: React.FC<LayoutProps> = ({
                                            createNewChat,
                                            switchToChat,
                                            handleDeleteChat,
+                                           isThreadTyping,
                                        }) => {
     const { logout } = useAuth();
 
@@ -95,6 +97,7 @@ const Layout: React.FC<LayoutProps> = ({
                     isAuthenticated={!!isAuthenticated}
                     onLoginClick={handleOpenLoginModal}
                     onRegisterClick={handleOpenRegisterModal}
+                    isThreadTyping={isThreadTyping}
                 />
             </div>
 

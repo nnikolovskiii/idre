@@ -3,7 +3,8 @@
   "graphs": {
     "transcription_agent": "./src/agent/core/configs.py:transcription_graph",
     "chat_agent": "./src/agent/core/configs.py:chat_graph",
-    "chat_name_agent": "./src/agent/core/configs.py:chat_name_graph_compiled"
+    "chat_name_agent": "./src/agent/core/configs.py:chat_name_graph_compiled",
+    "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

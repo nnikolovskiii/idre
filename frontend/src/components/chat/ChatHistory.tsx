@@ -68,6 +68,7 @@ interface ChatHistoryProps {
     onCreateNewChat: () => void;
     onToggleCollapse: () => void;
     isAuthenticated: boolean;
+    isThreadTyping?: (threadId: string) => boolean;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({
@@ -80,6 +81,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                                                      onCreateNewChat,
                                                      onToggleCollapse,
                                                      isAuthenticated,
+                                                     isThreadTyping,
                                                  }) => {
     const [historyOpen, setHistoryOpen] = useState(true);
 
@@ -149,34 +151,46 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                             No chat sessions yet.
                         </div>
                     ) : (
-                        chatSessions.map((chat) => (
-                            <div
-                                key={chat.id}
-                                className={`group flex items-center justify-between gap-2 p-2.5 px-3 rounded-md cursor-pointer mb-1 border ${
-                                    chat.id === currentChatId
-                                        ? "bg-sidebar-accent text-sidebar-primary border-sidebar-border"
-                                        : "border-transparent hover:bg-sidebar-accent"
-                                }`}
-                                onClick={() => {
-                                    onSwitchChat(chat.id);
-                                    if (window.innerWidth <= 768) {
-                                        onToggleCollapse();
-                                    }
-                                }}
-                            >
-                                <div className="flex-1 font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis text-sidebar-foreground">
-                                    {chat.title || `Chat ${chat.id.slice(0, 8)}`}
-                                </div>
-                                <button
-                                    className="flex-shrink-0 flex items-center justify-center p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-destructive hover:text-destructive-foreground"
-                                    onClick={(e) => handleDeleteChat(chat.id, e)}
-                                    title="Delete chat"
-                                    aria-label="Delete chat"
+                        chatSessions.map((chat) => {
+                            const isTyping = isThreadTyping && chat.thread_id ? isThreadTyping(chat.thread_id) : false;
+                            return (
+                                <div
+                                    key={chat.id}
+                                    className={`group flex items-center justify-between gap-2 p-2.5 px-3 rounded-md cursor-pointer mb-1 border ${
+                                        chat.id === currentChatId
+                                            ? "bg-sidebar-accent text-sidebar-primary border-sidebar-border"
+                                            : "border-transparent hover:bg-sidebar-accent"
+                                    }`}
+                                    onClick={() => {
+                                        onSwitchChat(chat.id);
+                                        if (window.innerWidth <= 768) {
+                                            onToggleCollapse();
+                                        }
+                                    }}
                                 >
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        ))
+                                    <div className="flex-1 flex items-center gap-2 font-medium text-sm whitespace-nowrap overflow-hidden text-sidebar-foreground">
+                                        <span className="overflow-hidden text-ellipsis">
+                                            {chat.title || `Chat ${chat.id.slice(0, 8)}`}
+                                        </span>
+                                        {isTyping && (
+                                            <span className="flex-shrink-0 flex items-center gap-0.5">
+                                                <span className="w-1 h-1 bg-sidebar-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                                <span className="w-1 h-1 bg-sidebar-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                                <span className="w-1 h-1 bg-sidebar-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        className="flex-shrink-0 flex items-center justify-center p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-destructive hover:text-destructive-foreground"
+                                        onClick={(e) => handleDeleteChat(chat.id, e)}
+                                        title="Delete chat"
+                                        aria-label="Delete chat"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             )}

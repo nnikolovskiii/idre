@@ -1,3 +1,5 @@
+// /home/nnikolovskii/dev/general-chat/frontend/src/context/SseContext.tsx:
+
 import React, {
     createContext,
     useContext,
@@ -15,8 +17,10 @@ interface SseEventData {
 interface SseContextType {
     latestEvent: SseEventData | null;
     connectionStatus: "disconnected" | "connecting" | "connected" | "error";
-    typingThreadId: string | null;
-    setTypingThreadId: (threadId: string | null) => void;
+    typingThreads: Set<string>;
+    addTypingThread: (threadId: string) => void;
+    removeTypingThread: (threadId: string) => void;
+    isThreadTyping: (threadId: string) => boolean;
     connectToThread: (threadId: string) => void;
     disconnect: () => void;
 }
@@ -30,42 +34,71 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
     const [connectionStatus, setConnectionStatus] = useState<
         SseContextType["connectionStatus"]
     >("disconnected");
-    const [typingThreadId, setTypingThreadId] = useState<string | null>(null);
+    const [typingThreads, setTypingThreads] = useState<Set<string>>(new Set());
     const eventSourceRef = useRef<EventSource | null>(null);
 
-    // This is a "hard" disconnect, for logging out or unmounting the app.
+    const addTypingThread = useCallback((threadId: string) => {
+        setTypingThreads((prev) => new Set(prev).add(threadId));
+    }, []);
+
+    const removeTypingThread = useCallback((threadId: string) => {
+        setTypingThreads((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(threadId);
+            return newSet;
+        });
+    }, []);
+
+    const isThreadTyping = useCallback((threadId: string) => {
+        return typingThreads.has(threadId);
+    }, [typingThreads]);
+
     const disconnect = useCallback(() => {
         if (eventSourceRef.current) {
             console.log(
                 "SSE Context: Closing existing connection (Hard Disconnect).",
                 eventSourceRef.current.url
             );
-            eventSourceRef.current.close();
+            const oldEs = eventSourceRef.current;
+            oldEs.onopen = null;
+            oldEs.onmessage = null;
+            oldEs.onerror = null;
+            oldEs.close();
+
             eventSourceRef.current = null;
             setConnectionStatus("disconnected");
-            setTypingThreadId(null); // This is correct for a hard disconnect.
+            // Note: We don't clear typing threads here - they persist across connection switches
         }
     }, []);
 
     const connectToThread = useCallback(
         (threadId: string) => {
-            // If we are already connected to the same thread, do nothing.
             if (
                 eventSourceRef.current &&
-                eventSourceRef.current.url.includes(threadId)
+                eventSourceRef.current.url.includes(threadId) &&
+                eventSourceRef.current.readyState !== EventSource.CLOSED
             ) {
                 return;
             }
 
             // ===================================================================
-            // THE FIX IS HERE
+            // THE FIX IS HERE: Proactively disable old event handlers
             // ===================================================================
-            // We no longer call the master disconnect() function which resets the typing state.
-            // Instead, we manually close the old connection before creating a new one,
-            // preserving the typingThreadId state.
             if (eventSourceRef.current) {
                 console.log("SSE Context: Switching threads, closing old connection.", eventSourceRef.current.url);
-                eventSourceRef.current.close();
+
+                // Get a reference to the old EventSource
+                const oldEs = eventSourceRef.current;
+
+                // Deregister all event listeners from the old source.
+                // This prevents stale onerror/onmessage handlers from firing
+                // after we've already decided to connect to a new thread.
+                oldEs.onopen = null;
+                oldEs.onmessage = null;
+                oldEs.onerror = null;
+
+                // Now it's safe to close it.
+                oldEs.close();
             }
             // ===================================================================
 
@@ -86,30 +119,29 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
                     const parsedData = JSON.parse(event.data);
                     console.log("SSE Context: Message received:", parsedData);
                     setLatestEvent(parsedData);
-
-                    if (parsedData.data?.thread_id === typingThreadId) {
-                        setTypingThreadId(null);
-                    }
                 } catch (err) {
                     console.error("SSE Context: Error parsing message:", err);
-                    setTypingThreadId(null);
+                    // Remove typing indicator for this thread on error
+                    removeTypingThread(threadId);
                 }
             };
 
             es.onerror = (error) => {
-                console.error("SSE Context: Connection error:", error);
+                // This handler only belongs to the NEW EventSource object.
+                // An error here means the new connection failed.
+                console.error("SSE Context: Connection error on new connection:", error);
                 setConnectionStatus("error");
-                setTypingThreadId(null);
+                // Remove typing indicator for this thread on error
+                removeTypingThread(threadId);
                 es.close();
             };
 
             eventSourceRef.current = es;
         },
-        [typingThreadId] // No longer depends on disconnect
+        [] // Removed typingThreadId from dependencies as it's not used inside
     );
 
     useEffect(() => {
-        // This effect now correctly handles the "hard disconnect" when the app closes.
         return () => {
             disconnect();
         };
@@ -118,8 +150,10 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
     const value = {
         latestEvent,
         connectionStatus,
-        typingThreadId,
-        setTypingThreadId,
+        typingThreads,
+        addTypingThread,
+        removeTypingThread,
+        isThreadTyping,
         connectToThread,
         disconnect,
     };

@@ -18,6 +18,9 @@ upload_password = os.getenv("UPLOAD_PASSWORD")
 class RestructuredText(BaseModel):
     text: str = Field(..., description="Enhanced transcript text")
 
+class FileName(BaseModel):
+    file_name: str = Field(..., description="File name suggestion")
+
 class TranscriptionGraphState(TypedDict):
     """Represents the state of the transcription graph.
 
@@ -31,6 +34,7 @@ class TranscriptionGraphState(TypedDict):
     enhanced_transcript: Optional[str]
     api_key: Optional[str]
     light_model: Optional[str]
+    file_name: Optional[str]
 
 
 def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
@@ -92,11 +96,28 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
         Text:
         "{transcript}"
         """
+
+
         open_router_model = container.openrouter_model(api_key=api_key, model=light_model)
         structured_llm = open_router_model.with_structured_output(RestructuredText)
 
         response: RestructuredText = structured_llm.invoke(prompt)
         enhanced_text = response.text
+
+        file_name_prompt = f"""Below a file content. Suggest a name for the file based on the content.
+        
+        Important:
+        Do not add extension to the file name.
+
+        Text:
+        "{enhanced_text}"
+        """
+
+        file_name_structured_llm = open_router_model.with_structured_output(FileName)
+
+        response: FileName = file_name_structured_llm.invoke(file_name_prompt)
+        file_name = response.file_name
+
         print(f"   > Enhanced Transcript: '{enhanced_text[:100]}...'")
 
         return {
@@ -104,6 +125,7 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
             "audio_path": None,
             "api_key": None,
             "light_model": None,
+            "file_name": file_name
         }
 
     finally:

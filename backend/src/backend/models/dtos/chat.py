@@ -30,6 +30,7 @@ class SendMessageRequest(BaseModel):
     file_id : Optional[str] = None
     first_message: Optional[str] = False
     chat_id: Optional[str] = None
+    mode: Optional[str] = None
 
 
 class CreateThreadRequest(BaseModel):

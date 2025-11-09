@@ -1,3 +1,5 @@
+// /home/nnikolovskii/dev/general-chat/frontend/src/components/chat/ChatView.tsx:
+
 import React from "react";
 import {useParams} from "react-router-dom";
 
@@ -6,6 +8,7 @@ import MessagesContainer from "./MessagesContainer.tsx";
 import Layout from "../layout/Layout.tsx";
 import {fileService} from "../../services/filesService.ts";
 import ChatInputArea from "./ChatInputArea.tsx";
+import {useSse} from "../../context/SseContext.tsx";
 
 type ChatViewProps = {
     notebookId?: string;
@@ -35,15 +38,17 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         handleDeleteMessage,
     } = useChats(currentNotebookId);
 
+    const { isThreadTyping } = useSse();
+
     const handleModelsRequired = () => {
         // This would be handled in Layout via onSettingsClick, but if needed here, adjust
     };
 
-    const handleTextSubmit = async (text: string, options: { webSearch: boolean }) => {
+    const handleTextSubmit = async (text: string, options: { webSearch: boolean, mode: string }) => {
         await handleSendMessage(text, undefined, options);
     };
 
-    const handleFileSubmit = async (file: File, options: { webSearch: boolean }) => {
+    const handleFileSubmit = async (file: File, options: { webSearch: boolean, mode: string }) => {
         try {
             // Re-using file upload logic from MyDriveView for consistency
             const uploadResult = await fileService.uploadFile(file, undefined, false);
@@ -99,6 +104,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             createNewChat={createTemporaryChat}
             switchToChat={switchToChat}
             handleDeleteChat={handleDeleteChat}
+            isThreadTyping={isThreadTyping}
         />
     );
 };

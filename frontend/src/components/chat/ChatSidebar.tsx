@@ -3,7 +3,7 @@ import {ThemeToggle} from "../ThemeToggle"; // Make sure this path is correct
 
 import React, {useState, useEffect} from "react";
 import type {ChatSession} from "../../types/chat";
-import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft} from "lucide-react";
+import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, PenTool} from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
@@ -31,6 +31,7 @@ interface ChatSidebarProps {
     isAuthenticated?: boolean;
     onLoginClick: () => void;
     onRegisterClick: () => void;
+    isThreadTyping?: (threadId: string) => boolean;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -49,10 +50,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                      isAuthenticated = false,
                                                      onLoginClick,
                                                      onRegisterClick,
+                                                     isThreadTyping,
                                                  }) => {
     // ... (all your existing hooks and state remain the same)
     const [isMobile, setIsMobile] = useState(false);
-    const [activeTab, setActiveTab] = useState<"chat" | "files">("chat");
+    const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard">("chat");
     const navigate = useNavigate();
     const location = useLocation();
     const {currentNotebook, getNotebookById} = useNotebooks();
@@ -73,12 +75,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             setActiveTab("files");
         } else if (location.pathname.startsWith("/chat/")) {
             setActiveTab("chat");
+        } else if (location.pathname.startsWith("/whiteboard/")) {
+            setActiveTab("whiteboard");
         }
     }, [location.pathname]);
 
     const getNotebookIdFromPath = () => {
         const parts = location.pathname.split('/').filter(Boolean);
-        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files')) {
+        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard')) {
             return parts[1];
         }
         return null;
@@ -91,11 +95,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         }
     }, [location.pathname, getNotebookById, currentNotebook?.id]);
 
-    const handleTabChange = (tab: "chat" | "files") => {
+    const handleTabChange = (tab: "chat" | "files" | "whiteboard") => {
         setActiveTab(tab);
         const notebookId = getNotebookIdFromPath();
         if (tab === "files") {
             navigate(notebookId ? `/files/${notebookId}` : '/notebooks');
+        } else if (tab === "whiteboard") {
+            navigate(notebookId ? `/whiteboard/${notebookId}` : '/notebooks');
         } else {
             navigate(notebookId ? `/chat/${notebookId}` : "/notebooks");
         }
@@ -217,6 +223,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     <FolderOpen size={16}/>
                                     <span>Files</span>
                                 </button>
+                                <button
+                                    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
+                                        activeTab === "whiteboard"
+                                            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
+                                            : "text-sidebar-foreground hover:bg-sidebar-accent"
+                                    }`}
+                                    onClick={() => handleTabChange("whiteboard")}
+                                    title="Whiteboard"
+                                >
+                                    <PenTool size={16}/>
+                                    <span>Whiteboard</span>
+                                </button>
                             </div>
                         </section>
                     )}
@@ -233,6 +251,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             onCreateNewChat={onCreateNewChat}
                             onToggleCollapse={onToggleCollapse}
                             isAuthenticated={isAuthenticated}
+                            isThreadTyping={isThreadTyping}
                         />
                     </div>
                 </div>

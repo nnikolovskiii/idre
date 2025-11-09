@@ -53,13 +53,18 @@ async def handle_langgraph_webhook(
             if not transcription:
                 raise HTTPException(status_code=500, detail="No transcription in final state")
 
+            file_name = values.get("file_name")
+            if not file_name:
+                raise HTTPException(status_code=500, detail="No file_name in final state")
+
             await file_service.update_file(
                 file_id=file_id,
                 user_id=user_id,
                 updates={
                     "processing_result": {"transcription": transcription},
                     "processing_status": ProcessingStatus.COMPLETED,
-                    "content": transcription
+                    "content": transcription,
+                    "filename": file_name,
                 },
                 merge_processing_result=True,
             )

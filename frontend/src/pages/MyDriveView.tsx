@@ -142,7 +142,7 @@ const MyDriveView = () => {
             return;
         }
         if (item.file_id === selectedFile?.file_id) return;
-        
+
 
         setSelectedFile(item);
         setEditorContent(item.content || '');
@@ -253,7 +253,9 @@ const MyDriveView = () => {
 
     const children = (
         <div className="flex flex-1 overflow-hidden h-full">
-            <div className="w-full md:w-2/5 border-r border-border overflow-y-auto">
+            {/* --- File List Pane (Visible by default on mobile, hidden when editor is open) --- */}
+            <div className={`w-full md:w-2/5 border-r border-border overflow-y-auto
+                             ${isEditorOpen ? 'hidden md:block' : 'block'}`}>
                 <div className="p-3 md:p-6">
                     <DriveHeader/>
                     {loading && <DriveLoading/>}
@@ -265,19 +267,34 @@ const MyDriveView = () => {
                     )}
                 </div>
             </div>
-            <div className="hidden md:flex flex-col w-3/5 bgF-background">
+
+            {/* --- Editor Pane (Hidden by default, visible on mobile/desktop when editor is open) --- */}
+            <div className={`w-full md:w-3/5 bg-background
+                             ${isEditorOpen ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                 {isEditorOpen && selectedFile ? (
                     <>
                         <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
-                            <h3 className="font-semibold text-foreground truncate"
-                                title={selectedFile.filename}>{selectedFile.filename}</h3>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center min-w-0">
+                                <button
+                                    onClick={handleCloseEditor}
+                                    className="md:hidden p-1 mr-2 -ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    title="Back to file list">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                         strokeLinejoin="round">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                </button>
+                                <h3 className="font-semibold text-foreground truncate"
+                                    title={selectedFile.filename}>{selectedFile.filename}</h3>
+                            </div>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
                                 <button onClick={handleSaveContent} disabled={!isDirty}
                                         className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
                                     Save
                                 </button>
                                 <button onClick={handleCloseEditor}
-                                        className="p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        className="hidden md:block p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                                         title="Close editor">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"

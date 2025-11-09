@@ -14,6 +14,8 @@ from src.agent.core.agent import (
     tool_node,
 )
 from src.agent.core.chat_graph import generate_answer_node, prepare_inputs_node
+from src.agent.core.brainstorm_graph import brainstorm_generate_answer, brainstorm_prepare_inputs
+
 from src.agent.core.graph import (
     answer_question,
     build_context,
@@ -175,6 +177,20 @@ def simple_graph():
 
     return workflow
 
+def brainstorm_graph():
+    workflow = StateGraph(ChatGraphState)
+
+    # Add just two nodes
+    workflow.add_node("prepare_inputs", brainstorm_prepare_inputs)
+    workflow.add_node("generate_answer", brainstorm_generate_answer)
+
+    # The graph is now a simple, linear sequence
+    workflow.set_entry_point("prepare_inputs")
+    workflow.add_edge("prepare_inputs", "generate_answer")
+    workflow.add_edge("generate_answer", END)
+
+    return workflow
+
 
 def transcription_graph():
     workflow = StateGraph(TranscriptionGraphState)
@@ -208,3 +224,6 @@ chat_graph = chat_builder.compile()
 
 chat_name_builder = chat_name_graph()
 chat_name_graph_compiled = chat_name_builder.compile()
+
+brainstorm_builder = brainstorm_graph()
+brainstorm_compiled_graph = brainstorm_builder.compile()

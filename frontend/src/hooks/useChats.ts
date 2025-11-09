@@ -1,3 +1,5 @@
+// /home/nnikolovskii/dev/general-chat/frontend/src/hooks/useChats.ts:
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { chatsService, type ChatResponse } from "../services/chatsService";
@@ -33,7 +35,7 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
 };
 
 export const useChats = (notebookIdParam?: string) => {
-    const { latestEvent, connectToThread, typingThreadId, setTypingThreadId } = useSse();
+    const { latestEvent, connectToThread, addTypingThread, removeTypingThread, isThreadTyping } = useSse();
     const initialFetchDone = useRef(false);
     const { user, isAuthenticated } = useAuth();
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -153,7 +155,7 @@ export const useChats = (notebookIdParam?: string) => {
         checkModels();
     }, [currentChatId]);
 
-    const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean }) => {
+    const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean; mode?: string }) => {
         setCreatingChat(true);
         try {
             const newThreadData = await chatsService.createThread({
@@ -161,6 +163,7 @@ export const useChats = (notebookIdParam?: string) => {
                 text: text,
                 notebook_id: notebookId || notebookIdParam,
                 web_search: options?.webSearch,
+                mode: options?.mode,
             });
 
             const newChat: ChatSession = {
@@ -202,7 +205,7 @@ export const useChats = (notebookIdParam?: string) => {
             title: "New Chat",
             messages: [],
             createdAt: new Date(),
-            web_search: true, // Default for new temporary chats
+            web_search: false, // Default for new temporary chats - changed to false
         };
 
         setChatSessions((prev) => [tempChat, ...prev]);
@@ -290,11 +293,12 @@ export const useChats = (notebookIdParam?: string) => {
     const handleSendMessage = async (
         text?: string,
         audioPath?: string,
-        options?: { webSearch?: boolean }
+        options?: { webSearch?: boolean; mode?: string }
     ) => {
         if (!text?.trim() && !audioPath) return;
 
         if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
+            let newChat: ChatSession | undefined;
             try {
                 setCreatingChat(true);
                 const optimisticText = text || "Audio message sent...";
@@ -314,29 +318,24 @@ export const useChats = (notebookIdParam?: string) => {
                     )
                 );
 
-                const newChat = await createNewChat(notebookIdParam, text, options);
+                newChat = await createNewChat(notebookIdParam, text, options);
 
                 if (!newChat) {
                     console.error("Failed to create chat");
                     return;
                 }
 
-                setChatSessions((prev) => {
-                    const filtered = prev.filter((chat) => !chat.id.startsWith("temp_"));
-                    return filtered.map((chat) =>
-                        chat.id === newChat.id
-                            ? { ...chat, messages: [...chat.messages, optimisticMessage] }
-                            : chat
-                    );
-                });
+                // Remove temporary chat from sessions
+                setChatSessions((prev) => prev.filter((chat) => !chat.id.startsWith("temp_")));
 
                 await chatsService.sendMessageToThread(
                     newChat.thread_id,
                     text,
-                    audioPath
+                    audioPath,
+                    options?.mode,
                 );
 
-                setTypingThreadId(newChat.thread_id);
+                addTypingThread(newChat.thread_id);
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
@@ -354,7 +353,9 @@ export const useChats = (notebookIdParam?: string) => {
                     )
                 );
                 setIsTemporaryChat(false);
-                setTypingThreadId(null);
+                if (newChat) {
+                    removeTypingThread(newChat.thread_id);
+                }
             } finally {
                 setCreatingChat(false);
             }
@@ -374,9 +375,10 @@ export const useChats = (notebookIdParam?: string) => {
             await chatsService.sendMessageToThread(
                 currentChat.thread_id,
                 text,
-                audioPath
+                audioPath,
+                options?.mode,
             );
-            setTypingThreadId(currentChat.thread_id);
+            addTypingThread(currentChat.thread_id);
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : "An unknown error occurred.";
@@ -393,7 +395,9 @@ export const useChats = (notebookIdParam?: string) => {
                         : chat
                 )
             );
-            setTypingThreadId(null);
+            if (currentChat) {
+                removeTypingThread(currentChat.thread_id);
+            }
         }
     };
 
@@ -427,10 +431,14 @@ export const useChats = (notebookIdParam?: string) => {
                     return chat;
                 })
             );
+            // The update for this thread has been processed, so stop the typing indicator.
+            removeTypingThread(currentThreadId);
         } else if (latestEvent.event === 'error') {
             console.error('SSE error event from context:', latestEvent.data.error);
+            // An error occurred for this thread, so stop the typing indicator.
+            removeTypingThread(currentThreadId);
         }
-    }, [latestEvent, currentThreadId]);
+    }, [latestEvent, currentThreadId, removeTypingThread]);
 
     const handleDeleteMessage = async (messageId: string) => {
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
@@ -449,7 +457,7 @@ export const useChats = (notebookIdParam?: string) => {
     const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
 
     // DERIVE isTyping for the CURRENT chat from global state
-    const isTyping = !!typingThreadId && typingThreadId === currentThreadId;
+    const isTyping = currentThreadId ? isThreadTyping(currentThreadId) : false;
 
     return {
         chatSessions,

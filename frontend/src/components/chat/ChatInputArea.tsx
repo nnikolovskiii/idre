@@ -5,11 +5,17 @@ import { Plus, SlidersHorizontal, ArrowUp } from "lucide-react";
 import type { ChatModel } from '../../services/chatModelService';
 import { SettingsPopover } from "./SettingsPopover.tsx";
 import { useClickOutside } from "../../hooks/useClickOutside.ts";
+import { useChatMode } from "../../hooks/useChatMode.ts";
 import { chatsService } from "../../services/chatsService.ts";
+import BrainstormSuggestions from "./BrainstormSuggestions.tsx";
+
+type ChatMode = "brainstorm" | "consult";
+
+const chatModes: ChatMode[] = ["brainstorm", "consult"];
 
 interface ChatInputAreaProps {
-    onTextSubmit: (text: string, options: { webSearch: boolean }) => Promise<void>;
-    onFileSubmit: (file: File, options: { webSearch: boolean }) => Promise<void>;
+    onTextSubmit: (text: string, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
+    onFileSubmit: (file: File, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
     disabled?: boolean;
     hasModelsConfigured?: boolean;
     loadingMessages?: boolean;
@@ -27,7 +33,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                                                          hasModelsConfigured = false,
                                                          onModelsRequired,
                                                          chatId,
-                                                         initialWebSearchEnabled = true,
+                                                         initialWebSearchEnabled = false,
                                                      }) => {
     const [textInput, setTextInput] = useState("");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -37,6 +43,11 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
 
     const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled);
     const [isUpdatingWebSearch, setIsUpdatingWebSearch] = useState(false);
+    const [currentMode, setCurrentMode] = useChatMode();
+
+    // Check if we should show brainstorm suggestions
+    const isTemporaryChat = chatId?.startsWith("temp_") || false;
+    const shouldShowSuggestions = isTemporaryChat && currentMode === "brainstorm" && !textInput.trim();
 
     useEffect(() => {
         setWebSearchEnabled(initialWebSearchEnabled);
@@ -70,7 +81,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         const message = textInput.trim();
         if (!message) return;
         try {
-            await onTextSubmit(message, { webSearch: webSearchEnabled });
+            await onTextSubmit(message, { webSearch: webSearchEnabled, mode: currentMode });
         } catch (error) {
             console.error("Failed to submit text:", error);
         }
@@ -100,7 +111,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         const file = event.target.files?.[0];
         if (!file) return;
         try {
-            await onFileSubmit(file, { webSearch: webSearchEnabled });
+            await onFileSubmit(file, { webSearch: webSearchEnabled, mode: currentMode });
         } catch (error) {
             console.error("Failed to submit file:", error);
         } finally {
@@ -114,18 +125,14 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         fileInputRef.current?.click();
     };
 
-    // --- MODIFIED HANDLER FOR THE API CALL ---
     const handleToggleWebSearch = async () => {
         const isTemporaryChat = chatId?.startsWith("temp_");
 
-        // If it's a temporary chat, just update the local state without an API call.
-        // This value will be passed up when the first message is sent.
         if (isTemporaryChat) {
             setWebSearchEnabled(prev => !prev);
             return;
         }
 
-        // For existing chats, make the API call as before.
         if (!chatId) {
             console.warn("Cannot toggle web search: chatId is not available for an existing chat.");
             return;
@@ -138,18 +145,33 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
             setWebSearchEnabled(response.web_search_enabled);
         } catch (error) {
             console.error("Failed to update web search status:", error);
-            // Revert state on failure for better UX
             setWebSearchEnabled(webSearchEnabled);
         } finally {
             setIsUpdatingWebSearch(false);
         }
     };
 
+    const handleSuggestionClick = (suggestion: string) => {
+        setTextInput(suggestion);
+        // Focus the textarea after setting the text
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.focus();
+                autoResize();
+            }
+        }, 0);
+    };
 
     const iconButtonClasses = "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border-none bg-transparent text-muted-foreground transition-colors hover:enabled:bg-background/20 disabled:cursor-not-allowed disabled:opacity-50";
 
     return (
         <div className="relative w-full flex-shrink-0 bg-background px-4 pt-2 pb-4">
+            {/* Brainstorm Suggestions */}
+            <BrainstormSuggestions 
+                visible={shouldShowSuggestions}
+                onSuggestionClick={handleSuggestionClick}
+            />
+            
             <div className="relative mx-auto max-w-3xl">
                 <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted px-2 pb-1 pt-4">
                     <textarea
@@ -165,7 +187,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                         style={{ overflowY: 'hidden' }}
                     />
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -180,7 +202,6 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                         <div className="relative">
                             <button
                                 className={iconButtonClasses}
-                                // The button is never disabled for temporary chats so settings can be chosen
                                 disabled={isDisabled && !chatId?.startsWith("temp_")}
                                 title="Settings"
                                 onClick={() => setIsSettingsOpen(prev => !prev)}
@@ -199,8 +220,24 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
 
                         <div className="flex-1" />
 
-                        <div className="flex items-center gap-2 pr-1">
+                        {/* Segmented Control for Chat Mode - MOVED HERE */}
+                        <div className="flex h-8 items-center rounded-lg border border-border bg-background/20 p-0.5" title="Change Mode">
+                            {chatModes.map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setCurrentMode(mode)}
+                                    disabled={isDisabled}
+                                    className={`rounded-[6px] px-3 py-0.5 text-center text-sm transition-colors capitalize disabled:cursor-not-allowed ${
+                                        currentMode === mode
+                                            ? 'bg-background font-medium text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground disabled:bg-transparent disabled:text-muted-foreground/50'
+                                    }`}
+                                >
+                                    {mode}
+                                </button>
+                            ))}
                         </div>
+
                         <button
                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                             onClick={sendTextMessage}
