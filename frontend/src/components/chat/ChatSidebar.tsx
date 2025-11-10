@@ -3,7 +3,7 @@ import {ThemeToggle} from "../ThemeToggle"; // Make sure this path is correct
 
 import React, {useState, useEffect} from "react";
 import type {ChatSession} from "../../types/chat";
-import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, PenTool} from "lucide-react";
+import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, PenTool, Lightbulb} from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
@@ -54,7 +54,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                  }) => {
     // ... (all your existing hooks and state remain the same)
     const [isMobile, setIsMobile] = useState(false);
-    const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard">("chat");
+    const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard" | "idea">("chat");
     const navigate = useNavigate();
     const location = useLocation();
     const {currentNotebook, getNotebookById} = useNotebooks();
@@ -77,12 +77,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             setActiveTab("chat");
         } else if (location.pathname.startsWith("/whiteboard/")) {
             setActiveTab("whiteboard");
+        } else if (location.pathname.startsWith("/idea-canvas/") || location.pathname.startsWith("/idea/")) {
+            setActiveTab("idea");
         }
     }, [location.pathname]);
 
     const getNotebookIdFromPath = () => {
         const parts = location.pathname.split('/').filter(Boolean);
-        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard')) {
+        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard' || parts[0] === 'idea' || parts[0] === 'idea-canvas')) {
             return parts[1];
         }
         return null;
@@ -95,13 +97,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         }
     }, [location.pathname, getNotebookById, currentNotebook?.id]);
 
-    const handleTabChange = (tab: "chat" | "files" | "whiteboard") => {
+    const handleTabChange = (tab: "chat" | "files" | "whiteboard" | "idea") => {
         setActiveTab(tab);
         const notebookId = getNotebookIdFromPath();
         if (tab === "files") {
             navigate(notebookId ? `/files/${notebookId}` : '/notebooks');
         } else if (tab === "whiteboard") {
             navigate(notebookId ? `/whiteboard/${notebookId}` : '/notebooks');
+        } else if (tab === "idea") {
+            navigate(notebookId ? `/idea-canvas/${notebookId}` : '/notebooks');
         } else {
             navigate(notebookId ? `/chat/${notebookId}` : "/notebooks");
         }
@@ -234,6 +238,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 >
                                     <PenTool size={16}/>
                                     <span>Whiteboard</span>
+                                </button>
+                                <button
+                                    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
+                                        activeTab === "idea"
+                                            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
+                                            : "text-sidebar-foreground hover:bg-sidebar-accent"
+                                    }`}
+                                    onClick={() => handleTabChange("idea")}
+                                    title="Idea Canvas"
+                                >
+                                    <Lightbulb size={16}/>
+                                    <span>Idea Canvas</span>
                                 </button>
                             </div>
                         </section>

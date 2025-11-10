@@ -239,7 +239,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                         </div>
 
                         <button
-                            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                             onClick={sendTextMessage}
                             disabled={isDisabled || !textInput.trim()}
                             title="Send Message"

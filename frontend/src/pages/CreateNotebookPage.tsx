@@ -67,10 +67,10 @@ const CreateNotebookPage: React.FC = () => {
       } as NotebookCreate;
 
       // Use the new service to create the notebook
-      await NotebookService.createNotebook(notebookData);
+      const createdNotebook = await NotebookService.createNotebook(notebookData);
 
-      // Navigate back to dashboard on success
-      navigate("/notebooks");
+      // Navigate to welcome page with the new notebook ID
+      navigate(`/welcome/${createdNotebook.id}`);
     } catch (err) {
       setError(
           err instanceof Error ? err.message : "Failed to create notebook"

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import tempfile
 import requests
-from typing import Annotated, Optional, TypedDict
+from typing import Optional, TypedDict
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from ..containers import container
@@ -15,11 +15,14 @@ file_service_url = os.getenv("FILE_SERVICE_URL")
 file_service_docker_url = os.getenv("FILE_SERVICE_URL_DOCKER")
 upload_password = os.getenv("UPLOAD_PASSWORD")
 
+
 class RestructuredText(BaseModel):
     text: str = Field(..., description="Enhanced transcript text")
 
+
 class FileName(BaseModel):
     file_name: str = Field(..., description="File name suggestion")
+
 
 class TranscriptionGraphState(TypedDict):
     """Represents the state of the transcription graph.
@@ -96,7 +99,6 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
         Text:
         "{transcript}"
         """
-
 
         open_router_model = container.openrouter_model(api_key=api_key, model=light_model)
         structured_llm = open_router_model.with_structured_output(RestructuredText)

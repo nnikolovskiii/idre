@@ -14,10 +14,13 @@ import Chat from "./pages/Chat";
 import MyDriveView from "./pages/MyDriveView";
 import NotebooksDashboard from "./pages/NotebooksDashboard";
 import CreateNotebookPage from "./pages/CreateNotebookPage";
+import WelcomePage from "./pages/WelcomePage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Landing from "./pages/Landing";
 import WhiteboardView from "./pages/WhiteboardView";
+import IdeaCanvas from "./pages/IdeaCanvas";
+import IdeaCanvasPage from "./pages/IdeaCanvasPage";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
@@ -58,6 +61,22 @@ function App() {
                                 }
                             />
                             <Route
+                                path="/idea/:notebookId"
+                                element={
+                                    <ProtectedRoute>
+                                        <IdeaCanvas />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/idea-canvas/:notebookId"
+                                element={
+                                    <ProtectedRoute>
+                                        <IdeaCanvasPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
                                 path="/notebooks"
                                 element={
                                     <ProtectedRoute>
@@ -70,6 +89,14 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <CreateNotebookPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/welcome/:notebookId"
+                                element={
+                                    <ProtectedRoute>
+                                        <WelcomePage />
                                     </ProtectedRoute>
                                 }
                             />

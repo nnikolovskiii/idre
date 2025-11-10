@@ -1,30 +1,21 @@
 from __future__ import annotations
-
+from pydantic import BaseModel, Field
 from typing import Annotated, Optional, TypedDict
-
 from langchain_core.messages import BaseMessage
+from agent.core.messages_utils import manage_messages
 
-from agent.core.state import manage_messages
+
+class RestructuredText(BaseModel):
+    """Data model for cleaned and restructured text from an audio transcript."""
+    text: str = Field(..., description="Restructured text with complete sentences.")
+
+
+class Conclusion(BaseModel):
+    """Data model for a concise conclusion of a larger text."""
+    text: str = Field(description="Conclusion text for text-to-speech generation.")
 
 
 class ChatGraphState(TypedDict):
-    """Represents the state of our graph, handling text, audio, or both.
-
-    Attributes:
-        messages: The list of messages in the conversation.
-        ai_model: The AI model to use for generation.
-
-        # Inputs can be one or both
-        text_input: The user's direct text input (optional).
-        audio_path: The path to the user's audio file (optional).
-
-        # Intermediate state for clarity
-        enhanced_transcript: The processed text from the audio file (optional).
-
-        # Final consolidated input for the generator
-        processed_input: The final text (from text, audio, or both) to be used
-                         for generating an answer.
-    """
     # Chat-specific fields
     messages: Annotated[list[BaseMessage], manage_messages]
     light_model: str
@@ -35,6 +26,7 @@ class ChatGraphState(TypedDict):
     audio_path: Optional[str]
     files_contents: Optional[str]
     web_search: Optional[bool]
+    mode: Optional[str]
 
     # Intermediate and final processed data
     enhanced_transcript: Optional[str]

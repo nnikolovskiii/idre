@@ -2,7 +2,7 @@
 try:
     from agent.core.agent import Task, TaskList
     from agent.core.configs import graph
-    from agent.core.state import State
+    from agent.core.messages_utils import State
     print("Imports successful! The circular import issue has been resolved.")
 except ImportError as e:
     print(f"Import error: {e}")

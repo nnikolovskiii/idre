@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import os
-import tempfile
-import requests
-from typing import Annotated, Optional, TypedDict
+from typing import Optional, TypedDict
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from ..containers import container
 
-from ..tools.audio_utils import transcribe_audio
 
 load_dotenv()
 

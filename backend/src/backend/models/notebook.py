@@ -26,20 +26,22 @@ class Notebook(Base):
     # User who created the notebook
     user_id = Column(String(255), nullable=False, index=True)
 
-    # Notebook emoji icon
-    emoji = Column(Text, nullable=False)
+    # Notebook emoji icon (now nullable)
+    emoji = Column(Text, nullable=True)
 
-    # Notebook title
-    title = Column(Text, nullable=False)
+    # Notebook title (now nullable)
+    title = Column(Text, nullable=True)
 
-    # Creation date
-    date = Column(String(50), nullable=False)
+    # Creation date (now nullable)
+    date = Column(String(50), nullable=True)
 
     # --- Timestamps ---
 
     # Automatically set the creation time on the database side.
+    # This column is implicitly nullable.
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # Automatically updates the timestamp on any modification.
+    # This column is implicitly nullable.
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # One-to-one relationship to the default model for this notebook

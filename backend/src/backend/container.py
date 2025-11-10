@@ -18,6 +18,7 @@ from backend.repositories.generative_model_repository import GenerativeModelRepo
 from backend.repositories.model_api_repository import ModelApiRepository
 from backend.repositories.notebook_model_repository import NotebookModelRepository
 from backend.repositories.notebook_repository import NotebookRepository
+from backend.repositories.proposition_repository import PropositionRepository
 from backend.repositories.thread_repository import ThreadRepository
 from backend.repositories.user_repository import UserRepository
 from backend.services.ai_service import AIService
@@ -30,6 +31,7 @@ from backend.services.generative_model_service import GenerativeModelService
 from backend.services.model_api_service import ModelApiService
 from backend.services.fernet_service import FernetService
 from backend.services.notebook_model_service import NotebookModelService
+from backend.services.proposition_service import PropositionService
 from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 from backend.services.notebook_service import NotebookService
@@ -91,6 +93,13 @@ class Container(containers.DeclarativeContainer):
     generative_model_service = providers.Factory(
         GenerativeModelService,
         generative_model_repository=generative_model_repository,
+    )
+
+    proposition_repository = providers.Factory(PropositionRepository)
+
+    proposition_service = providers.Factory(
+        PropositionService,
+        proposition_repository=proposition_repository,
     )
 
     app_settings_repository = providers.Factory(AppSettingsRepository)

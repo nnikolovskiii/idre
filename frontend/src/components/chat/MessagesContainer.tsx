@@ -18,9 +18,9 @@ interface MessagesContainerProps {
 
 // Markdown components are now styled using the semantic color variables from your theme.
 const markdownComponents: Options["components"] = {
-    h1: ({ ...props }) => <h1 className="text-2xl font-bold mt-6 mb-3 border-b-2 border-border" {...props} />,
-    h2: ({ ...props }) => <h2 className="text-xl font-semibold mt-5 mb-2" {...props} />,
-    h3: ({ ...props }) => <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />,
+    h1: ({ ...props }) => <p className="text-lg font-bold mt-6 mb-3 border-b-2 border-border" {...props} />,
+    h2: ({ ...props }) => <p className="  mt-5 mb-2" {...props} />,
+    h3: ({ ...props }) => <p className="  mt-4 mb-2" {...props} />,
     p: ({ ...props }) => <p className="leading-7 my-2" {...props} />,
     ul: ({ ...props }) => <ul className="list-disc pl-6 my-3" {...props} />,
     ol: ({ ...props }) => <ol className="list-decimal pl-6 my-3" {...props} />,
@@ -147,7 +147,7 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                             <div
                                 className={`w-full rounded-xl px-4 py-1 ${
                                     isUser
-                                        ? "bg-primary text-primary-foreground rounded-br-none"
+                                        ? "bg-muted text-primary-foreground rounded-br-none"
                                         : "bg-background text-card-foreground rounded-bl-none"
                                 }`}
                             >

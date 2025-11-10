@@ -7,6 +7,7 @@ from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
 from backend.repositories.model_api_repository import ModelApiRepository
 from backend.repositories.notebook_repository import NotebookRepository
+from backend.repositories.proposition_repository import PropositionRepository
 from backend.repositories.thread_repository import ThreadRepository
 from backend.repositories.user_repository import UserRepository
 from backend.repositories.notebook_model_repository import NotebookModelRepository
@@ -24,6 +25,7 @@ from backend.services.notebook_model_service import NotebookModelService
 from backend.services.chat_model_service import ChatModelService
 from backend.services.generative_model_service import GenerativeModelService
 from backend.services.app_settings_service import AppSettingsService
+from backend.services.proposition_service import PropositionService
 from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 
@@ -158,6 +160,18 @@ def get_generative_model_service(
         repo: GenerativeModelRepository = Depends(get_generative_model_repository)
 ) -> GenerativeModelService:
     return container.generative_model_service(session=session, generative_model_repository=repo)
+
+
+def get_proposition_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> PropositionRepository:
+    return container.proposition_repository(session=session)
+
+def get_proposition_service(
+        session: AsyncSession = Depends(get_db_session),
+        repo: PropositionRepository = Depends(get_proposition_repository)
+) -> PropositionService:
+    return container.proposition_service(session=session, proposition_repository=repo)
 
 
 

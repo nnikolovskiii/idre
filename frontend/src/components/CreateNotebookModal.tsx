@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Save, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {NotebookService, type NotebookCreate} from "../services/notebooksService.ts";
 import { useTheme } from "../context/ThemeContext.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
@@ -15,6 +16,7 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
         text_color: "text-blue-800",
       } as NotebookCreate;
 
-      await NotebookService.createNotebook(notebookData);
+      const createdNotebook = await NotebookService.createNotebook(notebookData);
       
       // Reset form
       setFormData({
@@ -83,6 +85,9 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
 
       onSuccess();
       onClose();
+      
+      // Navigate to welcome page with the new notebook ID
+      navigate(`/welcome/${createdNotebook.id}`);
     } catch (err) {
       setError(
           err instanceof Error ? err.message : "Failed to create notebook"
