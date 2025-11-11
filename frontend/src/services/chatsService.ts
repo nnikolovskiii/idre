@@ -41,6 +41,7 @@ export interface CreateThreadRequest {
     notebook_id?: string;
     web_search?: boolean;
     mode?: string;
+    sub_mode?: string;
 }
 
 export interface CreateThreadResponse {
@@ -58,6 +59,7 @@ export interface SendMessageRequest {
     light_model?: string;
     heavy_model?: string;
     mode?: string;
+    sub_mode?: string;
 }
 
 export interface SendMessageResponse {
@@ -196,6 +198,7 @@ export const chatsService = {
         message?: string,
         audioPath?: string,
         mode?: string,
+        subMode?: string,
     ): Promise<SendMessageResponse> => {
         const payload: SendMessageRequest = {};
 
@@ -210,6 +213,10 @@ export const chatsService = {
 
         if (mode) {
             payload.mode = mode;
+        }
+
+        if (subMode) {
+            payload.sub_mode = subMode;
         }
 
         const response = await fetch(sendMessageToThreadUrl(threadId), {

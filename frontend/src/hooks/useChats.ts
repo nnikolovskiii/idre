@@ -155,7 +155,7 @@ export const useChats = (notebookIdParam?: string) => {
         checkModels();
     }, [currentChatId]);
 
-    const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean; mode?: string }) => {
+    const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean; mode?: string; subMode?: string }) => {
         setCreatingChat(true);
         try {
             const newThreadData = await chatsService.createThread({
@@ -164,6 +164,7 @@ export const useChats = (notebookIdParam?: string) => {
                 notebook_id: notebookId || notebookIdParam,
                 web_search: options?.webSearch,
                 mode: options?.mode,
+                sub_mode: options?.subMode,
             });
 
             const newChat: ChatSession = {
@@ -293,7 +294,7 @@ export const useChats = (notebookIdParam?: string) => {
     const handleSendMessage = async (
         text?: string,
         audioPath?: string,
-        options?: { webSearch?: boolean; mode?: string }
+        options?: { webSearch?: boolean; mode?: string; subMode?: string }
     ) => {
         if (!text?.trim() && !audioPath) return;
 
@@ -333,6 +334,7 @@ export const useChats = (notebookIdParam?: string) => {
                     text,
                     audioPath,
                     options?.mode,
+                    options?.subMode,
                 );
 
                 addTypingThread(newChat.thread_id);
@@ -377,6 +379,7 @@ export const useChats = (notebookIdParam?: string) => {
                 text,
                 audioPath,
                 options?.mode,
+                options?.subMode,
             );
             addTypingThread(currentChat.thread_id);
         } catch (err) {

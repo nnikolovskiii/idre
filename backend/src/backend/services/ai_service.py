@@ -1,10 +1,11 @@
 import os
+from typing import List
 
 from dotenv import load_dotenv
 from langgraph_sdk import get_client
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.dtos.chat import SendMessageRequest
+from backend.models.dtos.chat import SendMessageRequest, MessageResponse
 from backend.services.assistant_service import AssistantService
 from backend.services.model_api_service import ModelApiService
 from backend.services.notebook_model_service import NotebookModelService
@@ -101,7 +102,7 @@ class AIService:
         assistant_id = await self._get_assistant_id(graph_id)  # Now dynamic
 
         # Start background run with webhook for completion notification
-        webhook_url = LANGGRAPH_WEBHOOK_URL + "/lol"
+        webhook_url = LANGGRAPH_WEBHOOK_URL + "/transcription-hook"
         # In your transcribe_file or wherever you start the run
         background_run = await self.langgraph_client.runs.create(
             thread_id=None,  # Stateless
@@ -123,16 +124,13 @@ class AIService:
         # print("lol")
 
     # Example: Add a new method for a different assistant (e.g., chat)
-    async def generate_chat_name(self, notebook_id: str, user_id: str, request: SendMessageRequest, graph_id: str = "chat_name_agent"):
-        """
-        Example method for a chat operation using a different assistant.
-
-        Args:
-            user_id: ID of the user.
-            message: The chat message.
-            graph_id: The graph ID for the assistant (e.g., "chat_agent").
-        """
-        # Gather inputs specific to chat...
+    async def generate_chat_name(
+            self,
+            notebook_id: str,
+            user_id: str,
+            request: SendMessageRequest,
+            graph_id: str = "chat_name_agent"
+    ):
         notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
             notebook_id=notebook_id,
             model_type="light",
@@ -156,8 +154,45 @@ class AIService:
             thread_id=None,
             assistant_id=assistant_id,
             input=run_input,
-            webhook=LANGGRAPH_WEBHOOK_URL+"/chat-name-creation",
+            webhook=LANGGRAPH_WEBHOOK_URL + "/chat-name-creation",
             metadata={"chat_id": request.chat_id, "temp_thread": True},
+            on_completion="keep",
+        )
+
+        return {"status": "started"}
+
+    async def generate_idea_proposition(
+            self,
+            notebook_id: str,
+            user_id: str,
+            messages: List[MessageResponse],
+            graph_id: str = "idea_proposition_graph"
+    ):
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
+
+        if not notebook_model:
+            raise ValueError(f"No notebook model found for: {notebook_id}")
+
+        model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
+
+        run_input = {
+            "light_model": notebook_model.model.name,
+            "api_key": model_api.value if model_api else None,
+            "messages": messages,
+        }
+
+        assistant_id = await self._get_assistant_id(graph_id)
+
+        background_run = await self.langgraph_client.runs.create(
+            thread_id=None,
+            assistant_id=assistant_id,
+            input=run_input,
+            webhook=LANGGRAPH_WEBHOOK_URL + "/idea-proposition-hook",
+            metadata={"notebook_id": str(notebook_id)},
             on_completion="keep",
         )
 

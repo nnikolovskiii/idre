@@ -6,22 +6,25 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 import json
 
-from backend.api.dependencies import get_file_service, get_chat_service
+from backend.api.dependencies import get_file_service, get_chat_service, get_ai_service, get_proposition_service
 from backend.models.file import ProcessingStatus
+from backend.services.ai_service import AIService
 from backend.services.chat_service import ChatService
 from backend.services.file_service import FileService
 from fastapi import FastAPI, Request, BackgroundTasks
 from backend.container import container
+from backend.services.proposition_service import PropositionService
 
 router = APIRouter()
 load_dotenv()
 LANGGRAPH_URL = os.getenv("LANGGRAPH_URL")
 
-@router.post("/lol")
-async def handle_langgraph_webhook(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    file_service: FileService = Depends(get_file_service),
+
+@router.post("/transcription-hook")
+async def handle_transcription_webhook(
+        request: Request,
+        background_tasks: BackgroundTasks,
+        file_service: FileService = Depends(get_file_service),
 ) -> Dict[str, str]:
     """
     Receives the POST request that LangGraph sends when a run completes.
@@ -117,12 +120,14 @@ class WebhookPayload(BaseModel):
     status: str  # e.g., 'success', 'error'
     values: dict  # The final graph state or outputs
 
+
 @router.post("/chat-response")
-async def handle_langgraph_chat_response_webhook(
-    request: Request,
+async def handle_chat_response_webhook(
+        request: Request,
+        ai_service: AIService = Depends(get_ai_service),
 ) -> Dict[str, str]:
     redis_client = container.redis_client()
-    
+
     try:
         payload = await request.json()
         validated_payload = WebhookPayload(**payload)
@@ -130,10 +135,22 @@ async def handle_langgraph_chat_response_webhook(
         run_id = validated_payload.run_id
         thread_id = validated_payload.thread_id
         status = validated_payload.status
+        metadata = payload.get("metadata", {})
 
         if status == "success":
             full_messages = validated_payload.values.get("messages", [])
             delta = full_messages[-1:] if full_messages else []
+            sub_mode = metadata.get("sub_mode")
+            notebook_id = metadata.get("notebook_id")
+            user_id = metadata.get("user_id")
+
+
+            if sub_mode and sub_mode == "idea_proposition":
+                await ai_service.generate_idea_proposition(
+                    notebook_id=notebook_id,
+                    user_id=user_id,
+                    messages=full_messages
+                )
 
             event_data = {
                 "event": "message_update",
@@ -153,7 +170,7 @@ async def handle_langgraph_chat_response_webhook(
 
             await redis_client.publish(channel, sse_formatted)
             print(f"Published SSE update to Redis channel {channel}")
-        
+
         elif status == "error":
             error_data = {
                 "event": "error",
@@ -201,6 +218,73 @@ async def handle_chat_name_creation(
                     "error": validated_payload.values.get("error", "Unknown error")
                 }
             }
+
+        return {"status": "received"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+
+@router.post("/idea-proposition-hook")
+async def handle_idea_proposition_webhook(
+        request: Request,
+        proposition_service: PropositionService = Depends(get_proposition_service),
+) -> Dict[str, str]:
+    redis_client = container.redis_client()
+    
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        thread_id = validated_payload.thread_id
+        status = validated_payload.status
+        metadata = payload.get("metadata", {})
+
+        if status == "success":
+            notebook_id = metadata.get("notebook_id")
+            idea_proposition = validated_payload.values.get("idea_proposition", {})
+            
+            # Update the proposition in the database
+            updated_proposition = await proposition_service.create_or_update_proposition(notebook_id, idea_proposition)
+            
+            # Publish SSE event to Redis channel for this notebook
+            event_data = {
+                "event": "proposition_update",
+                "data": {
+                    "notebook_id": notebook_id,
+                    "proposition": {
+                        "service": updated_proposition.service,
+                        "audience": updated_proposition.audience,
+                        "problem": updated_proposition.problem,
+                        "solution": updated_proposition.solution,
+                    },
+                    "status": "completed",
+                    "run_id": run_id
+                }
+            }
+            
+            channel = f"sse:proposition:{notebook_id}"
+            event_json = json.dumps(event_data)
+            sse_formatted = f"data: {event_json}\n\n"
+            
+            await redis_client.publish(channel, sse_formatted)
+            print(f"Published SSE update to Redis channel {channel}")
+
+        elif status == "error":
+            notebook_id = metadata.get("notebook_id")
+            error_data = {
+                "event": "error",
+                "data": {
+                    "notebook_id": notebook_id,
+                    "thread_id": thread_id,
+                    "error": validated_payload.values.get("error", "Unknown error")
+                }
+            }
+            
+            if notebook_id:
+                channel = f"sse:proposition:{notebook_id}"
+                sse_formatted = f"data: {json.dumps(error_data)}\n\n"
+                await redis_client.publish(channel, sse_formatted)
+                print(f"Published error to Redis channel {channel}")
 
         return {"status": "received"}
     except Exception as e:

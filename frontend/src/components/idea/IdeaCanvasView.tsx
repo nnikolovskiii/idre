@@ -7,6 +7,7 @@ import ChatInputArea from "../chat/ChatInputArea.tsx";
 import idreLogo from "../../assets/idre_logo_v2_white.png";
 import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { useSse } from "../../context/SseContext.tsx";
 
 // --- Import the Proposition Service and BOTH Types ---
 import { PropositionService, type PropositionUpdateRequest, type PropositionResponse } from "../../services/propositionsService.ts";
@@ -90,10 +91,14 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
     const currentNotebookId = propNotebookId || paramNotebookId;
     const navigate = useNavigate();
 
+    // --- SSE Hook for real-time proposition updates ---
+    const { latestPropositionEvent, connectToProposition } = useSse();
+
     // --- State for the Idea Canvas ---
     const [proposition, setProposition] = useState<PropositionUpdateRequest>({});
     const [isLoadingCanvas, setIsLoadingCanvas] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const saveTimeoutRef = useRef<number | null>(null);
     const isInitialMount = useRef(true); // To prevent saving on initial fetch
@@ -153,6 +158,42 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
 
         fetchProposition();
     }, [currentNotebookId]);
+
+    // --- Connect to SSE for real-time proposition updates ---
+    useEffect(() => {
+        if (currentNotebookId) {
+            connectToProposition(currentNotebookId);
+        }
+    }, [currentNotebookId, connectToProposition]);
+
+    // --- Handle SSE proposition updates ---
+    useEffect(() => {
+        if (!latestPropositionEvent || !currentNotebookId) {
+            return;
+        }
+
+        console.log('IdeaCanvasView received proposition event:', latestPropositionEvent);
+
+        if (latestPropositionEvent.event === 'proposition_update') {
+            const updatedProposition = latestPropositionEvent.data?.proposition;
+            if (updatedProposition && latestPropositionEvent.data?.notebook_id === currentNotebookId) {
+                // Update the proposition state with the new data from SSE
+                setProposition({
+                    service: updatedProposition.service ?? undefined,
+                    audience: updatedProposition.audience ?? undefined,
+                    problem: updatedProposition.problem ?? undefined,
+                    solution: updatedProposition.solution ?? undefined,
+                });
+                setIsProcessing(false);
+                setError(null);
+                console.log('Proposition updated via SSE:', updatedProposition);
+            }
+        } else if (latestPropositionEvent.event === 'error') {
+            console.error('SSE error event:', latestPropositionEvent.data.error);
+            setError('Failed to process proposition update.');
+            setIsProcessing(false);
+        }
+    }, [latestPropositionEvent, currentNotebookId]);
 
 
     // --- Debounced Auto-Save on Proposition Change ---
@@ -234,28 +275,48 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                             </p>
                         </div>
                     )}
-                    <div className="absolute bottom-4 right-4 text-xs text-muted-foreground">
-                        {isLoadingCanvas ? "Loading..." : isSaving ? "Saving..." : error ? <span className="text-destructive">{error}</span> : "Saved"}
+                    <div className="absolute bottom-4 right-4 text-xs text-muted-foreground flex items-center gap-2">
+                        {isLoadingCanvas ? (
+                            <>
+                                <Loader2 className="animate-spin" size={12} />
+                                <span>Loading...</span>
+                            </>
+                        ) : isProcessing ? (
+                            <>
+                                <Loader2 className="animate-spin" size={12} />
+                                <span>Processing...</span>
+                            </>
+                        ) : isSaving ? (
+                            <>
+                                <Loader2 className="animate-spin" size={12} />
+                                <span>Saving...</span>
+                            </>
+                        ) : error ? (
+                            <span className="text-destructive">{error}</span>
+                        ) : (
+                            <span>Saved</span>
+                        )}
                     </div>
                 </div>
             </div>
         </div>
     );
 
-    // --- Unchanged Chat Logic ---
+    // --- Chat Logic with sub_mode for Idea Canvas ---
     const handleTextSubmit = async (text: string, options: { webSearch: boolean, mode: string }) => {
-        await handleSendMessage(text, undefined, options);
+        setIsProcessing(true); // Set processing state when sending message
+        await handleSendMessage(text, undefined, { ...options, subMode: "idea_proposition" });
     };
 
     const handleFileSubmit = async (file: File, options: { webSearch: boolean, mode: string }) => {
         try {
             const uploadResult = await fileService.uploadFile(file, undefined, false);
             const fileMessage = `[File Uploaded: ${file.name}]`;
-            await handleSendMessage(fileMessage, uploadResult.url, options);
+            await handleSendMessage(fileMessage, uploadResult.url, { ...options, subMode: "idea_proposition" });
         } catch (error) {
             console.error("Failed to upload file:", error);
             const errorMessage = `[Error] Failed to upload file: ${file.name}`;
-            await handleSendMessage(errorMessage, undefined, options);
+            await handleSendMessage(errorMessage, undefined, { ...options, subMode: "idea_proposition" });
         }
     };
 

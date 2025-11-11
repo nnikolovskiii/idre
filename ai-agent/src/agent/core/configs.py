@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph
 from agent.core.chat_graph.data_models import ChatGraphState
 from agent.core.chat_graph.nodes import prepare_inputs_node, generate_answer_node
 from agent.core.chat_name_graph import generate_chat_name_node, ChatNameGraphState
+from agent.core.idea_proposition_graph import IdeaPropositionGraphState, generate_idea_proposition_node
 from agent.core.transcription_graph import transcribe_and_enhance_audio_node, TranscriptionGraphState
 
 from src.agent.core.brainstorm_graph import brainstorm_generate_answer, brainstorm_prepare_inputs
@@ -61,6 +62,16 @@ def chat_name_graph():
     return workflow
 
 
+def idea_proposition_graph():
+    workflow = StateGraph(IdeaPropositionGraphState)
+
+    workflow.add_node("generate_idea_proposition_node", generate_idea_proposition_node)
+
+    workflow.set_entry_point("generate_idea_proposition_node")
+    workflow.add_edge("generate_idea_proposition_node", END)
+
+    return workflow
+
 # Build and compile transcription graph
 transcription_builder = transcription_graph()
 transcription_graph = transcription_builder.compile()
@@ -74,3 +85,6 @@ chat_name_graph_compiled = chat_name_builder.compile()
 
 brainstorm_builder = brainstorm_graph()
 brainstorm_compiled_graph = brainstorm_builder.compile()
+
+idea_proposition_builder = idea_proposition_graph()
+idea_proposition_compiled_graph = idea_proposition_builder.compile()

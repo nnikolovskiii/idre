@@ -6,11 +6,12 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from ..containers import container
 
-
 load_dotenv()
+
 
 class ChatTitleResponse(BaseModel):
     title: str = Field(..., description="The title of the chat")
+
 
 class ChatNameGraphState(TypedDict):
     """Represents the state of the transcription graph.
@@ -71,4 +72,7 @@ def generate_chat_name_node(state: ChatNameGraphState):
         print(f"   > Error generating chat title: {e}")
         return {
             "title": "Chat",
+            "first_message": None,
+            "api_key": None,
+            "light_model": None,
         }

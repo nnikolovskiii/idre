@@ -4,7 +4,8 @@
     "transcription_agent": "./src/agent/core/configs.py:transcription_graph",
     "chat_agent": "./src/agent/core/configs.py:chat_graph",
     "chat_name_agent": "./src/agent/core/configs.py:chat_name_graph_compiled",
-    "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph"
+    "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph",
+    "idea_proposition_graph": "./src/agent/core/configs.py:idea_proposition_compiled_graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

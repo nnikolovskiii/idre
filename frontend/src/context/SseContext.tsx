@@ -23,6 +23,11 @@ interface SseContextType {
     isThreadTyping: (threadId: string) => boolean;
     connectToThread: (threadId: string) => void;
     disconnect: () => void;
+    // Proposition SSE
+    latestPropositionEvent: SseEventData | null;
+    propositionConnectionStatus: "disconnected" | "connecting" | "connected" | "error";
+    connectToProposition: (notebookId: string) => void;
+    disconnectProposition: () => void;
 }
 
 const SseContext = createContext<SseContextType | undefined>(undefined);
@@ -36,6 +41,13 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
     >("disconnected");
     const [typingThreads, setTypingThreads] = useState<Set<string>>(new Set());
     const eventSourceRef = useRef<EventSource | null>(null);
+
+    // Proposition SSE state
+    const [latestPropositionEvent, setLatestPropositionEvent] = useState<SseEventData | null>(null);
+    const [propositionConnectionStatus, setPropositionConnectionStatus] = useState<
+        SseContextType["propositionConnectionStatus"]
+    >("disconnected");
+    const propositionEventSourceRef = useRef<EventSource | null>(null);
 
     const addTypingThread = useCallback((threadId: string) => {
         setTypingThreads((prev) => new Set(prev).add(threadId));
@@ -141,11 +153,82 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
         [] // Removed typingThreadId from dependencies as it's not used inside
     );
 
+    const disconnectProposition = useCallback(() => {
+        if (propositionEventSourceRef.current) {
+            console.log(
+                "SSE Context: Closing proposition connection (Hard Disconnect).",
+                propositionEventSourceRef.current.url
+            );
+            const oldEs = propositionEventSourceRef.current;
+            oldEs.onopen = null;
+            oldEs.onmessage = null;
+            oldEs.onerror = null;
+            oldEs.close();
+
+            propositionEventSourceRef.current = null;
+            setPropositionConnectionStatus("disconnected");
+        }
+    }, []);
+
+    const connectToProposition = useCallback(
+        (notebookId: string) => {
+            if (
+                propositionEventSourceRef.current &&
+                propositionEventSourceRef.current.url.includes(notebookId) &&
+                propositionEventSourceRef.current.readyState !== EventSource.CLOSED
+            ) {
+                return;
+            }
+
+            if (propositionEventSourceRef.current) {
+                console.log("SSE Context: Switching propositions, closing old connection.", propositionEventSourceRef.current.url);
+
+                const oldEs = propositionEventSourceRef.current;
+                oldEs.onopen = null;
+                oldEs.onmessage = null;
+                oldEs.onerror = null;
+                oldEs.close();
+            }
+
+            console.log("SSE Context: Connecting to proposition for notebook:", notebookId);
+            setPropositionConnectionStatus("connecting");
+
+            const apiUrl = window.ENV?.VITE_API_BASE_URL || "http://localhost:8001";
+            const url = `${apiUrl}/propositions/sse/${notebookId}`;
+            const es = new EventSource(url);
+
+            es.onopen = () => {
+                console.log("SSE Context: Proposition connection opened for notebook:", notebookId);
+                setPropositionConnectionStatus("connected");
+            };
+
+            es.onmessage = (event) => {
+                try {
+                    const parsedData = JSON.parse(event.data);
+                    console.log("SSE Context: Proposition message received:", parsedData);
+                    setLatestPropositionEvent(parsedData);
+                } catch (err) {
+                    console.error("SSE Context: Error parsing proposition message:", err);
+                }
+            };
+
+            es.onerror = (error) => {
+                console.error("SSE Context: Proposition connection error:", error);
+                setPropositionConnectionStatus("error");
+                es.close();
+            };
+
+            propositionEventSourceRef.current = es;
+        },
+        []
+    );
+
     useEffect(() => {
         return () => {
             disconnect();
+            disconnectProposition();
         };
-    }, [disconnect]);
+    }, [disconnect, disconnectProposition]);
 
     const value = {
         latestEvent,
@@ -156,6 +239,10 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
         isThreadTyping,
         connectToThread,
         disconnect,
+        latestPropositionEvent,
+        propositionConnectionStatus,
+        connectToProposition,
+        disconnectProposition,
     };
 
     return <SseContext.Provider value={value}>{children}</SseContext.Provider>;

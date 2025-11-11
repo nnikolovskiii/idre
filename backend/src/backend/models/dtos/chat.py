@@ -31,6 +31,7 @@ class SendMessageRequest(BaseModel):
     first_message: Optional[str] = False
     chat_id: Optional[str] = None
     mode: Optional[str] = None
+    sub_mode: Optional[str] = None
 
 
 class CreateThreadRequest(BaseModel):
@@ -38,6 +39,8 @@ class CreateThreadRequest(BaseModel):
     text: str
     notebook_id: Optional[str] = None
     web_search: Optional[bool] = True
+    mode: Optional[str] = None
+    sub_mode: Optional[str] = None
 
 
 class UpdateAIModelsRequest(BaseModel):

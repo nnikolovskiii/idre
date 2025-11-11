@@ -145,7 +145,7 @@ class ChatService:
             await self.ai_service.generate_chat_name(
                 request.notebook_id,
                 user_id,
-                SendMessageRequest(first_message=request.text, chat_id=str(new_chat.chat_id))
+                SendMessageRequest(first_message=request.text, chat_id=str(new_chat.chat_id), mode=request.mode, sub_mode=request.sub_mode)
             )
         except Exception as e:
             print(e)
@@ -199,6 +199,7 @@ class ChatService:
             user_id (str): The ID of the user sending the message.
             request (SendMessageRequest): The DTO containing message details.
             mode (str): The operational mode ("consult" or "brainstorm") to determine the assistant.
+            sub_mode (str): The sub-mode for additional granularity within the mode.
         """
         chat_obj = await self.chat_repo.get_by_thread_id(thread_id=thread_id)
         if not chat_obj:
@@ -223,16 +224,23 @@ class ChatService:
             run_input["text_input"] = request.message
         if request.audio_path:
             run_input["audio_path"] = request.audio_path
+        if request.sub_mode:
+            run_input["sub_mode"] = request.sub_mode
 
         # Get the correct assistant ID based on the specified mode
         assistant_id = await self._get_assistant_id(request.mode.lower())
+
+        # Prepare metadata including both mode and sub_mode
+        metadata = {"user_id": user_id, "mode": request.mode, "notebook_id": str(chat_obj.notebook_id),}
+        if request.sub_mode:
+            metadata["sub_mode"] = request.sub_mode
 
         background_run = await self.langgraph_client.runs.create(
             thread_id=thread_id,
             assistant_id=assistant_id,
             input=run_input,
             webhook=webhook_url,
-            metadata={"user_id": user_id}
+            metadata=metadata,
         )
 
     # --- Data Retrieval and Deletion Methods (delegated to repository) ---
