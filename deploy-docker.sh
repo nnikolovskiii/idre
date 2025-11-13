@@ -26,9 +26,9 @@ if [ $? -ne 0 ]; then
 fi
 
 
-# !/bin/bash
+# # !/bin/bash
 
-=== CONFIGURATION ===
+# === CONFIGURATION ===
 DOCKER_HUB_USER="nnikolovskii"
 IMAGE_NAME="gc-backend"
 TAG="latest"

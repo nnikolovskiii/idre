@@ -6,14 +6,14 @@ import Layout from "../components/layout/Layout";
 import { useChats } from "../hooks/useChats";
 import { useAuth } from "../contexts/AuthContext";
 
-// --- Helper Component for Inline Editable Fields ---
 const EditableSpan: React.FC<{
     value: string;
     onChange: (value: string) => void;
     placeholder: string;
     disabled: boolean;
     className?: string;
-}> = ({ value, onChange, placeholder, disabled, className }) => {
+    fullWidth?: boolean;          // NEW – force block mode
+}> = ({ value, onChange, placeholder, disabled, className, fullWidth = false }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -24,52 +24,66 @@ const EditableSpan: React.FC<{
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setTimeout(() => {
             textareaRef.current?.focus();
-            textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
+            textareaRef.current?.setSelectionRange(
+                textareaRef.current.value.length,
+                textareaRef.current.value.length
+            );
+        }, 60);
     };
 
     const handleBlur = () => {
         if (disabled) return;
-        timeoutRef.current = setTimeout(() => {
-            setIsExpanded(false);
-        }, 150);
+        timeoutRef.current = setTimeout(() => setIsExpanded(false), 150);
     };
 
-    const fullValue = value || '';
+    const content = value || '';
 
     return (
-        <>
-            <textarea
-                ref={textareaRef}
-                value={fullValue}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                disabled={disabled}
-                className={`font-semibold text-primary bg-transparent border-b border-dashed border-primary/50 focus:outline-none focus:border-solid focus:border-primary resize-none align-bottom overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'block w-full p-3 border-2 border-primary rounded-lg bg-card/80 shadow-sm mb-3 max-h-48' : 'inline-block min-w-[120px] max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap'} ${className || ''}`}
-                rows={isExpanded ? 6 : 1}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                onInput={(e) => {
-                    const target = e.currentTarget;
-                    target.style.height = 'auto';
-                    target.style.height = `${Math.min(target.scrollHeight, 192)}px`;
-                }}
-                style={{ minHeight: isExpanded ? '4rem' : '1.5rem' }}
-                title={isExpanded ? '' : fullValue}
-            />
+        <span className={`relative ${fullWidth ? 'block w-full' : 'inline-block'}`}>
+      <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          rows={isExpanded ? 8 : 3}
+          className={`
+          font-semibold text-primary bg-transparent
+          border-b border-dashed border-primary/50
+          focus:outline-none focus:border-solid focus:border-primary
+          resize-none align-text-top rounded transition-all duration-300 ease-in-out
+          ${isExpanded
+              ? 'block w-full p-3 border-2 border-primary bg-card/80 shadow-sm mb-3 max-h-64'
+              : `${fullWidth ? 'block w-full' : 'inline-block min-w-[150px] max-w-[450px]'}
+               max-h-24 overflow-y-auto leading-relaxed px-2 py-1`
+          }
+          ${className ?? ''}
+        `}
+          onInput={(e) => {
+              const t = e.currentTarget;
+              t.style.height = 'auto';
+              t.style.height = `${Math.min(t.scrollHeight, isExpanded ? 256 : 96)}px`;
+          }}
+          style={{ minHeight: isExpanded ? '6rem' : '2.5rem' }}
+          title={isExpanded ? '' : content}
+      />
             {isExpanded && (
                 <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()} // keep focus on textarea
                     onClick={() => {
                         setIsExpanded(false);
                         textareaRef.current?.blur();
                     }}
-                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-sm"
+                    className="absolute top-2 right-2 text-xs text-muted-foreground
+                     hover:text-foreground bg-card/80 px-2 py-0.5 rounded"
                 >
                     Done
                 </button>
             )}
-        </>
+    </span>
     );
 };
 
@@ -187,42 +201,60 @@ const IdeaCanvasPage: React.FC = () => {
                 <div className="max-w-3xl w-full">
                     <div className="bg-card border border-sidebar-border rounded-lg p-8 shadow-lg relative">
                         <h2 className="text-2xl font-bold text-foreground mb-6">Idea Canvas</h2>
+                        {/* --------------  IDEA CANVAS BODY  -------------- */}
                         {isLoadingCanvas ? (
-                            <div className="flex items-center justify-center h-24">
+                            <div className="flex items-center justify-center h-32">
                                 <Loader2 className="animate-spin text-primary" size={32} />
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                <p className="text-lg text-foreground leading-relaxed break-words">
-                                    My idea is a{" "}
+                            <div className="space-y-6 text-lg text-foreground">
+                                {/* ----  SERVICE  ---- */}
+                                <div className="space-y-1">
+                                    <p className="font-medium text-muted-foreground">My idea is a</p>
                                     <EditableSpan
+                                        fullWidth
                                         value={proposition.service || ''}
-                                        onChange={(val) => handleFieldChange('service', val)}
-                                        placeholder="product/service"
+                                        onChange={(v) => handleFieldChange('service', v)}
+                                        placeholder="product or service (e.g. AI note-taking app)"
                                         disabled={isSaving}
-                                    />{" "}
-                                    for{" "}
+                                    />
+                                </div>
+
+                                {/* ----  AUDIENCE  ---- */}
+                                <div className="space-y-1">
+                                    <p className="font-medium text-muted-foreground">for</p>
                                     <EditableSpan
+                                        fullWidth
                                         value={proposition.audience || ''}
-                                        onChange={(val) => handleFieldChange('audience', val)}
-                                        placeholder="a specific audience"
+                                        onChange={(v) => handleFieldChange('audience', v)}
+                                        placeholder="target audience (e.g. busy university students)"
                                         disabled={isSaving}
-                                    />{" "}
-                                    that solves{" "}
+                                    />
+                                </div>
+
+                                {/* ----  PROBLEM  ---- */}
+                                <div className="space-y-1">
+                                    <p className="font-medium text-muted-foreground">that solves</p>
                                     <EditableSpan
+                                        fullWidth
                                         value={proposition.problem || ''}
-                                        onChange={(val) => handleFieldChange('problem', val)}
-                                        placeholder="a specific problem"
+                                        onChange={(v) => handleFieldChange('problem', v)}
+                                        placeholder="specific problem (e.g. forgetting lecture material)"
                                         disabled={isSaving}
-                                    />{" "}
-                                    by{" "}
+                                    />
+                                </div>
+
+                                {/* ----  SOLUTION  ---- */}
+                                <div className="space-y-1">
+                                    <p className="font-medium text-muted-foreground">by</p>
                                     <EditableSpan
+                                        fullWidth
                                         value={proposition.solution || ''}
-                                        onChange={(val) => handleFieldChange('solution', val)}
-                                        placeholder="a unique solution"
+                                        onChange={(v) => handleFieldChange('solution', v)}
+                                        placeholder="unique solution (e.g. real-time transcription & flash-cards)"
                                         disabled={isSaving}
-                                    />.
-                                </p>
+                                    />
+                                </div>
                             </div>
                         )}
                         <div className="absolute bottom-4 right-4 text-xs text-muted-foreground">

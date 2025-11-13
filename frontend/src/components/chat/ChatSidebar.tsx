@@ -3,7 +3,7 @@ import {ThemeToggle} from "../ThemeToggle"; // Make sure this path is correct
 
 import React, {useState, useEffect} from "react";
 import type {ChatSession} from "../../types/chat";
-import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, PenTool, Lightbulb} from "lucide-react";
+import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, Lightbulb} from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
@@ -227,18 +227,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     <FolderOpen size={16}/>
                                     <span>Files</span>
                                 </button>
-                                <button
-                                    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
-                                        activeTab === "whiteboard"
-                                            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                            : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                    }`}
-                                    onClick={() => handleTabChange("whiteboard")}
-                                    title="Whiteboard"
-                                >
-                                    <PenTool size={16}/>
-                                    <span>Whiteboard</span>
-                                </button>
+                                {/*<button*/}
+                                {/*    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${*/}
+                                {/*        activeTab === "whiteboard"*/}
+                                {/*            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"*/}
+                                {/*            : "text-sidebar-foreground hover:bg-sidebar-accent"*/}
+                                {/*    }`}*/}
+                                {/*    onClick={() => handleTabChange("whiteboard")}*/}
+                                {/*    title="Whiteboard"*/}
+                                {/*>*/}
+                                {/*    <PenTool size={16}/>*/}
+                                {/*    <span>Whiteboard</span>*/}
+                                {/*</button>*/}
                                 <button
                                     className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
                                         activeTab === "idea"

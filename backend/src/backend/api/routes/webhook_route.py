@@ -289,3 +289,43 @@ async def handle_idea_proposition_webhook(
         return {"status": "received"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+
+
+@router.post("/file-name-hook")
+async def handle_idea_proposition_webhook(
+        request: Request,
+        file_service: FileService = Depends(get_file_service),
+) -> Dict[str, str]:
+
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        thread_id = validated_payload.thread_id
+        status = validated_payload.status
+        metadata = payload.get("metadata", {})
+
+        if status == "success":
+            notebook_id = metadata.get("notebook_id")
+            file_name = validated_payload.values.get("file_name", "text_input")
+            file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+
+            await file_service.update_file(
+                file_id=file_id,
+                user_id=user_id,
+                updates={
+                    "processing_status": ProcessingStatus.COMPLETED,
+                    "filename": file_name,
+                },
+                merge_processing_result=True,
+            )
+
+
+        elif status == "error":
+            pass
+
+        return {"status": "received"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")

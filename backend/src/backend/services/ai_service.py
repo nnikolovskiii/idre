@@ -197,3 +197,41 @@ class AIService:
         )
 
         return {"status": "started"}
+
+    async def generate_file_name(
+            self,
+            notebook_id: str,
+            user_id: str,
+            doc_content: str,
+            file_id: str,
+            graph_id: str = "file_name_graph"
+    ):
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
+
+        if not notebook_model:
+            raise ValueError(f"No notebook model found for: {notebook_id}")
+
+        model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
+
+        run_input = {
+            "light_model": notebook_model.model.name,
+            "api_key": model_api.value if model_api else None,
+            "doc_content": doc_content,
+        }
+
+        assistant_id = await self._get_assistant_id(graph_id)
+
+        background_run = await self.langgraph_client.runs.create(
+            thread_id=None,
+            assistant_id=assistant_id,
+            input=run_input,
+            webhook=LANGGRAPH_WEBHOOK_URL + "/file-name-hook",
+            metadata={"notebook_id": str(notebook_id), "file_id": file_id, "user_id": user_id},
+            on_completion="keep",
+        )
+
+        return {"status": "started"}

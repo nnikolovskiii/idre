@@ -14,13 +14,12 @@ const DriveFileList: React.FC<DriveFileListProps> = ({ items, onFileClick, onVie
     return (
         <div className="w-full">
             {/* Desktop Header: Hidden on mobile */}
-            <div className="hidden md:grid grid-cols-[minmax(250px,_2fr)_1fr_1fr_1.2fr_60px] border-b border-gray-200 items-center text-sm font-medium">
+            <div className="hidden md:grid grid-cols-[minmax(300px,_2fr)_1.5fr_0.5fr_0.5fr] border-b border-gray-200 items-center text-sm font-medium">
                 <div className="p-3 flex items-center whitespace-nowrap font-bold">
                     Name
                 </div>
                 <div className="p-3 whitespace-nowrap">Date modified</div>
                 <div className="p-3 whitespace-nowrap">File size</div>
-                <div className="p-3 whitespace-nowrap">Transcription</div>
                 <div className="p-3"></div> {/* Empty cell for actions column */}
             </div>
 

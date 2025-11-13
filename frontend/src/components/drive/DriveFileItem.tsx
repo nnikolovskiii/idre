@@ -229,13 +229,11 @@ const DriveFileItem: React.FC<DriveFileItemProps> = ({ item, onFileClick, onView
             {/* CHANGED: Apply conditional background color */}
             <div
                 onClick={handleClick}
-                className={`hidden md:grid grid-cols-[minmax(250px,_2fr)_1fr_1fr_1.2fr_60px] border-b items-center cursor-pointer transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted'}`}
+                className={`hidden md:grid grid-cols-[minmax(300px,_2fr)_1.5fr_0.5fr_0.5fr] border-b items-center cursor-pointer transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted'}`}
             >
                 <div className="p-3 flex items-center whitespace-nowrap overflow-hidden text-ellipsis">{fileIdentifier}</div>
                 <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{formatDateTime(item.updated_at || item.created_at)}</div>
                 <div className="p-3 whitespace-nowrap overflow-hidden text-ellipsis ">{item.file_size || "—"}</div>
-                <div className="p-3 flex items-center">{renderTranscriptionContent()}</div>
-                {/* CHANGED: Removed opacity-0 and group-hover:opacity-100 to make the menu always visible */}
                 <div className="p-3 flex items-center justify-center">
                     {actionMenu}
                 </div>

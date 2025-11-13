@@ -19,7 +19,8 @@ const EditableSpan: React.FC<{
     placeholder: string;
     disabled: boolean;
     className?: string;
-}> = ({ value, onChange, placeholder, disabled, className }) => {
+    fullWidth?: boolean; // New prop for vertical layout
+}> = ({ value, onChange, placeholder, disabled, className, fullWidth = false }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,7 +29,6 @@ const EditableSpan: React.FC<{
         if (disabled) return;
         setIsExpanded(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        // Auto-focus and scroll to bottom if needed
         setTimeout(() => {
             textareaRef.current?.focus();
             textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -39,10 +39,9 @@ const EditableSpan: React.FC<{
         if (disabled) return;
         timeoutRef.current = setTimeout(() => {
             setIsExpanded(false);
-        }, 150); // Slight delay to allow clicking between fields
+        }, 150);
     };
 
-    const displayText = value || placeholder;
     const fullValue = value || '';
 
     return (
@@ -53,17 +52,21 @@ const EditableSpan: React.FC<{
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 disabled={disabled}
-                className={`font-semibold text-primary bg-transparent border-b border-dashed border-primary/50 focus:outline-none focus:border-solid focus:border-primary resize-none align-bottom overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'block w-full p-3 border-2 border-primary rounded-lg bg-card/80 shadow-sm mb-3 max-h-48' : 'inline-block min-w-[120px] max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap'} ${className || ''}`}
-                rows={isExpanded ? 6 : 1}
+                className={`font-semibold text-primary bg-transparent border-b border-dashed border-primary/50 focus:outline-none focus:border-solid focus:border-primary resize-none align-text-top overflow-hidden transition-all duration-300 ease-in-out ${
+                    isExpanded
+                        ? 'block w-full p-3 border-2 border-primary rounded-lg bg-card/80 shadow-sm mb-3 max-h-64'
+                        : `${fullWidth ? 'block w-full' : 'inline-block min-w-[150px] max-w-[450px]'} max-h-24 overflow-y-auto leading-relaxed rounded px-2 py-1`
+                } ${className || ''}`}
+                rows={isExpanded ? 8 : 3}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 onInput={(e) => {
                     const target = e.currentTarget;
                     target.style.height = 'auto';
-                    target.style.height = `${Math.min(target.scrollHeight, 192)}px`; // Cap at ~192px (6 rows * ~32px)
+                    target.style.height = `${Math.min(target.scrollHeight, isExpanded ? 256 : 96)}px`; // Cap at 256px expanded, 96px collapsed
                 }}
-                style={{ minHeight: isExpanded ? '4rem' : '1.5rem' }}
-                title={isExpanded ? '' : fullValue} // Tooltip for full text when collapsed
+                style={{ minHeight: isExpanded ? '6rem' : '2.5rem' }}
+                title={isExpanded ? '' : fullValue}
             />
             {isExpanded && (
                 <button
@@ -72,7 +75,7 @@ const EditableSpan: React.FC<{
                         setIsExpanded(false);
                         textareaRef.current?.blur();
                     }}
-                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-sm"
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-sm bg-card/80 px-2 py-1 rounded"
                 >
                     Done
                 </button>
@@ -80,7 +83,6 @@ const EditableSpan: React.FC<{
         </>
     );
 };
-
 
 type IdeaCanvasViewProps = {
     notebookId?: string;
@@ -234,7 +236,7 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
     // --- Dynamic Idea Template Component ---
     const ideaTemplate = (
         <div className="w-1/2 h-full flex items-center justify-center p-8 bg-background">
-            <div className="max-w-2xl w-full">
+            <div className="max-w-3xl w-full"> {/* Increased max width */}
                 <div className="bg-card border border-sidebar-border rounded-lg p-8 shadow-lg relative">
                     <h2 className="text-2xl font-bold text-foreground mb-6">Idea Canvas</h2>
                     {isLoadingCanvas ? (
@@ -242,39 +244,58 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                             <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <p className="text-lg text-foreground leading-relaxed break-words">
-                                My idea is a{" "}
+                        <div className="space-y-6"> {/* Increased spacing between sections */}
+                            {/* SERVICE FIELD */}
+                            <div className="space-y-2">
+                                <p className="text-lg text-foreground font-medium">My idea is a</p>
                                 <EditableSpan
                                     value={proposition.service || ''}
                                     onChange={(val) => handleFieldChange('service', val)}
-                                    placeholder="product/service"
+                                    placeholder="product/service (e.g., mobile app, online platform, hardware device)"
                                     disabled={isSaving}
-                                />{" "}
-                                for{" "}
+                                    fullWidth={true}
+                                />
+                            </div>
+
+                            {/* AUDIENCE FIELD */}
+                            <div className="space-y-2">
+                                <p className="text-lg text-foreground font-medium">for</p>
                                 <EditableSpan
                                     value={proposition.audience || ''}
                                     onChange={(val) => handleFieldChange('audience', val)}
-                                    placeholder="a specific audience"
+                                    placeholder="target audience (e.g., busy parents, small business owners, students)"
                                     disabled={isSaving}
-                                />{" "}
-                                that solves{" "}
+                                    fullWidth={true}
+                                />
+                            </div>
+
+                            {/* PROBLEM FIELD */}
+                            <div className="space-y-2">
+                                <p className="text-lg text-foreground font-medium">that solves</p>
                                 <EditableSpan
                                     value={proposition.problem || ''}
                                     onChange={(val) => handleFieldChange('problem', val)}
-                                    placeholder="a specific problem"
+                                    placeholder="specific problem (e.g., time management, cost reduction, skill gap)"
                                     disabled={isSaving}
-                                />{" "}
-                                by{" "}
+                                    fullWidth={true}
+                                />
+                            </div>
+
+                            {/* SOLUTION FIELD */}
+                            <div className="space-y-2">
+                                <p className="text-lg text-foreground font-medium">by</p>
                                 <EditableSpan
                                     value={proposition.solution || ''}
                                     onChange={(val) => handleFieldChange('solution', val)}
-                                    placeholder="a unique solution"
+                                    placeholder="unique solution (e.g., AI automation, peer-to-peer network, gamification)"
                                     disabled={isSaving}
-                                />.
-                            </p>
+                                    fullWidth={true}
+                                />
+                            </div>
                         </div>
                     )}
+
+                    {/* Status indicator */}
                     <div className="absolute bottom-4 right-4 text-xs text-muted-foreground flex items-center gap-2">
                         {isLoadingCanvas ? (
                             <>
@@ -294,7 +315,7 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                         ) : error ? (
                             <span className="text-destructive">{error}</span>
                         ) : (
-                            <span>Saved</span>
+                            <span className="text-success">Saved</span>
                         )}
                     </div>
                 </div>

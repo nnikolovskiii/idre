@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph
 from agent.core.chat_graph.data_models import ChatGraphState
 from agent.core.chat_graph.nodes import prepare_inputs_node, generate_answer_node
 from agent.core.chat_name_graph import generate_chat_name_node, ChatNameGraphState
+from agent.core.file_name_graph import FileNameGraphState, generate_file_name
 from agent.core.idea_proposition_graph import IdeaPropositionGraphState, generate_idea_proposition_node
 from agent.core.transcription_graph import transcribe_and_enhance_audio_node, TranscriptionGraphState
 
@@ -72,6 +73,18 @@ def idea_proposition_graph():
 
     return workflow
 
+
+def file_name_graph():
+    workflow = StateGraph(FileNameGraphState)
+
+    workflow.add_node("generate_file_name", generate_file_name)
+
+    workflow.set_entry_point("generate_file_name")
+    workflow.add_edge("generate_file_name", END)
+
+    return workflow
+
+
 # Build and compile transcription graph
 transcription_builder = transcription_graph()
 transcription_graph = transcription_builder.compile()
@@ -88,3 +101,6 @@ brainstorm_compiled_graph = brainstorm_builder.compile()
 
 idea_proposition_builder = idea_proposition_graph()
 idea_proposition_compiled_graph = idea_proposition_builder.compile()
+
+file_name_builder = file_name_graph()
+file_name_compiled_graph = file_name_builder.compile()

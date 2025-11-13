@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {useParams} from "react-router-dom";
 import {fileService, type FileData} from "../services/filesService";
 import InputArea from "../components/chat/InputArea";
@@ -65,6 +65,48 @@ const MyDriveView = () => {
 
     const [editorContent, setEditorContent] = useState<string>("");
     const [isDirty, setIsDirty] = useState(false);
+
+    // --- START: State and Logic for Resizable Pane ---
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [sidebarWidth, setSidebarWidth] = useState(400);
+    const minSidebarWidth = 250;
+    const minEditorWidth = 300;
+
+    // Set initial sidebar width based on container size on mount
+    useEffect(() => {
+        if (containerRef.current) {
+            const initialWidth = containerRef.current.offsetWidth * 0.4;
+            setSidebarWidth(Math.max(minSidebarWidth, initialWidth));
+        }
+    }, []);
+
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = sidebarWidth;
+        const container = containerRef.current;
+
+        if (!container) return;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const dx = moveEvent.clientX - startX;
+            const newWidth = Math.max(
+                minSidebarWidth,
+                Math.min(startWidth + dx, container.clientWidth - minEditorWidth)
+            );
+            setSidebarWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [sidebarWidth]);
+    // --- END: State and Logic for Resizable Pane ---
+
 
     const {
         chatSessions,
@@ -165,32 +207,21 @@ const MyDriveView = () => {
         }
     };
 
-    // UPDATED: This function now ALWAYS saves to the 'content' field.
     const handleSaveContent = useCallback(async () => {
         if (!selectedFile || !isDirty) return;
 
         try {
-            // Always update the 'content' field, regardless of file type.
             await fileService.updateFile(selectedFile.file_id, {content: editorContent});
-
-            // Create a copy of the updated file for immediate UI feedback.
             const updatedFile = {...selectedFile, content: editorContent};
-
-            // If it was an audio file, we also update its transcription property
-            // in the local state so the UI stays consistent until the next refresh.
             if (selectedFile.content_type.startsWith('audio/')) {
                 updatedFile.processing_result = {
                     ...selectedFile.processing_result,
                     transcription: editorContent,
                 };
             }
-
-            // Update the local state for a responsive feel.
             setSelectedFile(updatedFile);
             setFiles(files.map(f => f.file_id === selectedFile.file_id ? updatedFile : f));
             setIsDirty(false);
-
-            // Refresh the full data from the server in the background.
             await fetchFiles();
         } catch (err) {
             alert(err instanceof Error ? err.message : "Failed to save content");
@@ -252,10 +283,12 @@ const MyDriveView = () => {
     );
 
     const children = (
-        <div className="flex flex-1 overflow-hidden h-full">
-            {/* --- File List Pane (Visible by default on mobile, hidden when editor is open) --- */}
-            <div className={`w-full md:w-2/5 border-r border-border overflow-y-auto
-                             ${isEditorOpen ? 'hidden md:block' : 'block'}`}>
+        <div className="flex flex-1 overflow-hidden h-full" ref={containerRef}>
+            {/* --- File List Pane --- */}
+            <div
+                className={`flex-shrink-0 overflow-y-auto ${isEditorOpen ? 'hidden md:flex md:flex-col' : 'w-full md:w-auto md:flex md:flex-col'}`}
+                style={{width: sidebarWidth}}
+            >
                 <div className="p-3 md:p-6">
                     <DriveHeader/>
                     {loading && <DriveLoading/>}
@@ -268,9 +301,16 @@ const MyDriveView = () => {
                 </div>
             </div>
 
-            {/* --- Editor Pane (Hidden by default, visible on mobile/desktop when editor is open) --- */}
-            <div className={`w-full md:w-3/5 bg-background
-                             ${isEditorOpen ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
+            {/* --- Resizer Handle (Always visible on desktop) --- */}
+            <div
+                onMouseDown={handleMouseDown}
+                className="w-1.5 cursor-col-resize flex-shrink-0 bg-border hover:bg-primary transition-colors hidden md:block"
+            />
+
+
+            {/* --- Editor/Placeholder Pane --- */}
+            <div
+                className={`flex-1 bg-background min-w-0 ${isEditorOpen ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
                 {isEditorOpen && selectedFile ? (
                     <>
                         <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
@@ -279,7 +319,7 @@ const MyDriveView = () => {
                                     onClick={handleCloseEditor}
                                     className="md:hidden p-1 mr-2 -ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                                     title="Back to file list">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                                          strokeLinejoin="round">
                                         <polyline points="15 18 9 12 15 6"></polyline>
@@ -290,7 +330,7 @@ const MyDriveView = () => {
                             </div>
                             <div className="flex items-center space-x-2 flex-shrink-0">
                                 <button onClick={handleSaveContent} disabled={!isDirty}
-                                        className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        className="px-3 py-1 rounded-md text-sm font-medium bg-secondary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
                                     Save
                                 </button>
                                 <button onClick={handleCloseEditor}

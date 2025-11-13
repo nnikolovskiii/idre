@@ -2,7 +2,7 @@ from typing import List
 
 from langchain_core.runnables import RunnableConfig
 
-from agent.core.configs import chat_name_graph_compiled, idea_proposition_compiled_graph
+from agent.core.configs import chat_name_graph_compiled, idea_proposition_compiled_graph, file_name_compiled_graph
 from agent.core.idea_proposition_graph import MessageResponse
 
 audio_path = "https://files.nikolanikolovski.com/test/download/test123.ogg"
@@ -49,14 +49,14 @@ conversation_messages: List[MessageResponse] = [
 ]
 
 # Invoke the graph with audio input
-state = idea_proposition_compiled_graph.invoke(
+state = file_name_compiled_graph.invoke(
     {
         "light_model": "google/gemini-2.5-flash",
         # "api_key": os.getenv("OPENROUTER_API_KEY"),
-        "messages": conversation_messages,
+        "doc_content": "What is the core problem they face that your app will solve?",
     },
     config=config
 )
 
 # Output the enhanced transcript
-print("Enhanced Transcript:", state.get("idea_proposition"))
+print("Enhanced Transcript:", state.get("file_name"))

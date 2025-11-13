@@ -157,6 +157,9 @@ async def upload_file(
                 content=content_to_store
             )
 
+            if file.filename.startswith("message-"):
+                await ai_service.generate_file_name(notebook_id, str(current_user.user_id), file_record.content ,str(file_record.id))
+
         return {
             "status": "success",
             "message": "File uploaded successfully",
