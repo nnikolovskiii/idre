@@ -65,6 +65,10 @@ def is_audio_file(content_type: str) -> bool:
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
 
+# ==============================================================================
+# >>>>>>>>>>>> START: MODIFIED UPLOAD FUNCTION <<<<<<<<<<<<<<
+# ==============================================================================
+
 @router.post("/upload")
 async def upload_file(
         file: UploadFile = FastAPIFile(...),
@@ -74,49 +78,19 @@ async def upload_file(
         file_service: FileService = Depends(get_file_service),
         ai_service: AIService = Depends(get_ai_service),
 ):
-    if not FILE_SERVICE_URL_DOCKER or not UPLOAD_PASSWORD:
-        raise HTTPException(
-            status_code=500,
-            detail="Server configuration error: File service URL or password not set."
-        )
-
-    # Check file size early
+    # Check file size early to prevent large files from being loaded into memory
     if file.size and file.size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
-            detail=f"File size {file.size} bytes exceeds maximum allowed size of {MAX_FILE_SIZE} bytes ({MAX_FILE_SIZE / (1024 * 1024):.0f} MB)"
+            detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE / (1024 * 1024):.0f} MB"
         )
-
-    unique_filename = file_service.generate_unique_filename(file.filename)
-    upload_url = f"{FILE_SERVICE_URL_DOCKER}/test/upload"
-    headers = {'password': UPLOAD_PASSWORD}
 
     try:
-        # Read the file content to avoid SpooledTemporaryFile serialization issues
+        # Read the entire file into memory.
         file_content = await file.read()
-
-        # Reset file pointer for potential re-reads
         await file.seek(0)
 
-        form = aiohttp.FormData()
-        form.add_field(
-            'file',
-            file_content,
-            filename=unique_filename,
-            content_type=file.content_type
-        )
-
-        timeout = aiohttp.ClientTimeout(total=300)
-        async with aiohttp.ClientSession(timeout=timeout) as http_session:
-            async with http_session.post(upload_url, data=form, headers=headers) as response:
-                if response.status != 200:
-                    response_text = await response.text()
-                    raise HTTPException(
-                        status_code=response.status,
-                        detail=f"Failed to upload file to external service: {response_text}"
-                    )
-
-        docker_url = f"{FILE_SERVICE_URL_DOCKER}/test/download/{unique_filename}"
+        unique_filename = file_service.generate_unique_filename(file.filename)
 
         # Only transcribe if the file is an audio file
         if is_audio_file(file.content_type) and transcribe:
@@ -124,33 +98,37 @@ async def upload_file(
                 user_id=str(current_user.user_id),
                 filename=file.filename,
                 unique_filename=unique_filename,
-                url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
                 content_type=file.content_type,
                 file_size_bytes=file.size,
                 notebook_id=notebook_id,
                 processing_status=ProcessingStatus.PROCESSING
             )
 
+            # --- CRITICAL CHANGE ---
+            # Call the AI service directly with the file's byte content.
+            # NOTE: This assumes `ai_service.transcribe_file` has been updated to accept
+            # `file_data`, `filename`, and `content_type` instead of a request object with a URL.
             await ai_service.transcribe_file(
                 user_id=str(current_user.user_id),
                 notebook_id=notebook_id,
-                request=SendMessageRequest(audio_path=docker_url, file_id=str(file_record.id))
+                file_id=str(file_record.id),
+                file_data=file_content,
+                filename=file.filename,
+                content_type=file.content_type
             )
         else:
-            # Determine content to store: decode to text only if it's a text file
+            # For non-audio files (e.g., text), create a record and store content if applicable.
             content_to_store = None
             if file.content_type and file.content_type.startswith('text/'):
                 try:
                     content_to_store = file_content.decode('utf-8')
                 except UnicodeDecodeError:
-                    # If decoding fails, don't store content (treat as binary)
                     content_to_store = None
 
             file_record: File = await file_service.create_file_record(
                 user_id=str(current_user.user_id),
                 filename=file.filename,
                 unique_filename=unique_filename,
-                url=f"{FILE_SERVICE_URL}/test/download/{unique_filename}",
                 content_type=file.content_type,
                 file_size_bytes=file.size,
                 notebook_id=notebook_id,
@@ -158,26 +136,30 @@ async def upload_file(
             )
 
             if file.filename.startswith("message-"):
-                await ai_service.generate_file_name(notebook_id, str(current_user.user_id), file_record.content ,str(file_record.id))
+                await ai_service.generate_file_name(notebook_id, str(current_user.user_id), file_record.content,
+                                                    str(file_record.id))
 
         return {
             "status": "success",
-            "message": "File uploaded successfully",
+            "message": "File processed successfully",
             "data": {
                 "file_id": str(file_record.id),
                 "filename": file.filename,
                 "unique_filename": file_record.unique_filename,
-                "url": file_record.url,
+                "url": file_record.url,  # This will be null
                 "file_size": file_service.format_file_size(
                     file_record.file_size_bytes) if file_record.file_size_bytes else "0 B",
                 "processing_status": file_record.processing_status,
                 "is_audio": is_audio_file(file.content_type)
             }
         }
-    except aiohttp.ClientError as e:
-        raise HTTPException(status_code=502, detail=f"Network error communicating with file service: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+# ==============================================================================
+# >>>>>>>>>>>> END: MODIFIED UPLOAD FUNCTION <<<<<<<<<<<<<<
+# ==============================================================================
 
 
 @router.get("/{notebook_id}")

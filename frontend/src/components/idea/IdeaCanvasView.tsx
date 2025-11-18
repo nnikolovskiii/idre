@@ -135,10 +135,8 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                 // The API response can have `null` values, but our state expects `undefined` for optional fields.
                 // The nullish coalescing operator (`??`) handles this transformation gracefully.
                 const initialState: PropositionUpdateRequest = {
-                    service: response.service ?? undefined,
-                    audience: response.audience ?? undefined,
-                    problem: response.problem ?? undefined,
-                    solution: response.solution ?? undefined,
+                    what: response.what ?? undefined,
+                    why: response.why ?? undefined,
                 };
 
                 setProposition(initialState);
@@ -181,10 +179,8 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
             if (updatedProposition && latestPropositionEvent.data?.notebook_id === currentNotebookId) {
                 // Update the proposition state with the new data from SSE
                 setProposition({
-                    service: updatedProposition.service ?? undefined,
-                    audience: updatedProposition.audience ?? undefined,
-                    problem: updatedProposition.problem ?? undefined,
-                    solution: updatedProposition.solution ?? undefined,
+                    what: updatedProposition.what ?? undefined,
+                    why: updatedProposition.why ?? undefined,
                 });
                 setIsProcessing(false);
                 setError(null);
@@ -244,50 +240,26 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                             <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                     ) : (
-                        <div className="space-y-6"> {/* Increased spacing between sections */}
-                            {/* SERVICE FIELD */}
-                            <div className="space-y-2">
-                                <p className="text-lg text-foreground font-medium">My idea is a</p>
+                        <div className="space-y-8"> {/* Increased spacing between sections */}
+                            {/* WHAT FIELD */}
+                            <div className="space-y-3">
+                                <p className="text-lg text-foreground font-medium">What is your idea?</p>
                                 <EditableSpan
-                                    value={proposition.service || ''}
-                                    onChange={(val) => handleFieldChange('service', val)}
-                                    placeholder="product/service (e.g., mobile app, online platform, hardware device)"
+                                    value={proposition.what || ''}
+                                    onChange={(val) => handleFieldChange('what', val)}
+                                    placeholder="Describe your idea and what problem it solves (e.g., An AI note-taking app that helps students capture and review lecture material)"
                                     disabled={isSaving}
                                     fullWidth={true}
                                 />
                             </div>
 
-                            {/* AUDIENCE FIELD */}
-                            <div className="space-y-2">
-                                <p className="text-lg text-foreground font-medium">for</p>
+                            {/* WHY FIELD */}
+                            <div className="space-y-3">
+                                <p className="text-lg text-foreground font-medium">Why does it matter?</p>
                                 <EditableSpan
-                                    value={proposition.audience || ''}
-                                    onChange={(val) => handleFieldChange('audience', val)}
-                                    placeholder="target audience (e.g., busy parents, small business owners, students)"
-                                    disabled={isSaving}
-                                    fullWidth={true}
-                                />
-                            </div>
-
-                            {/* PROBLEM FIELD */}
-                            <div className="space-y-2">
-                                <p className="text-lg text-foreground font-medium">that solves</p>
-                                <EditableSpan
-                                    value={proposition.problem || ''}
-                                    onChange={(val) => handleFieldChange('problem', val)}
-                                    placeholder="specific problem (e.g., time management, cost reduction, skill gap)"
-                                    disabled={isSaving}
-                                    fullWidth={true}
-                                />
-                            </div>
-
-                            {/* SOLUTION FIELD */}
-                            <div className="space-y-2">
-                                <p className="text-lg text-foreground font-medium">by</p>
-                                <EditableSpan
-                                    value={proposition.solution || ''}
-                                    onChange={(val) => handleFieldChange('solution', val)}
-                                    placeholder="unique solution (e.g., AI automation, peer-to-peer network, gamification)"
+                                    value={proposition.why || ''}
+                                    onChange={(val) => handleFieldChange('why', val)}
+                                    placeholder="Explain why this is important and who it helps (e.g., Students struggle with retaining information from lectures, leading to poorer grades and increased stress)"
                                     disabled={isSaving}
                                     fullWidth={true}
                                 />

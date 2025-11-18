@@ -102,6 +102,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             user={user}
             isTemporaryChat={isTemporaryChat}
             createNewChat={createTemporaryChat}
+            createTemporaryChat={createTemporaryChat}
             switchToChat={switchToChat}
             handleDeleteChat={handleDeleteChat}
             isThreadTyping={isThreadTyping}

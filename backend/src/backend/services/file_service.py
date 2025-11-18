@@ -67,12 +67,12 @@ class FileService:
             user_id: str,
             filename: str,
             unique_filename: str,
-            url: str,
             content_type: Optional[str] = None,
             file_size_bytes: Optional[int] = None,
             notebook_id: Optional[str] = None,
             processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING,
-            content: Optional[str] = None
+            content: Optional[str] = None,
+            url: Optional[str] = None,
     ) -> File:
         """
         (Orchestration) Create a file record using the repository and commit.

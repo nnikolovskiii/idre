@@ -17,6 +17,7 @@ from backend.api.routes.notebook_models_route import router as notebook_models_r
 from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
 from backend.api.routes import propositions_route
+from backend.api.routes import tasks_route
     
 postgres_db = container.db()
 
@@ -107,6 +108,7 @@ app.include_router(generative_models_router, prefix="/generative-models", tags=[
 app.include_router(notebooks_router, prefix="/notebooks", tags=["Notebooks"])
 
 app.include_router(propositions_route.router, prefix="/propositions", tags=["Propositions"])
+app.include_router(tasks_route.router, prefix="/tasks", tags=["Tasks"])
 
 
 @app.get("/")

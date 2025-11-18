@@ -1,3 +1,4 @@
+import base64
 import os
 from typing import List
 
@@ -68,17 +69,32 @@ class AIService:
 
         return assistant_id
 
-    async def transcribe_file(self, notebook_id: str, user_id: str, request: SendMessageRequest,
-                              graph_id: str = "transcription_agent"):
+    async def transcribe_file(
+            self,
+            notebook_id: str,
+            user_id: str,
+            file_id: str,
+            file_data: bytes,
+            filename: str,
+            content_type: str,  # <-- It's good practice to pass this too
+            graph_id: str = "transcription_agent"
+    ):
         """
-        Orchestrates sending a message by gathering all data and invoking LangGraph.
-        Now accepts a graph_id for flexibility (defaults to 'transcription_agent' for backward compatibility).
+        Initiates a LangGraph run to transcribe an in-memory audio file.
+
+        This method encodes the raw audio data into Base64, then starts a
+        stateless LangGraph run. The graph is responsible for decoding the
+        data and calling the AI transcription service. A webhook is used
+        to receive the result asynchronously.
 
         Args:
-            notebook_id: ID of the notebook.
-            user_id: ID of the user.
-            request: The send message request.
-            graph_id: The graph ID for the assistant (e.g., "transcription_agent").
+            notebook_id (str): ID of the notebook.
+            user_id (str): ID of the user.
+            file_id (str): The ID of the file record to be updated upon completion.
+            file_data (bytes): The raw binary content of the audio file.
+            filename (str): The original filename, used by the AI service.
+            content_type (str): The MIME type of the audio file.
+            graph_id (str): The graph ID for the assistant (e.g., "transcription_agent").
         """
         notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
             notebook_id=notebook_id,
@@ -91,37 +107,31 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        encoded_audio_data = base64.b64encode(file_data).decode('utf-8')
+
         run_input = {
             "light_model": notebook_model.model.name,
             "api_key": model_api.value if model_api else None,
+            "audio_data_base64": encoded_audio_data,
+            "filename": filename,
+            "content_type": content_type
         }
 
-        if request.audio_path:
-            run_input["audio_path"] = request.audio_path
+        assistant_id = await self._get_assistant_id(graph_id)
 
-        assistant_id = await self._get_assistant_id(graph_id)  # Now dynamic
-
-        # Start background run with webhook for completion notification
         webhook_url = LANGGRAPH_WEBHOOK_URL + "/transcription-hook"
-        # In your transcribe_file or wherever you start the run
+
         background_run = await self.langgraph_client.runs.create(
-            thread_id=None,  # Stateless
+            thread_id=None,
             assistant_id=assistant_id,
             input=run_input,
             webhook=webhook_url,
-            metadata={"file_id": request.file_id, "temp_thread": True, "user_id": user_id},  # Flag for cleanup
-            on_completion="keep",  # Preserve thread for webhook fetch
+            metadata={"file_id": file_id, "temp_thread": True, "user_id": user_id},
+            on_completion="keep",
         )
 
         return {"status": "started"}
 
-        # final_state = await self.langgraph_client.runs.wait(
-        #     thread_id=None,
-        #     assistant_id=assistant_id,
-        #     input=run_input,
-        # )
-        #
-        # print("lol")
 
     # Example: Add a new method for a different assistant (e.g., chat)
     async def generate_chat_name(

@@ -17,7 +17,7 @@ All colors are defined as HEX values.
     --popover: #ffffff;
     --popover-foreground: #212126;
 
-    --primary: #212126;
+    --primary: #f2f2f5;
     --primary-foreground: #191919;
     --primary-hover: #6666ff;
 
@@ -77,7 +77,7 @@ All colors are defined as HEX values.
     --popover: #020817;
     --popover-foreground: #f8fafc;
 
-    --primary: #f8fafc;
+    --primary: #1e293b;
     --primary-foreground: white;
 
     --secondary: #1e293b;
@@ -125,5 +125,268 @@ All colors are defined as HEX values.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Enhanced Kanban Drag and Drop Styles */
+@layer components {
+  /* Task card animations */
+  .kanban-task {
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0.1, 1),
+                opacity 0.2s ease,
+                box-shadow 0.2s ease;
+    cursor: grab;
+  }
+
+  .kanban-task:active {
+    cursor: grabbing;
+  }
+
+  .kanban-task:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Dragging state */
+  .kanban-task.dragging {
+    transform: rotate(2deg) scale(0.95);
+    opacity: 0.9;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transition: none;
+  }
+
+  /* Column drop zone feedback */
+  .kanban-column {
+    transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+  }
+
+  .kanban-column.drag-over {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 2px var(--accent),
+                0 10px 30px rgba(128, 102, 255, 0.1);
+  }
+
+  /* Drop indicator animation */
+  .drop-indicator {
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--primary));
+    border-radius: 2px;
+    margin: 4px 0;
+    animation: pulseGlow 1.5s infinite;
+    transition: all 0.2s ease;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% {
+      opacity: 0.7;
+      transform: scaleX(0.8);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  /* Touch feedback for mobile */
+  @media (hover: none) and (pointer: coarse) {
+    .kanban-task {
+      transition: transform 0.1s ease, opacity 0.1s ease;
+    }
+
+    .kanban-task:active {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+  }
+
+  /* Improved drag image */
+  .drag-preview {
+    transform: rotate(2deg) scale(1.05);
+    opacity: 0.9;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    z-index: 9999;
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+
+  /* Smooth list animations */
+  .task-list {
+    transition: all 0.3s cubic-bezier(0.2, 0, 0.1, 1);
+  }
+
+  .task-item {
+    transition: all 0.3s cubic-bezier(0.2, 0, 0.1, 1);
+  }
+
+  /* Loading and skeleton states */
+  .skeleton-task {
+    background: linear-gradient(90deg,
+      var(--muted) 25%,
+      var(--secondary) 50%,
+      var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 8px;
+    height: 100px;
+    margin-bottom: 8px;
+  }
+
+  @keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Focus styles for accessibility */
+  .kanban-task:focus-within {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .kanban-task {
+      border: 2px solid var(--border);
+    }
+
+    .kanban-task.dragging {
+      border-color: var(--accent);
+      border-width: 3px;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .kanban-task,
+    .kanban-column,
+    .task-list,
+    .task-item {
+      transition: none;
+    }
+
+    .drop-indicator {
+      animation: none;
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .kanban-task,
+    .kanban-column {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .drag-preview,
+    .drop-indicator {
+      display: none;
+    }
+  }
+
+  /* Mobile-specific enhancements */
+  @media (max-width: 768px) {
+    /* Better touch targets */
+    .kanban-task {
+      min-height: 48px; /* iOS touch target size */
+      touch-action: manipulation; /* Prevent double-tap zoom */
+    }
+
+    /* Mobile drag handles */
+    .kanban-task [data-testid="drag-handle"] {
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mobile column spacing */
+    .kanban-column {
+      margin-bottom: 1rem;
+    }
+
+    /* Mobile modal improvements */
+    .modal-overlay {
+      padding: 1rem;
+      align-items: flex-start;
+      padding-top: 4rem;
+    }
+
+    /* Mobile button sizing */
+    .mobile-button {
+      min-height: 44px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+    }
+
+    /* Better scroll behavior on mobile */
+    .mobile-scroll {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+
+    /* Mobile input improvements */
+    .mobile-input {
+      font-size: 16px; /* Prevent zoom on iOS */
+      padding: 0.75rem;
+      min-height: 44px;
+    }
+
+    /* Mobile file viewer improvements */
+    .mobile-file-viewer {
+      padding: 1rem;
+      font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .mobile-back-button {
+      min-height: 44px;
+      min-width: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Better textarea on mobile */
+    .mobile-textarea {
+      font-size: 16px; /* Prevent zoom on iOS */
+      line-height: 1.5;
+      padding: 1rem;
+    }
+  }
+
+  /* Touch-specific improvements */
+  @media (hover: none) and (pointer: coarse) {
+    .kanban-task {
+      /* Hover effects don't make sense on touch */
+      transition: transform 0.2s ease;
+    }
+
+    .kanban-task:active {
+      transform: scale(0.98);
+    }
+
+    /* Make drag handles always visible on touch devices */
+    .kanban-task .drag-handle {
+      opacity: 1 !important;
+      background: var(--muted);
+      border-radius: 4px;
+      padding: 4px;
+    }
+  }
+}
+
+/* Dark mode specific enhancements */
+.dark .kanban-task.dragging {
+  box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1);
+}
+
+.dark .kanban-column.drag-over {
+  box-shadow: 0 0 0 2px var(--accent),
+              0 10px 30px rgba(128, 102, 255, 0.2);
 }
 /* ... */

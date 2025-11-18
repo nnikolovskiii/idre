@@ -252,10 +252,8 @@ async def handle_idea_proposition_webhook(
                 "data": {
                     "notebook_id": notebook_id,
                     "proposition": {
-                        "service": updated_proposition.service,
-                        "audience": updated_proposition.audience,
-                        "problem": updated_proposition.problem,
-                        "solution": updated_proposition.solution,
+                        "what": updated_proposition.what,
+                        "why": updated_proposition.why,
                     },
                     "status": "completed",
                     "run_id": run_id

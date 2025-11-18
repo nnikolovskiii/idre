@@ -31,7 +31,7 @@ class File(Base):
 
     user_id = Column(String(255), nullable=False, index=True)
 
-    url = Column(String(500), nullable=False)
+    url = Column(String(500), nullable=True)
 
     content = Column(Text, nullable=True)
 

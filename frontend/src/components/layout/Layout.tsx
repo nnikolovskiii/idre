@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModals } from "../../hooks/useModals";
 import ChatSidebar from "../chat/ChatSidebar";
@@ -25,6 +26,7 @@ interface LayoutProps {
     user?: { name?: string; surname?: string; email?: string; username?: string } | null;
     isTemporaryChat?: boolean;
     createNewChat: (notebookId?: string) => void;
+    createTemporaryChat?: () => string;
     switchToChat: (chatId: string) => void;
     handleDeleteChat: (chatId: string) => void;
     isThreadTyping?: (threadId: string) => boolean;
@@ -44,11 +46,13 @@ const Layout: React.FC<LayoutProps> = ({
                                            user,
                                            isTemporaryChat = false,
                                            createNewChat,
+                                           createTemporaryChat,
                                            switchToChat,
                                            handleDeleteChat,
                                            isThreadTyping,
                                        }) => {
     const { logout } = useAuth();
+    const navigate = useNavigate();
 
     const {
         modals,
@@ -66,6 +70,14 @@ const Layout: React.FC<LayoutProps> = ({
     } = useModals();
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+
+    // Function to switch chat and navigate to chat route
+    const handleSwitchChatWithNavigation = useCallback((chatId: string) => {
+        switchToChat(chatId);
+        if (notebookId) {
+            navigate(`/chat/${notebookId}`);
+        }
+    }, [switchToChat, notebookId, navigate]);
 
     return (
         <div className="h-dvh w-screen flex bg-background text-foreground overflow-hidden">
@@ -86,9 +98,10 @@ const Layout: React.FC<LayoutProps> = ({
                     currentChatId={currentChatId}
                     collapsed={!isSidebarOpen}
                     onToggleCollapse={() => setIsSidebarOpen(!isSidebarOpen)}
-                    onCreateNewChat={() => createNewChat(notebookId)}
+                    onCreateNewChat={() => createTemporaryChat ? createTemporaryChat() : createNewChat(notebookId)}
                     onSwitchChat={switchToChat}
                     onDeleteChat={handleDeleteChat}
+                    onSwitchChatWithNavigation={handleSwitchChatWithNavigation}
                     loading={loadingChats}
                     creatingChat={creatingChat}
                     onSettingsClick={handleOpenAIModelsSettings}

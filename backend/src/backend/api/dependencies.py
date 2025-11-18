@@ -14,10 +14,12 @@ from backend.repositories.notebook_model_repository import NotebookModelReposito
 from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.generative_model_repository import GenerativeModelRepository
 from backend.repositories.app_settings_repository import AppSettingsRepository
+from backend.repositories.task_repository import TaskRepository
 from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.fernet_service import FernetService
 from backend.services.file_service import FileService
+from backend.services.task_service import TaskService
 from backend.services.model_api_service import ModelApiService
 from backend.services.chat_service import ChatService
 from backend.services.notebook_service import NotebookService
@@ -260,4 +262,23 @@ def get_notebook_service(
         notebook_repository=notebook_repo,
         thread_repository=thread_repo,
         notebook_model_service=notebook_model_service
+    )
+
+
+# --- Task Dependencies ---
+def get_task_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> TaskRepository:
+    """Dependency provider for the TaskRepository."""
+    return container.task_repository(session=session)
+
+
+def get_task_service(
+        session: AsyncSession = Depends(get_db_session),
+        task_repo: TaskRepository = Depends(get_task_repository)
+) -> TaskService:
+    """Dependency provider for the TaskService."""
+    return container.task_service(
+        session=session,
+        task_repository=task_repo
     )

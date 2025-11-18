@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { History, Plus, ChevronDown, Trash2 } from "lucide-react";
 import type { ChatSession } from "../../types/chat";
 
@@ -63,6 +63,7 @@ interface ChatHistoryProps {
     currentChatId: string | null;
     onSwitchChat: (chatId: string) => void;
     onDeleteChat: (chatId: string) => void;
+    onSwitchChatWithNavigation?: (chatId: string) => void;
     loading: boolean;
     creatingChat: boolean;
     onCreateNewChat: () => void;
@@ -76,6 +77,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                                                      currentChatId,
                                                      onSwitchChat,
                                                      onDeleteChat,
+                                                     onSwitchChatWithNavigation,
                                                      loading,
                                                      creatingChat,
                                                      onCreateNewChat,
@@ -162,7 +164,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                                             : "border-transparent hover:bg-sidebar-accent"
                                     }`}
                                     onClick={() => {
-                                        onSwitchChat(chat.id);
+                                        // Use navigation function if available, otherwise just switch chat
+                                        if (onSwitchChatWithNavigation) {
+                                            onSwitchChatWithNavigation(chat.id);
+                                        } else {
+                                            onSwitchChat(chat.id);
+                                        }
                                         if (window.innerWidth <= 768) {
                                             onToggleCollapse();
                                         }
@@ -199,4 +206,16 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
     );
 };
 
-export default ChatHistory;
+const ChatHistoryMemo = memo(ChatHistory, (prevProps, nextProps) => {
+    // Only re-render if chat sessions, current chat ID, or loading states actually change
+    return (
+        prevProps.chatSessions === nextProps.chatSessions &&
+        prevProps.currentChatId === nextProps.currentChatId &&
+        prevProps.loading === nextProps.loading &&
+        prevProps.creatingChat === nextProps.creatingChat &&
+        prevProps.isAuthenticated === nextProps.isAuthenticated &&
+        prevProps.isThreadTyping === nextProps.isThreadTyping
+    );
+});
+
+export default ChatHistoryMemo;

@@ -7,10 +7,8 @@ import {API_CONFIG} from "./api.ts";
  * The notebook_id is now part of the URL, not the body.
  */
 export interface PropositionUpdateRequest {
-    service?: string;
-    audience?: string;
-    problem?: string;
-    solution?: string;
+    what?: string;
+    why?: string;
 }
 
 /**
@@ -18,10 +16,8 @@ export interface PropositionUpdateRequest {
  */
 export interface PropositionResponse {
     notebook_id: string; // The primary identifier
-    service: string | null;
-    audience: string | null;
-    problem: string | null;
-    solution: string | null;
+    what: string | null;
+    why: string | null;
     created_at: string;
     updated_at: string;
 }

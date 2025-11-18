@@ -17,7 +17,7 @@ class FileRepository:
             user_id: str,
             filename: str,
             unique_filename: str,
-            url: str,
+            url: Optional[str] = None,
             content_type: Optional[str] = None,
             file_size_bytes: Optional[int] = None,
             notebook_id: Optional[str] = None,

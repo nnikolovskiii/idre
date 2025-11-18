@@ -5,10 +5,8 @@ import uuid
 
 class PropositionBase(BaseModel):
     """Base model with common proposition fields."""
-    service: Optional[str] = None
-    audience: Optional[str] = None
-    problem: Optional[str] = None
-    solution: Optional[str] = None
+    what: Optional[str] = None
+    why: Optional[str] = None
 
 class PropositionUpdateRequest(PropositionBase):
     """

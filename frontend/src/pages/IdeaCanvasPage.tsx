@@ -50,7 +50,7 @@ const EditableSpan: React.FC<{
           onBlur={handleBlur}
           rows={isExpanded ? 8 : 3}
           className={`
-          font-semibold text-primary bg-transparent
+          font-semibold bg-transparent
           border-b border-dashed border-primary/50
           focus:outline-none focus:border-solid focus:border-primary
           resize-none align-text-top rounded transition-all duration-300 ease-in-out
@@ -120,10 +120,8 @@ const IdeaCanvasPage: React.FC = () => {
                 const response: PropositionResponse = await PropositionService.getPropositionByNotebookId(notebookId);
                 
                 const initialState: PropositionUpdateRequest = {
-                    service: response.service ?? undefined,
-                    audience: response.audience ?? undefined,
-                    problem: response.problem ?? undefined,
-                    solution: response.solution ?? undefined,
+                    what: response.what ?? undefined,
+                    why: response.why ?? undefined,
                 };
 
                 setProposition(initialState);
@@ -204,54 +202,30 @@ const IdeaCanvasPage: React.FC = () => {
                         {/* --------------  IDEA CANVAS BODY  -------------- */}
                         {isLoadingCanvas ? (
                             <div className="flex items-center justify-center h-32">
-                                <Loader2 className="animate-spin text-primary" size={32} />
+                                <Loader2 className="animate-spin" size={32} />
                             </div>
                         ) : (
-                            <div className="space-y-6 text-lg text-foreground">
-                                {/* ----  SERVICE  ---- */}
-                                <div className="space-y-1">
-                                    <p className="font-medium text-muted-foreground">My idea is a</p>
+                            <div className="space-y-8 text-lg text-foreground">
+                                {/* ----  WHAT  ---- */}
+                                <div className="space-y-2">
+                                    <p className="font-medium text-muted-foreground">What is your idea?</p>
                                     <EditableSpan
                                         fullWidth
-                                        value={proposition.service || ''}
-                                        onChange={(v) => handleFieldChange('service', v)}
-                                        placeholder="product or service (e.g. AI note-taking app)"
+                                        value={proposition.what || ''}
+                                        onChange={(v) => handleFieldChange('what', v)}
+                                        placeholder="Describe your idea and what problem it solves (e.g. An AI note-taking app that helps students capture and review lecture material)"
                                         disabled={isSaving}
                                     />
                                 </div>
 
-                                {/* ----  AUDIENCE  ---- */}
-                                <div className="space-y-1">
-                                    <p className="font-medium text-muted-foreground">for</p>
+                                {/* ----  WHY  ---- */}
+                                <div className="space-y-2">
+                                    <p className="font-medium text-muted-foreground">Why does it matter?</p>
                                     <EditableSpan
                                         fullWidth
-                                        value={proposition.audience || ''}
-                                        onChange={(v) => handleFieldChange('audience', v)}
-                                        placeholder="target audience (e.g. busy university students)"
-                                        disabled={isSaving}
-                                    />
-                                </div>
-
-                                {/* ----  PROBLEM  ---- */}
-                                <div className="space-y-1">
-                                    <p className="font-medium text-muted-foreground">that solves</p>
-                                    <EditableSpan
-                                        fullWidth
-                                        value={proposition.problem || ''}
-                                        onChange={(v) => handleFieldChange('problem', v)}
-                                        placeholder="specific problem (e.g. forgetting lecture material)"
-                                        disabled={isSaving}
-                                    />
-                                </div>
-
-                                {/* ----  SOLUTION  ---- */}
-                                <div className="space-y-1">
-                                    <p className="font-medium text-muted-foreground">by</p>
-                                    <EditableSpan
-                                        fullWidth
-                                        value={proposition.solution || ''}
-                                        onChange={(v) => handleFieldChange('solution', v)}
-                                        placeholder="unique solution (e.g. real-time transcription & flash-cards)"
+                                        value={proposition.why || ''}
+                                        onChange={(v) => handleFieldChange('why', v)}
+                                        placeholder="Explain why this is important and who it helps (e.g. Students struggle with retaining information from lectures, leading to poorer grades and increased stress)"
                                         disabled={isSaving}
                                     />
                                 </div>

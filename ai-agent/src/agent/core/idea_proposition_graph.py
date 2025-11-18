@@ -17,21 +17,13 @@ class MessageResponse(BaseModel):
 
 
 class IdeaProposition(BaseModel):
-    service: str = Field(
+    what: str = Field(
         ...,
-        description="A concise description of the product or service, including its core offering and key features. This should capture what the idea fundamentally provides to users."
+        description="A comprehensive description of the idea and what problem it solves. This should include the core concept, the main features, the specific problem it addresses, and how it fundamentally works. It combines the essence of the service/product and the problem it solves."
     )
-    audience: str = Field(
+    why: str = Field(
         ...,
-        description="A detailed profile of the target audience, including demographics (e.g., age, location, profession), behaviors, needs, and pain points. Specify why this group is uniquely suited for the product/service."
-    )
-    problem: str = Field(
-        ...,
-        description="A clear articulation of the specific problem or challenge faced by the audience. Focus on the root cause, its impact on users' lives or work, and any existing gaps in current solutions."
-    )
-    solution: str = Field(
-        ...,
-        description="An explanation of the unique solution, highlighting innovative aspects, how it directly addresses the problem, and what differentiates it from existing alternatives (e.g., technology, process, or model used)."
+        description="An explanation of why this idea matters and who it helps. This should cover the target audience, the importance of solving this problem, the impact on users' lives, and why this approach is valuable. It combines the audience context and the significance of the solution."
     )
 
 
@@ -79,20 +71,24 @@ def generate_idea_proposition_node(state: IdeaPropositionGraphState):
         raise ValueError("API key is required. Set OPENROUTER_API_KEY environment variable or pass api_key in state.")
 
     try:
-        prompt = f"""# Task: Given the below context you need to fill out the form. If you can't provide one of these answers, just do not return anything for that question, leave it out.
-        
-        # The form:
-        My idea is a product/service
-        [Describe your core offering here: What is the product or service? Include its fundamental purpose, key features, and value it delivers to users. For example, "A mobile app that..." or "An online platform for..."]
-        that solves a specific problem
-        [Articulate the challenge: What exact pain point does your audience face? Detail the root cause, its real-world impact (e.g., time lost, costs incurred, frustrations felt), and why current solutions fall short.]
-        for a specific audience
-        [Profile your users: Who are they? Include demographics (age, location, job), behaviors (habits, tools they use), needs (what they crave), and why this group is the perfect fit for your idea.]
-        by a unique solution.
-        [Explain your innovation: How does it fix the problem? Highlight what makes it stand out (e.g., tech, process, or model), key differentiators from competitors, and measurable benefits (e.g., "reduces time by 50%").]
+        prompt = f"""# Task: Based on the provided context, generate a comprehensive idea proposition with two key components: what and why. If you can't provide information for either component, leave it empty.
 
-        # Response output: 
-        {{service: "", audience: "", problem: "", solution: ""}}
+        # What: Describe the idea
+        Provide a complete description of the idea that includes:
+        - The core concept and what it fundamentally is (product/service/approach)
+        - The main features and how it works
+        - The specific problem it addresses or solves
+        - The key aspects that define what this idea actually does
+
+        # Why: Explain the importance
+        Explain why this idea matters by covering:
+        - Who this helps (target audience/users)
+        - Why solving this problem is important
+        - The impact or benefit it provides
+        - The value and significance of this approach
+
+        # Response output:
+        {{what: "", why: ""}}
 
         Context:
         "{messages_str}"
@@ -101,7 +97,7 @@ def generate_idea_proposition_node(state: IdeaPropositionGraphState):
         structured_llm = open_router_model.with_structured_output(IdeaProposition)
 
         idea_proposition: IdeaProposition = structured_llm.invoke(prompt)
-        print(f"   > Idea proposition: '{idea_proposition.service[:100]}...'")
+        print(f"   > Idea proposition - what: '{idea_proposition.what[:100]}...'")
 
         return {
             "idea_proposition": idea_proposition,

@@ -21,6 +21,7 @@ import Landing from "./pages/Landing";
 import WhiteboardView from "./pages/WhiteboardView";
 import IdeaCanvas from "./pages/IdeaCanvas";
 import IdeaCanvasPage from "./pages/IdeaCanvasPage";
+import TasksPage from "./pages/TasksPage";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
@@ -73,6 +74,14 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <IdeaCanvasPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/tasks/:notebookId"
+                                element={
+                                    <ProtectedRoute>
+                                        <TasksPage />
                                     </ProtectedRoute>
                                 }
                             />

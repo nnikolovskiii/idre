@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import os
 import tempfile
-import requests
+import base64  # <-- Import base64
 from typing import Optional, TypedDict
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from ..containers import container
-
 from ..tools.audio_utils import transcribe_audio
 
 load_dotenv()
-file_service_url = os.getenv("FILE_SERVICE_URL")
-file_service_docker_url = os.getenv("FILE_SERVICE_URL_DOCKER")
-upload_password = os.getenv("UPLOAD_PASSWORD")
 
 
 class RestructuredText(BaseModel):
@@ -27,13 +23,18 @@ class FileName(BaseModel):
 class TranscriptionGraphState(TypedDict):
     """Represents the state of the transcription graph.
 
+    This version is designed to handle in-memory audio data encoded as Base64.
+
     Attributes:
-        audio_path: The path or URL to the user's audio file.
+        audio_data_base64: The raw audio data, encoded as a Base64 string.
+        filename: The original filename of the audio file.
         enhanced_transcript: The processed text from the audio file.
         api_key: The API key for the model.
         light_model: The model to use for enhancing transcription.
+        file_name: The suggested filename generated from the transcript.
     """
-    audio_path: Optional[str]
+    audio_data_base64: Optional[str]
+    filename: Optional[str]
     enhanced_transcript: Optional[str]
     api_key: Optional[str]
     light_model: Optional[str]
@@ -41,12 +42,16 @@ class TranscriptionGraphState(TypedDict):
 
 
 def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
-    """Transcribes and enhances audio input."""
-    print("---NODE: Transcribing and Enhancing Audio---")
+    """
+    Decodes Base64 audio data, transcribes it, and enhances the transcript.
+    """
+    print("---NODE: Transcribing and Enhancing Audio (In-Memory)---")
     fernet_service = container.fernet_service()
-    audio_path = state.get("audio_path")
-    light_model = state.get("light_model") or "google/gemini-2.5-flash"
 
+    # --- Get new inputs from state ---
+    audio_data_base64 = state.get("audio_data_base64")
+    filename = state.get("filename")  # Filename is needed for the transcription tool
+    light_model = state.get("light_model") or "google/gemini-2.5-flash"
     encrypt_api_key = state.get("api_key") or None
 
     if encrypt_api_key:
@@ -54,39 +59,30 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
     else:
         api_key = os.getenv("OPENROUTER_API_KEY")
 
-    if not audio_path:
-        raise ValueError("Audio path must be provided.")
+    if not audio_data_base64 or not filename:
+        raise ValueError("audio_data_base64 and filename must be provided in the state.")
 
     if not api_key:
-        raise ValueError("API key is required. Set OPENROUTER_API_KEY environment variable or pass api_key in state.")
+        raise ValueError("API key is required.")
 
-    local_audio_path = audio_path
+    # --- Decode data and write to a temporary file ---
     temp_file_handle = None
-
-    if audio_path:
-        audio_path = audio_path.replace(
-            file_service_url, file_service_docker_url
-        )
-
-    if audio_path.startswith(("http://", "https://")):
-        print(f"   > URL detected. Downloading audio from {audio_path}...")
-        try:
-            headers = {"password": upload_password}
-            response = requests.get(audio_path, stream=True, headers=headers)
-            response.raise_for_status()
-            temp_file_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".ogg")
-            with temp_file_handle as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            local_audio_path = temp_file_handle.name
-            print(f"   > Audio downloaded to temporary file: {local_audio_path}")
-        except requests.exceptions.RequestException as e:
-            raise ConnectionError(f"Failed to download audio from {audio_path}. Error: {e}")
-
+    local_audio_path = None
     try:
-        if not os.path.exists(local_audio_path):
-            raise FileNotFoundError(f"Audio file not found: {local_audio_path}")
+        # Decode the Base64 string back to bytes
+        audio_bytes = base64.b64decode(audio_data_base64)
 
+        # Get a file extension from the original filename to help transcription tools
+        file_extension = os.path.splitext(filename)[1] or '.tmp'
+
+        # Create a temporary file to hold the audio bytes
+        temp_file_handle = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
+        temp_file_handle.write(audio_bytes)
+        local_audio_path = temp_file_handle.name
+        temp_file_handle.close()  # Close the file handle so other processes can access it
+        print(f"   > Audio data decoded to temporary file: {local_audio_path}")
+
+        # --- Transcribe and enhance ---
         transcript = transcribe_audio(local_audio_path)
         print(f"   > Raw Transcript: '{transcript[:100]}...'")
 
@@ -102,21 +98,20 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
 
         open_router_model = container.openrouter_model(api_key=api_key, model=light_model)
         structured_llm = open_router_model.with_structured_output(RestructuredText)
-
         response: RestructuredText = structured_llm.invoke(prompt)
         enhanced_text = response.text
 
         file_name_prompt = f"""Below a file content. Suggest a name for the file based on the content.
-        
+
         Important:
-        Do not add extension to the file name.
+        - Do not add extension to the file name.
+        - Make the name all lowercase and instead of spaces use underscores.
 
         Text:
         "{enhanced_text}"
         """
 
         file_name_structured_llm = open_router_model.with_structured_output(FileName)
-
         response: FileName = file_name_structured_llm.invoke(file_name_prompt)
         file_name = response.file_name
 
@@ -124,13 +119,15 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
 
         return {
             "enhanced_transcript": enhanced_text,
-            "audio_path": None,
+            "file_name": file_name,
+            "audio_data_base64": None,
+            "filename": None,
             "api_key": None,
             "light_model": None,
-            "file_name": file_name
         }
 
     finally:
-        if temp_file_handle:
+        # --- Clean up the temporary file ---
+        if local_audio_path and os.path.exists(local_audio_path):
             os.unlink(local_audio_path)
             print(f"   > Cleaned up temporary file: {local_audio_path}")

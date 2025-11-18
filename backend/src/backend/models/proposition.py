@@ -26,10 +26,8 @@ class Proposition(Base):
 
     # The separate 'id' column is removed.
 
-    service = Column(Text, nullable=True)
-    audience = Column(Text, nullable=True)
-    problem = Column(Text, nullable=True)
-    solution = Column(Text, nullable=True)
+    what = Column(Text, nullable=True)
+    why = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

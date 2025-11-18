@@ -1,13 +1,12 @@
 // /home/nnikolovskii/dev/general-chat/frontend/src/hooks/useChats.ts:
-
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { chatsService, type ChatResponse } from "../services/chatsService";
 import type { ChatSession, Message } from "../types/chat";
 import type { MessageResponse } from "../services/chatsService";
 import { getChatModels } from "../services/chatModelService";
 import {useSse} from "../context/SseContext.tsx";
-
 const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
     return messages
         .filter((msg) => msg.type === "human" || msg.type === "ai")
@@ -20,7 +19,6 @@ const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
             timestamp: new Date(),
         }));
 };
-
 const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSession[] => {
     return backendChats
         .map((chat) => ({
@@ -33,9 +31,9 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
         }))
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
-
 export const useChats = (notebookIdParam?: string) => {
     const { latestEvent, connectToThread, addTypingThread, removeTypingThread, isThreadTyping } = useSse();
+    const location = useLocation();
     const initialFetchDone = useRef(false);
     const { user, isAuthenticated } = useAuth();
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -48,22 +46,17 @@ export const useChats = (notebookIdParam?: string) => {
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
     const [isTemporaryChat, setIsTemporaryChat] = useState(false);
     const [currentChatModels, setCurrentChatModels] = useState<Record<string, any>>({});
-
     const fetchMessagesForCurrentChat = useCallback(async () => {
         if (!currentThreadId) {
             console.log('No currentThreadId, skipping fetch');
             return;
         }
-
         console.log('Fetching messages for thread:', currentThreadId);
         setLoadingMessages(true);
-
         try {
             const backendMessages = await chatsService.getThreadMessages(currentThreadId);
             const convertedMessages = convertBackendMessages(backendMessages);
-
             console.log('Fetched messages:', convertedMessages.length);
-
             setChatSessions((prev) => {
                 const currentChat = prev.find(chat => chat.thread_id === currentThreadId);
                 const optimisticMessages = currentChat
@@ -86,25 +79,46 @@ export const useChats = (notebookIdParam?: string) => {
             setLoadingMessages(false);
         }
     }, [currentThreadId]);
-
     useEffect(() => {
         const fetchInitialChats = async () => {
             setLoadingChats(true);
             setLoadingMessages(true);
             try {
                 const backendChats = await chatsService.getChats(notebookIdParam);
-
-                if (backendChats.length > 0) {
-                    const convertedChats = convertBackendChatsToSessions(backendChats);
-                    console.log('Converted chats', convertedChats);
-                    console.log(convertedChats)
-                    setChatSessions(convertedChats);
-                    setCurrentChatId(convertedChats[0].id);
-                    setCurrentThreadId(convertedChats[0].thread_id);
+                const convertedChats = convertBackendChatsToSessions(backendChats);
+                console.log('Converted chats', convertedChats);
+                console.log(convertedChats)
+                // Check if we should force a temporary chat (from navigation state)
+                const shouldForceTemporary = location.state?.forceTemporaryChat;
+                setChatSessions(convertedChats);
+                let selectedChatId: string | null = null;
+                let selectedThreadId: string | null = null;
+                let isTemp = false;
+                if (shouldForceTemporary || convertedChats.length === 0) {
+                    const tempChatId = "temp_" + Date.now();
+                    const tempChat: ChatSession = {
+                        id: tempChatId,
+                        thread_id: "",
+                        title: "New Chat",
+                        messages: [],
+                        createdAt: new Date(),
+                        web_search: false,
+                    };
+                    setChatSessions((prev) => [tempChat, ...prev]);
+                    selectedChatId = tempChatId;
+                    selectedThreadId = "";
+                    isTemp = true;
+                    if (shouldForceTemporary) {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
                 } else {
-                    createTemporaryChat();
-                    setLoadingMessages(false);
+                    selectedChatId = convertedChats[0].id;
+                    selectedThreadId = convertedChats[0].thread_id;
+                    isTemp = false;
                 }
+                setCurrentChatId(selectedChatId);
+                setCurrentThreadId(selectedThreadId);
+                setIsTemporaryChat(isTemp);
             } catch (err) {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
@@ -115,20 +129,17 @@ export const useChats = (notebookIdParam?: string) => {
                 setLoadingChats(false);
             }
         };
-
         if (initialFetchDone.current === false) {
             fetchInitialChats();
             initialFetchDone.current = true;
         }
-    }, [notebookIdParam]);
-
+    }, [notebookIdParam, location.state]);
     useEffect(() => {
         if (currentThreadId) {
             console.log('Effect triggered, fetching messages for:', currentThreadId);
             fetchMessagesForCurrentChat();
         }
     }, [currentThreadId, fetchMessagesForCurrentChat]);
-
     useEffect(() => {
         const checkModels = async () => {
             if (!currentChatId) {
@@ -137,7 +148,6 @@ export const useChats = (notebookIdParam?: string) => {
                 setCurrentChatModels({});
                 return;
             }
-
             setLoadingModels(true);
             try {
                 const models = await getChatModels(currentChatId);
@@ -154,7 +164,6 @@ export const useChats = (notebookIdParam?: string) => {
         };
         checkModels();
     }, [currentChatId]);
-
     const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean; mode?: string; subMode?: string }) => {
         setCreatingChat(true);
         try {
@@ -166,7 +175,6 @@ export const useChats = (notebookIdParam?: string) => {
                 mode: options?.mode,
                 sub_mode: options?.subMode,
             });
-
             const newChat: ChatSession = {
                 id: newThreadData.chat_id,
                 thread_id: newThreadData.thread_id,
@@ -182,7 +190,6 @@ export const useChats = (notebookIdParam?: string) => {
                 createdAt: new Date(newThreadData.created_at),
                 web_search: newThreadData.web_search,
             };
-
             setChatSessions((prev) => [newChat, ...prev]);
             setCurrentChatId(newChat.id);
             setCurrentThreadId(newChat.thread_id);
@@ -197,7 +204,6 @@ export const useChats = (notebookIdParam?: string) => {
             setCreatingChat(false);
         }
     };
-
     const createTemporaryChat = () => {
         const tempChatId = "temp_" + Date.now();
         const tempChat: ChatSession = {
@@ -208,13 +214,13 @@ export const useChats = (notebookIdParam?: string) => {
             createdAt: new Date(),
             web_search: false, // Default for new temporary chats - changed to false
         };
-
         setChatSessions((prev) => [tempChat, ...prev]);
         setCurrentChatId(tempChatId);
         setCurrentThreadId(null);
         setIsTemporaryChat(true);
+        // Return the temp chat ID for immediate use
+        return tempChatId;
     };
-
     const switchToChat = (chatId: string) => {
         console.log('Switching to chat:', chatId);
         const found = chatSessions.find((c) => c.id === chatId);
@@ -228,11 +234,9 @@ export const useChats = (notebookIdParam?: string) => {
             console.log('Chat not found:', chatId);
         }
     };
-
     const handleDeleteChat = async (chatId: string) => {
         if (chatId.startsWith("temp_")) {
             setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
-
             if (currentChatId === chatId) {
                 const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
                 if (remainingChats.length > 0) {
@@ -247,11 +251,9 @@ export const useChats = (notebookIdParam?: string) => {
             }
             return;
         }
-
         try {
             await chatsService.deleteChat(chatId);
             setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
-
             if (currentChatId === chatId) {
                 const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
                 if (remainingChats.length > 0) {
@@ -270,10 +272,8 @@ export const useChats = (notebookIdParam?: string) => {
             console.error("Error deleting chat:", errorMessage);
         }
     };
-
     const addOptimisticMessage = (content: string, audioUrl?: string) => {
         if (!currentChatId) return;
-
         const optimisticMessage: Message = {
             id: "msg_optimistic_" + Date.now(),
             type: "human",
@@ -281,7 +281,6 @@ export const useChats = (notebookIdParam?: string) => {
             audioUrl,
             timestamp: new Date(),
         };
-
         setChatSessions((prev) =>
             prev.map((chat) =>
                 chat.id === currentChatId
@@ -290,14 +289,12 @@ export const useChats = (notebookIdParam?: string) => {
             )
         );
     };
-
     const handleSendMessage = async (
         text?: string,
         audioPath?: string,
         options?: { webSearch?: boolean; mode?: string; subMode?: string }
     ) => {
         if (!text?.trim() && !audioPath) return;
-
         if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
             let newChat: ChatSession | undefined;
             try {
@@ -310,7 +307,6 @@ export const useChats = (notebookIdParam?: string) => {
                     audioUrl: audioPath,
                     timestamp: new Date(),
                 };
-
                 setChatSessions((prev) =>
                     prev.map((chat) =>
                         chat.id === currentChatId
@@ -318,17 +314,13 @@ export const useChats = (notebookIdParam?: string) => {
                             : chat
                     )
                 );
-
                 newChat = await createNewChat(notebookIdParam, text, options);
-
                 if (!newChat) {
                     console.error("Failed to create chat");
                     return;
                 }
-
                 // Remove temporary chat from sessions
                 setChatSessions((prev) => prev.filter((chat) => !chat.id.startsWith("temp_")));
-
                 await chatsService.sendMessageToThread(
                     newChat.thread_id,
                     text,
@@ -336,7 +328,6 @@ export const useChats = (notebookIdParam?: string) => {
                     options?.mode,
                     options?.subMode,
                 );
-
                 addTypingThread(newChat.thread_id);
             } catch (err) {
                 const errorMessage =
@@ -363,16 +354,13 @@ export const useChats = (notebookIdParam?: string) => {
             }
             return;
         }
-
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) {
             console.error("No active chat session selected.");
             return;
         }
-
         const optimisticText = text || "Audio message sent...";
         addOptimisticMessage(optimisticText, audioPath);
-
         try {
             await chatsService.sendMessageToThread(
                 currentChat.thread_id,
@@ -403,14 +391,12 @@ export const useChats = (notebookIdParam?: string) => {
             }
         }
     };
-
     // Effect to MANAGE the connection via the global context
     useEffect(() => {
         if (currentThreadId) {
             connectToThread(currentThreadId);
         }
     }, [currentThreadId, connectToThread]);
-
     // Effect to REACT to new messages from the global context
     useEffect(() => {
         if (!latestEvent || !currentThreadId) {
@@ -419,13 +405,10 @@ export const useChats = (notebookIdParam?: string) => {
         if (latestEvent.data?.thread_id !== currentThreadId) {
             return;
         }
-
         console.log('useChats hook received event from context:', latestEvent);
-
         if (latestEvent.event === 'message_update') {
             const messages = latestEvent.data.messages || [];
             const convertedMessages = convertBackendMessages(messages);
-
             setChatSessions((prev) =>
                 prev.map((chat) => {
                     if (chat.thread_id === currentThreadId) {
@@ -442,11 +425,9 @@ export const useChats = (notebookIdParam?: string) => {
             removeTypingThread(currentThreadId);
         }
     }, [latestEvent, currentThreadId, removeTypingThread]);
-
     const handleDeleteMessage = async (messageId: string) => {
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) return;
-
         try {
             await chatsService.deleteMessage(currentChat.thread_id, messageId);
             await fetchMessagesForCurrentChat();
@@ -456,12 +437,9 @@ export const useChats = (notebookIdParam?: string) => {
             console.error("Error deleting message:", errorMessage);
         }
     };
-
     const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
-
     // DERIVE isTyping for the CURRENT chat from global state
     const isTyping = currentThreadId ? isThreadTyping(currentThreadId) : false;
-
     return {
         chatSessions,
         currentChat,

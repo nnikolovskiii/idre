@@ -1,9 +1,7 @@
-// 1. Import useTheme and ThemeToggle
 import {ThemeToggle} from "../ThemeToggle"; // Make sure this path is correct
-
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, memo, useCallback} from "react";
 import type {ChatSession} from "../../types/chat";
-import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, Lightbulb} from "lucide-react";
+import {ChevronLeft, X, MessageCircle, FolderOpen, ArrowLeft, Lightbulb, CheckSquare} from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
@@ -13,16 +11,16 @@ import {useNavigate, useLocation} from "react-router-dom";
 import {useNotebooks} from "../../hooks/useNotebooks";
 import {useTheme} from "../../context/ThemeContext";
 import {Icon, type IconName} from "../Icon.tsx";
-
 // ... (Interface ChatSidebarProps remains the same)
 interface ChatSidebarProps {
     chatSessions: ChatSession[];
     currentChatId: string | null;
     collapsed: boolean;
     onToggleCollapse: () => void;
-    onCreateNewChat: () => void;
+    onCreateNewChat: () => string | void;
     onSwitchChat: (chatId: string) => void;
     onDeleteChat: (chatId: string) => void;
+    onSwitchChatWithNavigation?: (chatId: string) => void;
     loading?: boolean;
     creatingChat?: boolean;
     onSettingsClick: () => void;
@@ -33,7 +31,6 @@ interface ChatSidebarProps {
     onRegisterClick: () => void;
     isThreadTyping?: (threadId: string) => boolean;
 }
-
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                      chatSessions,
                                                      currentChatId,
@@ -42,6 +39,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                      onCreateNewChat,
                                                      onSwitchChat,
                                                      onDeleteChat,
+                                                     onSwitchChatWithNavigation,
                                                      loading = false,
                                                      creatingChat = false,
                                                      onSettingsClick,
@@ -54,12 +52,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                  }) => {
     // ... (all your existing hooks and state remain the same)
     const [isMobile, setIsMobile] = useState(false);
-    const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard" | "idea">("chat");
+    const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard" | "idea" | "tasks">("chat");
     const navigate = useNavigate();
     const location = useLocation();
     const {currentNotebook, getNotebookById} = useNotebooks();
     const {theme} = useTheme();
-
     // ... (all your useEffect hooks remain the same)
     useEffect(() => {
         const checkMobile = () => {
@@ -69,7 +66,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         window.addEventListener("resize", checkMobile);
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
-
     useEffect(() => {
         if (location.pathname.startsWith("/files/")) {
             setActiveTab("files");
@@ -79,25 +75,24 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             setActiveTab("whiteboard");
         } else if (location.pathname.startsWith("/idea-canvas/") || location.pathname.startsWith("/idea/")) {
             setActiveTab("idea");
+        } else if (location.pathname.startsWith("/tasks/")) {
+            setActiveTab("tasks");
         }
     }, [location.pathname]);
-
-    const getNotebookIdFromPath = () => {
+    const getNotebookIdFromPath = useCallback(() => {
         const parts = location.pathname.split('/').filter(Boolean);
-        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard' || parts[0] === 'idea' || parts[0] === 'idea-canvas')) {
+        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard' || parts[0] === 'idea' || parts[0] === 'idea-canvas' || parts[0] === 'tasks')) {
             return parts[1];
         }
         return null;
-    };
-
+    }, [location.pathname]);
     useEffect(() => {
         const notebookId = getNotebookIdFromPath();
         if (notebookId && !currentNotebook?.id) {
             getNotebookById(notebookId);
         }
-    }, [location.pathname, getNotebookById, currentNotebook?.id]);
-
-    const handleTabChange = (tab: "chat" | "files" | "whiteboard" | "idea") => {
+    }, [getNotebookIdFromPath, getNotebookById, currentNotebook?.id]);
+    const handleTabChange = (tab: "chat" | "files" | "whiteboard" | "idea" | "tasks") => {
         setActiveTab(tab);
         const notebookId = getNotebookIdFromPath();
         if (tab === "files") {
@@ -106,12 +101,19 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             navigate(notebookId ? `/whiteboard/${notebookId}` : '/notebooks');
         } else if (tab === "idea") {
             navigate(notebookId ? `/idea-canvas/${notebookId}` : '/notebooks');
-        } else {
-            navigate(notebookId ? `/chat/${notebookId}` : "/notebooks");
+        } else if (tab === "tasks") {
+            navigate(notebookId ? `/tasks/${notebookId}` : '/notebooks');
+        } else if (tab === "chat") {
+            // When chat tab is clicked, navigate to chat route with forceTemporaryChat state
+            if (notebookId) {
+                navigate(`/chat/${notebookId}`, {
+                    state: { forceTemporaryChat: true }
+                });
+            } else {
+                navigate("/notebooks");
+            }
         }
     };
-
-
     // 2. Refactored sidebar classes to use semantic color variables
     // - `bg-white dark:bg-gray-800` is now `bg-sidebar-background`
     // - `border-neutral-200 dark:border-neutral-700` is now `border-sidebar-border`
@@ -123,8 +125,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         isMobile && collapsed ? "-translate-x-full" : "",
         !isMobile ? "translate-x-0" : ""
     ].join(" ");
-
-
     return (
         <aside
             className={sidebarClasses}
@@ -180,7 +180,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         </button>
                     )}
                 </header>
-
                 <div className="flex-grow flex flex-col gap-3 bg-background min-h-0 items-start">
                     {!collapsed && currentNotebook && (
                         // - Refactored notebook display colors
@@ -196,7 +195,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   </span>
                         </div>
                     )}
-
                     {!collapsed && (
                         <section className="flex flex-col gap-2 flex-shrink-0 w-full">
                             <div className="flex flex-col gap-1">
@@ -228,16 +226,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     <span>Files</span>
                                 </button>
                                 {/*<button*/}
-                                {/*    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${*/}
-                                {/*        activeTab === "whiteboard"*/}
-                                {/*            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"*/}
-                                {/*            : "text-sidebar-foreground hover:bg-sidebar-accent"*/}
-                                {/*    }`}*/}
-                                {/*    onClick={() => handleTabChange("whiteboard")}*/}
-                                {/*    title="Whiteboard"*/}
+                                {/* className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${*/}
+                                {/* activeTab === "whiteboard"*/}
+                                {/* ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"*/}
+                                {/* : "text-sidebar-foreground hover:bg-sidebar-accent"*/}
+                                {/* }`}*/}
+                                {/* onClick={() => handleTabChange("whiteboard")}*/}
+                                {/* title="Whiteboard"*/}
                                 {/*>*/}
-                                {/*    <PenTool size={16}/>*/}
-                                {/*    <span>Whiteboard</span>*/}
+                                {/* <PenTool size={16}/>*/}
+                                {/* <span>Whiteboard</span>*/}
                                 {/*</button>*/}
                                 <button
                                     className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
@@ -251,10 +249,21 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     <Lightbulb size={16}/>
                                     <span>Idea Canvas</span>
                                 </button>
+                                <button
+                                    className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
+                                        activeTab === "tasks"
+                                            ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
+                                            : "text-sidebar-foreground hover:bg-sidebar-accent"
+                                    }`}
+                                    onClick={() => handleTabChange("tasks")}
+                                    title="Tasks"
+                                >
+                                    <CheckSquare size={16}/>
+                                    <span>Tasks</span>
+                                </button>
                             </div>
                         </section>
                     )}
-
                     {/* FIX: Added w-full to ensure this container takes up the full width */}
                     <div className={collapsed && !isMobile ? "hidden" : "flex flex-col flex-1 min-h-0 w-full"}>
                         <ChatHistory
@@ -262,6 +271,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             currentChatId={currentChatId}
                             onSwitchChat={onSwitchChat}
                             onDeleteChat={onDeleteChat}
+                            onSwitchChatWithNavigation={onSwitchChatWithNavigation}
                             loading={loading}
                             creatingChat={creatingChat}
                             onCreateNewChat={onCreateNewChat}
@@ -271,7 +281,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         />
                     </div>
                 </div>
-
                 {/* 3. Refactored footer border color */}
                 <footer className="mt-auto pt-4 border-t border-sidebar-border">
                     <div className={collapsed && !isMobile ? "hidden" : "contents"}>
@@ -294,10 +303,21 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         </div>
                     </div>
                 </footer>
-
             </div>
         </aside>
     );
 };
 
-export default ChatSidebar;
+const ChatSidebarMemo = memo(ChatSidebar, (prevProps, nextProps) => {
+    // Only re-render if chat sessions, current chat ID, or loading states actually change
+    return (
+        prevProps.chatSessions === nextProps.chatSessions &&
+        prevProps.currentChatId === nextProps.currentChatId &&
+        prevProps.loading === nextProps.loading &&
+        prevProps.creatingChat === nextProps.creatingChat &&
+        prevProps.collapsed === nextProps.collapsed &&
+        prevProps.isAuthenticated === nextProps.isAuthenticated
+    );
+});
+
+export default ChatSidebarMemo;

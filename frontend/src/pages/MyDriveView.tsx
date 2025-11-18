@@ -26,8 +26,8 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({isOpen
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-            <div className="bg-background rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+            <div className="bg-background rounded-lg p-4 sm:p-6 shadow-xl max-w-sm w-full">
                 <h2 className="text-lg font-semibold text-foreground">Confirm Deletion</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                     Are you sure you want to delete the file: <br/>
@@ -36,11 +36,11 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({isOpen
                 <p className="mt-2 text-sm text-red-500">This action cannot be undone.</p>
                 <div className="mt-6 flex justify-end space-x-3">
                     <button onClick={onClose}
-                            className="px-4 py-2 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                            className="px-4 py-2 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
                         Cancel
                     </button>
                     <button onClick={onConfirm}
-                            className="px-4 py-2 rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            className="px-4 py-2 rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
                         Delete
                     </button>
                 </div>
@@ -283,43 +283,40 @@ const MyDriveView = () => {
     );
 
     const children = (
-        <div className="flex flex-1 overflow-hidden h-full" ref={containerRef}>
-            {/* --- File List Pane --- */}
-            <div
-                className={`flex-shrink-0 overflow-y-auto ${isEditorOpen ? 'hidden md:flex md:flex-col' : 'w-full md:w-auto md:flex md:flex-col'}`}
-                style={{width: sidebarWidth}}
-            >
-                <div className="p-3 md:p-6">
-                    <DriveHeader/>
-                    {loading && <DriveLoading/>}
-                    {error && <DriveError error={error} onRetry={fetchFiles}/>}
-                    {!loading && !error && (
-                        <DriveFileList items={files} onFileClick={handleFileClick}
-                                       onViewTranscription={handleViewTranscription} onDelete={handleDeleteRequest}
-                                       onEdit={handleEdit}/>
-                    )}
-                </div>
-            </div>
+        <>
+            {/* Mobile View: Single pane at a time */}
+            <div className="md:hidden flex flex-1 overflow-hidden h-full">
+                {/* Mobile File List */}
+                {!isEditorOpen && (
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="p-3">
+                            <DriveHeader/>
+                            {loading && <DriveLoading/>}
+                            {error && <DriveError error={error} onRetry={fetchFiles}/>}
+                            {!loading && !error && (
+                                <DriveFileList
+                                    items={files}
+                                    onFileClick={handleFileClick}
+                                    onViewTranscription={handleViewTranscription}
+                                    onDelete={handleDeleteRequest}
+                                    onEdit={handleEdit}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
 
-            {/* --- Resizer Handle (Always visible on desktop) --- */}
-            <div
-                onMouseDown={handleMouseDown}
-                className="w-1.5 cursor-col-resize flex-shrink-0 bg-border hover:bg-primary transition-colors hidden md:block"
-            />
-
-
-            {/* --- Editor/Placeholder Pane --- */}
-            <div
-                className={`flex-1 bg-background min-w-0 ${isEditorOpen ? 'flex flex-col' : 'hidden md:flex md:flex-col'}`}>
-                {isEditorOpen && selectedFile ? (
-                    <>
+                {/* Mobile Editor */}
+                {isEditorOpen && selectedFile && (
+                    <div className="flex-1 flex flex-col bg-background">
                         <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
                             <div className="flex items-center min-w-0">
                                 <button
                                     onClick={handleCloseEditor}
-                                    className="md:hidden p-1 mr-2 -ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    title="Back to file list">
-                                    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    className="mobile-back-button p-1 mr-2 -ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                    title="Back to file list"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                                          strokeLinejoin="round">
                                         <polyline points="15 18 9 12 15 6"></polyline>
@@ -329,37 +326,98 @@ const MyDriveView = () => {
                                     title={selectedFile.filename}>{selectedFile.filename}</h3>
                             </div>
                             <div className="flex items-center space-x-2 flex-shrink-0">
-                                <button onClick={handleSaveContent} disabled={!isDirty}
-                                        className="px-3 py-1 rounded-md text-sm font-medium bg-secondary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <button
+                                    onClick={handleSaveContent}
+                                    disabled={!isDirty}
+                                    className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
                                     Save
-                                </button>
-                                <button onClick={handleCloseEditor}
-                                        className="hidden md:block p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        title="Close editor">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                         strokeLinejoin="round">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div className="flex-1 relative">
-                            <textarea value={editorContent} onChange={handleContentChange}
-                                      className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-sm"
-                                      placeholder="File content..."/>
+                            <textarea
+                                value={editorContent}
+                                onChange={handleContentChange}
+                                className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-base mobile-textarea"
+                                placeholder="File content..."
+                            />
                         </div>
-                    </>
-                ) : (
-                    <div className="flex justify-center items-center h-full text-muted-foreground">
-                        <p className="text-center px-4">
-                            Select a text file or an audio file with a<br/>transcription to edit its content.
-                        </p>
                     </div>
                 )}
             </div>
-        </div>
+
+            {/* Desktop View: Side-by-side layout */}
+            <div className="hidden md:flex flex-1 overflow-hidden h-full" ref={containerRef}>
+                {/* --- File List Pane --- */}
+                <div
+                    className="flex-shrink-0 overflow-y-auto flex flex-col"
+                    style={{width: sidebarWidth}}
+                >
+                    <div className="p-6">
+                        <DriveHeader/>
+                        {loading && <DriveLoading/>}
+                        {error && <DriveError error={error} onRetry={fetchFiles}/>}
+                        {!loading && !error && (
+                            <DriveFileList
+                                items={files}
+                                onFileClick={handleFileClick}
+                                onViewTranscription={handleViewTranscription}
+                                onDelete={handleDeleteRequest}
+                                onEdit={handleEdit}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* --- Resizer Handle --- */}
+                <div
+                    onMouseDown={handleMouseDown}
+                    className="w-1.5 cursor-col-resize flex-shrink-0 bg-border hover:bg-primary transition-colors"
+                />
+
+                {/* --- Editor/Placeholder Pane --- */}
+                <div className="flex-1 bg-background min-w-0 flex flex-col">
+                    {isEditorOpen && selectedFile ? (
+                        <>
+                            <div className="p-4 border-b border-border flex justify-between items-center flex-shrink-0">
+                                <div className="flex items-center min-w-0">
+                                    <h3 className="font-semibold text-foreground truncate"
+                                        title={selectedFile.filename}>{selectedFile.filename}</h3>
+                                </div>
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                    <button onClick={handleSaveContent} disabled={!isDirty}
+                                            className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Save
+                                    </button>
+                                    <button onClick={handleCloseEditor}
+                                            className="p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            title="Close editor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                                             strokeLinejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 relative">
+                                <textarea value={editorContent} onChange={handleContentChange}
+                                          className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-sm"
+                                          placeholder="File content..."/>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex justify-center items-center h-full text-muted-foreground">
+                            <p className="text-center px-4">
+                                Select a text file or an audio file with a<br/>transcription to edit its content.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
     );
 
     const inputArea = (
