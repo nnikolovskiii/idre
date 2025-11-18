@@ -1,7 +1,7 @@
 // /home/nnikolovskii/dev/general-chat/frontend/src/components/chat/ChatInputArea.tsx:
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Plus, SlidersHorizontal, ArrowUp } from "lucide-react";
+import { Plus, SlidersHorizontal, ArrowUp, ChevronDown } from "lucide-react";
 import type { ChatModel } from '../../services/chatModelService';
 import { SettingsPopover } from "./SettingsPopover.tsx";
 import { useClickOutside } from "../../hooks/useClickOutside.ts";
@@ -9,9 +9,9 @@ import { useChatMode } from "../../hooks/useChatMode.ts";
 import { chatsService } from "../../services/chatsService.ts";
 import BrainstormSuggestions from "./BrainstormSuggestions.tsx";
 
-type ChatMode = "brainstorm" | "consult";
+type ChatMode = "brainstorm" | "consult" | "analyser";
 
-const chatModes: ChatMode[] = ["brainstorm", "consult"];
+const chatModes: ChatMode[] = ["brainstorm", "consult", "analyser"];
 
 interface ChatInputAreaProps {
     onTextSubmit: (text: string, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
@@ -167,11 +167,11 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
     return (
         <div className="relative w-full flex-shrink-0 bg-background px-4 pt-2 pb-4">
             {/* Brainstorm Suggestions */}
-            <BrainstormSuggestions 
+            <BrainstormSuggestions
                 visible={shouldShowSuggestions}
                 onSuggestionClick={handleSuggestionClick}
             />
-            
+
             <div className="relative mx-auto max-w-3xl">
                 <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted px-2 pb-1 pt-4">
                     <textarea
@@ -218,24 +218,35 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                             )}
                         </div>
 
+                        {/* Spacer puts the controls to the right */}
                         <div className="flex-1" />
 
-                        {/* Segmented Control for Chat Mode - MOVED HERE */}
-                        <div className="flex h-8 items-center rounded-lg border border-border bg-background/20 p-0.5" title="Change Mode">
-                            {chatModes.map((mode) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setCurrentMode(mode)}
-                                    disabled={isDisabled}
-                                    className={`rounded-[6px] px-3 py-0.5 text-center text-sm transition-colors capitalize disabled:cursor-not-allowed ${
-                                        currentMode === mode
-                                            ? 'bg-background font-medium text-foreground shadow-sm'
-                                            : 'text-muted-foreground hover:text-foreground disabled:bg-transparent disabled:text-muted-foreground/50'
-                                    }`}
-                                >
-                                    {mode}
-                                </button>
-                            ))}
+                        {/* Unified Adaptive Dropdown Mode Selector */}
+                        <div className="relative flex items-center" title="Change Mode">
+                            {/* Invisible select handles logic and native UI, styled options handle theme colors */}
+                            <select
+                                value={currentMode}
+                                onChange={(e) => setCurrentMode(e.target.value as ChatMode)}
+                                disabled={isDisabled}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+                            >
+                                {chatModes.map(mode => (
+                                    <option
+                                        key={mode}
+                                        value={mode}
+                                        className="bg-popover text-popover-foreground"
+                                    >
+                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <div className="flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+                                <span className={`capitalize ${currentMode ? 'text-foreground font-medium' : ''}`}>
+                                    {currentMode}
+                                </span>
+                                <ChevronDown size={14} />
+                            </div>
                         </div>
 
                         <button

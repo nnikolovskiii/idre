@@ -61,7 +61,7 @@ def prepare_inputs_node(state: ChatGraphState) -> dict:
     print("   > HumanMessage created and added to state.")
 
     return {
-        "messages": messages + [human_msg],  # Append to existing messages
+        "messages": [human_msg],
         "processed_input": final_input,
         "enhanced_transcript": enhanced_transcript,
     }
@@ -111,13 +111,13 @@ def generate_answer_node(state: ChatGraphState) -> dict:
         result.id = str(uuid.uuid4())
         print(f"   > Cleaned Answer Content: '{result.content[:150]}...'")
 
-        final_messages = messages + [result]
+        final_messages = [result]
 
     except Exception as e:
         print(f"   > ERROR generating main answer: {e}")
         error_content = f"Sorry, an error occurred while generating the answer: {e}"
         error_message = AIMessage(content=error_content, id=str(uuid.uuid4()))
-        final_messages = messages + [error_message]
+        final_messages = [error_message]
 
     # This node is terminal, so we clear the single-use state variables.
     return {

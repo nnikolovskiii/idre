@@ -97,7 +97,8 @@ const PriorityIndicator: React.FC<{ priority: Task["priority"] }> = ({ priority 
 };
 
 // Sortable Task Component
-const SortableTask: React.FC<{ task: Task; isMobile?: boolean }> = ({ task, isMobile = false }) => {
+// Sortable Task Component
+const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Task) => void; }> = ({ task, isMobile = false, onView }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
     const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
@@ -112,13 +113,13 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean }> = ({ task, isMo
                     isOverdue ? 'border-orange-200 dark:border-orange-800' : 'border-border'
                 } ${
                     isMobile
-                        ? 'p-4 mb-3 active:scale-95 cursor-grab active:cursor-grabbing'
+                        ? 'p-4 mb-3 active:scale-95'
                         : 'p-3 mb-2'
                 }`}
             >
                 <div className="flex items-start gap-2">
                     <div
-                        className={`flex items-center transition-opacity touch-none drag-handle ${
+                        className={`flex items-center transition-opacity touch-none drag-handle cursor-grab active:cursor-grabbing ${
                             isMobile
                                 ? 'opacity-100 p-2 bg-muted/30 rounded-md active:bg-muted/50'
                                 : 'opacity-60 group-hover:opacity-100'
@@ -131,7 +132,7 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean }> = ({ task, isMo
                     >
                         <GripVertical size={isMobile ? 18 : 14} className="text-muted-foreground" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(task)}>
                         <div className="flex items-center gap-2 mb-2">
                             <PriorityIndicator priority={task.priority} />
                             <h4 className={`font-medium text-foreground truncate ${
@@ -140,7 +141,7 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean }> = ({ task, isMo
                             {isOverdue && <AlertCircle size={12} className="text-orange-500" />}
                         </div>
                         {task.description && (
-                            <p className={`text-muted-foreground mb-2 line-clamp-2 ${
+                            <p className={`text-left text-muted-foreground mb-2 line-clamp-2 ${ // <-- ADDED text-left
                                 isMobile ? 'text-sm' : 'text-xs'
                             }`}>{task.description}</p>
                         )}
@@ -201,8 +202,9 @@ const TaskDragOverlay: React.FC<{ task: Task }> = ({ task }) => {
 const KanbanColumn: React.FC<{
     column: Column;
     onAddTask: (columnId: TaskStatus) => void;
+    onViewTask: (task: Task) => void;
     isMobile?: boolean;
-}> = ({ column, onAddTask, isMobile = false }) => {
+}> = ({ column, onAddTask, onViewTask, isMobile = false }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
@@ -234,7 +236,7 @@ const KanbanColumn: React.FC<{
 
             <SortableContext items={column.tasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 flex-1">
-                    {column.tasks.map((task) => <SortableTask key={task.id} task={task} isMobile={isMobile} />)}
+                    {column.tasks.map((task) => <SortableTask key={task.id} task={task} isMobile={isMobile} onView={onViewTask} />)}
                     {column.tasks.length === 0 && (
                         <div className="text-center py-8 text-sm text-muted-foreground h-full flex items-center justify-center">
                             {isOver ? 'Drop task here' : 'No tasks yet'}
@@ -356,6 +358,82 @@ const TaskCreationModal: React.FC<TaskCreationModalProps> = ({
     );
 };
 
+// --- Task Detail Modal (NEW COMPONENT) ---
+interface TaskDetailModalProps {
+    task: Task | null;
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, isOpen, onClose }) => {
+    if (!isOpen || !task) return null;
+
+    const column = COLUMN_CONFIG.find(c => c.id === task.status);
+    const columnTitle = column ? column.title : 'Unknown';
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background border border-border rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto sm:max-h-[85vh]">
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <PriorityIndicator priority={task.priority} />
+                        <h2 className="text-lg font-semibold text-foreground truncate">{task.title}</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1 hover:bg-secondary rounded-md transition-colors flex-shrink-0 ml-4">
+                        <X size={20} />
+                    </button>
+                </div>
+                {/* CHANGE: Added 'text-left' to ensure all text inside is aligned to the start */}
+                <div className="p-6 space-y-6 text-left">
+                    {task.description && (
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                            <p className="text-foreground whitespace-pre-wrap text-base">{task.description}</p>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border pt-6">
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Status</h3>
+                            <p className="text-foreground font-medium">{columnTitle}</p>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Priority</h3>
+                            <p className="text-foreground font-medium capitalize">{task.priority}</p>
+                        </div>
+                        {task.dueDate && (
+                            <div className="col-span-1 sm:col-span-2">
+                                <h3 className="text-sm font-medium text-muted-foreground mb-1">Due Date</h3>
+                                <div className="flex items-center gap-2">
+                                    <p className={`font-medium ${isOverdue ? 'text-orange-500' : 'text-foreground'}`}>
+                                        {new Date(task.dueDate).toLocaleDateString()}
+                                    </p>
+                                    {isOverdue && <span className="text-xs text-orange-500">(Overdue)</span>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {task.tags && task.tags.length > 0 && (
+                        <div className="border-t border-border pt-6">
+                            <h3 className="text-sm font-medium text-muted-foreground mb-2">Tags</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {task.tags.map(tag => (
+                                    <span key={tag} className="inline-block px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded-full">{tag}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center justify-end p-4 border-t border-border bg-muted/50 rounded-b-lg">
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-border rounded-md hover:bg-secondary transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Main Component
 const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const [columns, setColumns] = useState<Column[]>([]);
@@ -366,6 +444,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const [selectedColumnId, setSelectedColumnId] = useState<TaskStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [viewingTask, setViewingTask] = useState<Task | null>(null);
 
     // Form state for new task
     const [newTask, setNewTask] = useState<NewTaskState>({
@@ -434,6 +513,10 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const openTaskModal = (columnId: TaskStatus) => { setSelectedColumnId(columnId); setShowTaskModal(true); resetForm(); };
     const closeTaskModal = () => { setShowTaskModal(false); setSelectedColumnId(null); resetForm(); };
     const resetForm = () => { setNewTask({ title: "", description: "", priority: "medium", tags: "", dueDate: "" }); };
+
+    // Task view handlers
+    const handleViewTask = (task: Task) => setViewingTask(task);
+    const handleCloseTaskView = () => setViewingTask(null);
 
     const handleCreateTask = async () => {
         if (!newTask.title.trim() || !selectedColumnId) return;
@@ -581,21 +664,14 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                                 <span className="hidden sm:inline">Add</span>
                             </button>
                         </div>
-                        <p className="text-sm text-muted-foreground">Manage your project tasks</p>
-                        <input
-                            type="text"
-                            placeholder="Search tasks..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        />
+                        <p className="text-sm text-muted-foreground text-left">Manage your project tasks</p>
                     </div>
                 </div>
 
                 {/* Desktop Header */}
                 <div className="hidden md:block p-4">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="text-left">
                             <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
                             <p className="text-sm text-muted-foreground">Manage your project tasks and workflow</p>
                         </div>
@@ -624,7 +700,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="block md:hidden">
                         <div className="space-y-4 pb-20">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} isMobile={true} />
+                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} isMobile={true} />
                             ))}
                         </div>
                     </div>
@@ -633,7 +709,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="hidden md:block">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-[800px]">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} isMobile={false} />
+                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} isMobile={false} />
                             ))}
                         </div>
                     </div>
@@ -648,6 +724,11 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                 taskData={newTask}
                 onTaskDataChange={setNewTask}
                 columnTitle={selectedColumn?.title}
+            />
+            <TaskDetailModal
+                isOpen={!!viewingTask}
+                task={viewingTask}
+                onClose={handleCloseTaskView}
             />
         </div>
     );

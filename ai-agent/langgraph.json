@@ -8,7 +8,8 @@
     "chat_name_agent": "./src/agent/core/configs.py:chat_name_graph_compiled",
     "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph",
     "idea_proposition_graph": "./src/agent/core/configs.py:idea_proposition_compiled_graph",
-    "file_name_graph": "./src/agent/core/configs.py:file_name_compiled_graph"
+    "file_name_graph": "./src/agent/core/configs.py:file_name_compiled_graph",
+    "pros_cons_graph": "./src/agent/core/configs.py:pros_cons_compiled_graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

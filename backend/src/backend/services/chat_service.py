@@ -84,7 +84,8 @@ class ChatService:
         """
         graph_id_map = {
             "brainstorm": "brainstorm_graph",
-            "consult": "chat_agent"
+            "consult": "chat_agent",
+            "analyser" : "pros_cons_graph"
         }
 
         graph_id = graph_id_map.get(mode)

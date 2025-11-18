@@ -1,3 +1,5 @@
+// File: frontend/src/components/layout/Layout.tsx
+
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -30,6 +32,7 @@ interface LayoutProps {
     switchToChat: (chatId: string) => void;
     handleDeleteChat: (chatId: string) => void;
     isThreadTyping?: (threadId: string) => boolean;
+    forceRegularLayout?: boolean; // <-- ADDED PROP
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -50,6 +53,7 @@ const Layout: React.FC<LayoutProps> = ({
                                            switchToChat,
                                            handleDeleteChat,
                                            isThreadTyping,
+                                           forceRegularLayout = false, // <-- ADDED PROP WITH DEFAULT
                                        }) => {
     const { logout } = useAuth();
     const navigate = useNavigate();
@@ -125,10 +129,9 @@ const Layout: React.FC<LayoutProps> = ({
                 </div>
 
                 {/* 
-                  CHANGE: We now use a ternary to render two completely different layouts
-                  within the <main> tag based on the isTemporaryChat flag.
+                  CHANGE: Updated condition to respect the new prop
                 */}
-                {isTemporaryChat ? (
+                {isTemporaryChat && !forceRegularLayout ? (
                     // LAYOUT 1: Temporary Chat (Logo + Input are centered together)
                     // This container will grow to fill space and center its content.
                     <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto p-4">

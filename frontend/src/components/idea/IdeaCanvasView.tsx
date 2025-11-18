@@ -6,7 +6,7 @@ import { fileService } from "../../services/filesService.ts";
 import ChatInputArea from "../chat/ChatInputArea.tsx";
 import idreLogo from "../../assets/idre_logo_v2_white.png";
 import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, MessageSquare, NotebookText } from "lucide-react";
 import { useSse } from "../../context/SseContext.tsx";
 
 // --- Import the Proposition Service and BOTH Types ---
@@ -93,6 +93,9 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
     const currentNotebookId = propNotebookId || paramNotebookId;
     const navigate = useNavigate();
 
+    // --- State for mobile view toggle ---
+    const [mobileView, setMobileView] = useState<'chat' | 'canvas'>('chat');
+
     // --- SSE Hook for real-time proposition updates ---
     const { latestPropositionEvent, connectToProposition } = useSse();
 
@@ -131,9 +134,6 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                 const response: PropositionResponse = await PropositionService.getPropositionByNotebookId(currentNotebookId);
                 console.log("proposition", response);
 
-                // --- FIX: Transform the API response to match the state's type ---
-                // The API response can have `null` values, but our state expects `undefined` for optional fields.
-                // The nullish coalescing operator (`??`) handles this transformation gracefully.
                 const initialState: PropositionUpdateRequest = {
                     what: response.what ?? undefined,
                     why: response.why ?? undefined,
@@ -142,16 +142,14 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                 setProposition(initialState);
 
             } catch (err: any) {
-                // If it's a 404, it just means no proposition exists yet, which is not an error.
                 if (err.message.includes("404") || err.message.toLowerCase().includes("not found")) {
-                    setProposition({}); // Start with a blank slate, a valid PropositionUpdateRequest
+                    setProposition({});
                 } else {
                     setError("Failed to load idea canvas. Please try again.");
                     console.error(err);
                 }
             } finally {
                 setIsLoadingCanvas(false);
-                // After the first successful fetch, subsequent changes are user-driven
                 setTimeout(() => { isInitialMount.current = false; }, 100);
             }
         };
@@ -177,7 +175,6 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
         if (latestPropositionEvent.event === 'proposition_update') {
             const updatedProposition = latestPropositionEvent.data?.proposition;
             if (updatedProposition && latestPropositionEvent.data?.notebook_id === currentNotebookId) {
-                // Update the proposition state with the new data from SSE
                 setProposition({
                     what: updatedProposition.what ?? undefined,
                     why: updatedProposition.why ?? undefined,
@@ -231,17 +228,16 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
 
     // --- Dynamic Idea Template Component ---
     const ideaTemplate = (
-        <div className="w-1/2 h-full flex items-center justify-center p-8 bg-background">
-            <div className="max-w-3xl w-full"> {/* Increased max width */}
-                <div className="bg-card border border-sidebar-border rounded-lg p-8 shadow-lg relative">
+        <div className="w-full h-full flex items-center justify-center p-4 md:p-8 bg-background overflow-y-auto">
+            <div className="max-w-3xl w-full">
+                <div className="bg-card border border-sidebar-border rounded-lg p-6 md:p-8 shadow-lg relative">
                     <h2 className="text-2xl font-bold text-foreground mb-6">Idea Canvas</h2>
                     {isLoadingCanvas ? (
                         <div className="flex items-center justify-center h-24">
                             <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                     ) : (
-                        <div className="space-y-8"> {/* Increased spacing between sections */}
-                            {/* WHAT FIELD */}
+                        <div className="space-y-8">
                             <div className="space-y-3">
                                 <p className="text-lg text-foreground font-medium">What is your idea?</p>
                                 <EditableSpan
@@ -253,7 +249,6 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                                 />
                             </div>
 
-                            {/* WHY FIELD */}
                             <div className="space-y-3">
                                 <p className="text-lg text-foreground font-medium">Why does it matter?</p>
                                 <EditableSpan
@@ -266,24 +261,13 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                             </div>
                         </div>
                     )}
-
-                    {/* Status indicator */}
                     <div className="absolute bottom-4 right-4 text-xs text-muted-foreground flex items-center gap-2">
                         {isLoadingCanvas ? (
-                            <>
-                                <Loader2 className="animate-spin" size={12} />
-                                <span>Loading...</span>
-                            </>
+                            <><Loader2 className="animate-spin" size={12} /><span>Loading...</span></>
                         ) : isProcessing ? (
-                            <>
-                                <Loader2 className="animate-spin" size={12} />
-                                <span>Processing...</span>
-                            </>
+                            <><Loader2 className="animate-spin" size={12} /><span>Processing...</span></>
                         ) : isSaving ? (
-                            <>
-                                <Loader2 className="animate-spin" size={12} />
-                                <span>Saving...</span>
-                            </>
+                            <><Loader2 className="animate-spin" size={12} /><span>Saving...</span></>
                         ) : error ? (
                             <span className="text-destructive">{error}</span>
                         ) : (
@@ -297,7 +281,7 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
 
     // --- Chat Logic with sub_mode for Idea Canvas ---
     const handleTextSubmit = async (text: string, options: { webSearch: boolean, mode: string }) => {
-        setIsProcessing(true); // Set processing state when sending message
+        setIsProcessing(true);
         await handleSendMessage(text, undefined, { ...options, subMode: "idea_proposition" });
     };
 
@@ -328,9 +312,18 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
         />
     );
 
-    const children = (
-        <div className="flex h-full w-full">
-            <div className="w-1/2 h-full border-r border-sidebar-border flex flex-col">
+    return (
+        <div className="h-dvh w-screen flex flex-col md:flex-row bg-background text-foreground overflow-hidden relative pb-16 md:pb-0">
+            <button
+                onClick={() => navigate(`/chat/${currentNotebookId}`)}
+                className="absolute top-4 right-4 z-50 flex items-center gap-2 px-4 py-2 md:px-8 md:py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold shadow-2xl hover:shadow-blue-500/25 ring-2 ring-blue-500/50 hover:ring-blue-500/75 transform hover:scale-105 active:scale-95"
+            >
+                <span className="hidden sm:inline">Next</span>
+                <ArrowRight size={20} />
+            </button>
+
+            {/* Chat Panel */}
+            <div className={`w-full md:w-1/2 h-full md:border-r border-sidebar-border flex-col ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex`}>
                 {isTemporaryChat ? (
                     <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto p-4">
                         <div className="flex flex-col items-center gap-8 w-full max-w-3xl">
@@ -353,20 +346,29 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                     </>
                 )}
             </div>
-            {ideaTemplate}
-        </div>
-    );
 
-    return (
-        <div className="h-dvh w-screen flex bg-background text-foreground overflow-hidden relative">
-            <button
-                onClick={() => navigate(`/chat/${currentNotebookId}`)}
-                className="absolute top-6 right-6 z-50 flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold shadow-2xl hover:shadow-blue-500/25 ring-2 ring-blue-500/50 hover:ring-blue-500/75 transform hover:scale-105 active:scale-95"
-            >
-                <span>Next</span>
-                <ArrowRight size={20} />
-            </button>
-            {children}
+            {/* Canvas Panel */}
+            <div className={`w-full md:w-1/2 h-full ${mobileView === 'canvas' ? 'flex' : 'hidden'} md:flex`}>
+                {ideaTemplate}
+            </div>
+
+            {/* Mobile View Toggle */}
+            <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-2 flex items-center justify-around gap-2 md:hidden z-20">
+                <button
+                    onClick={() => setMobileView('chat')}
+                    className={`flex-1 flex items-center justify-center gap-2 text-center py-2 px-4 rounded-md transition-colors text-sm font-medium ${mobileView === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                    <MessageSquare size={16} />
+                    Chat
+                </button>
+                <button
+                    onClick={() => setMobileView('canvas')}
+                    className={`flex-1 flex items-center justify-center gap-2 text-center py-2 px-4 rounded-md transition-colors text-sm font-medium ${mobileView === 'canvas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                    <NotebookText size={16} />
+                    Canvas
+                </button>
+            </div>
         </div>
     );
 };
