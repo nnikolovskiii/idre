@@ -23,11 +23,11 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
             onClick={onCancel} // Close on clicking the backdrop
         >
             <div
-                className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4"
+                className=" rounded-lg shadow-xl p-6 w-full max-w-md m-4"
                 onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal
             >
                 <h2 className="text-xl font-semibold mb-2">Confirm Deletion</h2>
-                <p className="text-gray-600 mb-6">
+                <p className=" mb-6">
                     Are you sure you want to delete the file: <br />
                     <strong className="font-medium">{itemName}</strong>?
                 </p>

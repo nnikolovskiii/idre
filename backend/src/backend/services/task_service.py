@@ -116,7 +116,8 @@ class TaskService:
         priority: Optional[TaskPriority] = None,
         tags: Optional[List[str]] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        include_archived: bool = False
     ) -> List[Task]:
         """
         Retrieve tasks for a user with optional filtering.
@@ -128,7 +129,8 @@ class TaskService:
             priority=priority,
             tags=tags,
             limit=limit,
-            offset=offset
+            offset=offset,
+            include_archived=include_archived
         )
 
     async def get_task_by_id(self, user_id: str, task_id: str) -> Optional[Task]:
@@ -275,6 +277,46 @@ class TaskService:
 
         return success
 
+    async def archive_task(self, user_id: str, task_id: str) -> Optional[Task]:
+        """
+        Archive a task for a specific user.
+        """
+        # Verify ownership first
+        existing_task = await self.repo.get_by_id_and_user(task_id=task_id, user_id=user_id)
+        if not existing_task:
+            return None
+
+        if existing_task.archived:
+            return existing_task  # Already archived
+
+        # Archive the task
+        updated_task = await self.repo.update(task_id=task_id, updates={'archived': True})
+        if updated_task:
+            await self.session.commit()
+            await self.session.refresh(updated_task)
+
+        return updated_task
+
+    async def unarchive_task(self, user_id: str, task_id: str) -> Optional[Task]:
+        """
+        Unarchive a task for a specific user.
+        """
+        # Verify ownership first
+        existing_task = await self.repo.get_by_id_and_user(task_id=task_id, user_id=user_id)
+        if not existing_task:
+            return None
+
+        if not existing_task.archived:
+            return existing_task  # Already active
+
+        # Unarchive the task
+        updated_task = await self.repo.update(task_id=task_id, updates={'archived': False})
+        if updated_task:
+            await self.session.commit()
+            await self.session.refresh(updated_task)
+
+        return updated_task
+
     async def search_tasks(
         self,
         user_id: str,
@@ -339,6 +381,7 @@ class TaskService:
             tags=task.tags or [],
             due_date=task.due_date.date() if task.due_date else None,
             position=task.position,
+            archived=task.archived,
             created_at=task.created_at,
             updated_at=task.updated_at,
             status_display=task.status_display,

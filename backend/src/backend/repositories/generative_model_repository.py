@@ -12,12 +12,11 @@ class GenerativeModelRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, name: str, type: str, is_open_access: bool = True) -> GenerativeModel:
+    async def create(self, name: str, type: str) -> GenerativeModel:
         """Creates a new GenerativeModel object and adds it to the session."""
         generative_model = GenerativeModel(
             name=name,
-            type=type,
-            is_open_access=is_open_access
+            type=type
         )
         self.session.add(generative_model)
         await self.session.flush()
@@ -78,8 +77,4 @@ class GenerativeModelRepository:
         model = await self.get_by_id(model_id)
         return model is not None
 
-    async def get_by_access_status(self, is_open_access: bool) -> List[GenerativeModel]:
-        """Retrieves all generative models with the specified access status."""
-        stmt = select(GenerativeModel).where(GenerativeModel.is_open_access == is_open_access)
-        result = await self.session.execute(stmt)
-        return result.scalars().all()
+    

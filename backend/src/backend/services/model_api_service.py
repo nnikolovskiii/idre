@@ -62,6 +62,23 @@ class ModelApiService:
             print(f"Error decrypting API key for user {user_id}: {e}")
             return None
 
+    async def require_api_key(self, user_id: str) -> str:
+        """
+        Requires an API key for the given user. Returns the decrypted API key
+        or raises an exception if no API key is found.
+        """
+        api_key = await self.get_decrypted_api_key_value(user_id)
+        if not api_key:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+        return api_key
+
+    async def has_api_key(self, user_id: str) -> bool:
+        """
+        Checks if a user has an API key set up.
+        """
+        model_api = await self.repo.get_by_user_id(user_id)
+        return model_api is not None and model_api.value is not None
+
     async def delete_api_key(self, user_id: str) -> bool:
         """
         Deletes the API key record for a given user and commits the transaction.

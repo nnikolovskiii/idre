@@ -2,391 +2,153 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors are defined as HEX values.
-*/
+@layer base {
+    :root {
+        --background: #FCFCFC;
+        --foreground: #212126;
+
+        --card: #ffffff;
+        --card-foreground: #212126;
+
+        --popover: #ffffff;
+        --popover-foreground: #212126;
+
+        /* FIXED: Made primary the brand blue instead of grey */
+        --primary: #4d4dff;
+        --primary-foreground: #ffffff;
+        --primary-hover: #3a3aeb;
+
+        --secondary: #f2f2f5;
+        --secondary-foreground: #212126;
+
+        /* FIXED: Muted needs to be distinct for hover states */
+        --muted: #f1f1f4;
+        --muted-foreground: #6b6b78;
+
+        --accent: #f1f1f4;
+        --accent-foreground: #1e293b;
+
+        --destructive: #f04c4c;
+        --destructive-foreground: #ffffff;
+
+        --border: #e0e0e6;
+        --input: #e0e0e6;
+        --ring: #4d4dff; /* Matches primary */
+
+        --success: #00b32c;
+        --success-foreground: #ffffff;
+
+        --warning: #ffb300;
+        --warning-foreground: #ffffff;
+
+        --gradient-primary: linear-gradient(135deg, #4d4dff, #8066ff);
+        --gradient-secondary: linear-gradient(135deg, #f2f2f5, #e0e0e6);
+        --gradient-card: linear-gradient(145deg, #ffffff, #f7f7fa);
+
+        --shadow-sm: 0 2px 4px -1px rgb(33 33 38 / 0.06);
+        --shadow-md: 0 4px 8px -2px rgb(33 33 38 / 0.1);
+        --shadow-lg: 0 8px 24px -4px rgb(33 33 38 / 0.15);
+        --shadow-primary: 0 8px 32px -8px rgb(77 77 255 / 0.3);
+
+        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --radius: 0.5rem;
+
+        /* Sidebar Variables */
+        --sidebar-background: #fafafa;
+        --sidebar-foreground: #404045;
+        --sidebar-primary: #18181b;
+        --sidebar-primary-foreground: #fafafa;
+        --sidebar-accent: #f4f4f5;
+        --sidebar-accent-foreground: #18181b;
+        --sidebar-border: #e3e5eb;
+        --sidebar-ring: #3b82f6;
+    }
+
+    .dark {
+        --background: #09090b; /* Deep black/zinc */
+        --foreground: #f8fafc;
+
+        --card: #0c0c0e;
+        --card-foreground: #f8fafc;
+
+        /* FIXED: Popover needs to be lighter than background to be seen as a layer */
+        --popover: #121214;
+        --popover-foreground: #f8fafc;
+
+        /* FIXED: Primary must be bright (Blue) to be visible on dark backgrounds */
+        --primary: #6366f1;
+        --primary-foreground: #ffffff;
+        --primary-hover: #818cf8;
+
+        --secondary: #1e293b;
+        --secondary-foreground: #f8fafc;
+
+        /* FIXED: Muted is used for hover backgrounds, needs to be lighter than popover */
+        --muted: #27272a;
+        --muted-foreground: #a1a1aa;
+
+        --accent: #27272a;
+        --accent-foreground: #f8fafc;
+
+        --destructive: #ef4444;
+        --destructive-foreground: #f8fafc;
+
+        --border: #27272a;
+        --input: #27272a;
+        --ring: #6366f1;
+
+        /* Sidebar Dark Variables */
+        --sidebar-background: #09090b;
+        --sidebar-foreground: #f4f4f5;
+        --sidebar-primary: #f4f4f5;
+        --sidebar-primary-foreground: #ffffff;
+        --sidebar-accent: #27272a;
+        --sidebar-accent-foreground: #f4f4f5;
+        --sidebar-border: #27272a;
+        --sidebar-ring: #6366f1;
+    }
+}
 
 @layer base {
-  :root {
-    --background: #FCFCFC;
-    --foreground: #212126;
+    * {
+        @apply border-border;
+    }
 
-    --card: #FCFCFC;
-    --card-foreground: #212126;
+    /*
+       Only apply transitions to color and background properties
+       to avoid layout jank during theme switches
+    */
+    * {
+        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 200ms;
+    }
 
-    --popover: #ffffff;
-    --popover-foreground: #212126;
+    .no-transitions * {
+        transition: none !important;
+    }
 
-    --primary: #f2f2f5;
-    --primary-foreground: #191919;
-    --primary-hover: #6666ff;
+    body {
+        @apply bg-background text-foreground;
+    }
 
-    --secondary: #f2f2f5;
-    --secondary-foreground: #212126;
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
 
-    --muted: #f7f7f7;
-    --muted-foreground: #6b6b78;
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-    --accent: #8066ff;
-    --accent-foreground: #ffffff;
+    ::-webkit-scrollbar-thumb {
+        background: var(--muted-foreground);
+        opacity: 0.5;
+        border-radius: 4px;
+    }
 
-    --destructive: #f04c4c;
-    --destructive-foreground: #ffffff;
-
-    --border: #e0e0e6;
-    --input: #e0e0e6;
-    --ring: #212126;
-
-    --success: #00b32c;
-    --success-foreground: #ffffff;
-
-    --warning: #ffb300;
-    --warning-foreground: #ffffff;
-
-    --gradient-primary: linear-gradient(135deg, #4d4dff, #8066ff);
-    --gradient-secondary: linear-gradient(135deg, #f2f2f5, #e0e0e6);
-    --gradient-card: linear-gradient(145deg, #ffffff, #f7f7fa);
-
-    --shadow-sm: 0 2px 4px -1px rgb(33 33 38 / 0.06);
-    --shadow-md: 0 4px 8px -2px rgb(33 33 38 / 0.1);
-    --shadow-lg: 0 8px 24px -4px rgb(33 33 38 / 0.15);
-    --shadow-primary: 0 8px 32px -8px rgb(77 77 255 / 0.3);
-
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-spring: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
-    --radius: 0.5rem;
-
-    --sidebar-background: #fafafa;
-    --sidebar-foreground: #404045;
-    --sidebar-primary: #18181b;
-    --sidebar-primary-foreground: #fafafa;
-    --sidebar-accent: #f4f4f5;
-    --sidebar-accent-foreground: #18181b;
-    --sidebar-border: #e3e5eb;
-    --sidebar-ring: #3b82f6;
-  }
-
-  .dark {
-    --background: #0F0F0F;
-    --foreground: #f8fafc;
-
-    --card: #020817;
-    --card-foreground: #f8fafc;
-
-    --popover: #020817;
-    --popover-foreground: #f8fafc;
-
-    --primary: #1e293b;
-    --primary-foreground: white;
-
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-
-    --muted: #1C1C1C;
-    --muted-foreground: #94a3b8;
-
-    --accent: #1e293b;
-    --accent-foreground: #f8fafc;
-
-    --destructive: #822020;
-    --destructive-foreground: #f8fafc;
-
-    --border: #1e293b;
-    --input: #1e293b;
-    --ring: #cbd5e1;
-
-    --sidebar-background: #0F0F0F;
-    --sidebar-foreground: #f4f4f5;
-    --sidebar-primary: white;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #222222;
-    --sidebar-accent-foreground: #f4f4f5;
-    --sidebar-border: #27272a;
-    --sidebar-ring: #3b82f6;
-  }
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--foreground);
+    }
 }
-
-/* ... (The rest of the file remains the same) ... */
-@layer base {
-  * {
-    @apply border-border;
-    transition: background-color 0.2s ease-in-out, 
-                color 0.2s ease-in-out, 
-                border-color 0.2s ease-in-out,
-                box-shadow 0.2s ease-in-out;
-  }
-
-  /* Disable transitions on page load to prevent flash */
-  .no-transitions * {
-    transition: none !important;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Enhanced Kanban Drag and Drop Styles */
-@layer components {
-  /* Task card animations */
-  .kanban-task {
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0.1, 1),
-                opacity 0.2s ease,
-                box-shadow 0.2s ease;
-    cursor: grab;
-  }
-
-  .kanban-task:active {
-    cursor: grabbing;
-  }
-
-  .kanban-task:hover {
-    transform: translateY(-1px);
-  }
-
-  /* Dragging state */
-  .kanban-task.dragging {
-    transform: rotate(2deg) scale(0.95);
-    opacity: 0.9;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    transition: none;
-  }
-
-  /* Column drop zone feedback */
-  .kanban-column {
-    transition: all 0.2s cubic-bezier(0.2, 0, 0.1, 1);
-  }
-
-  .kanban-column.drag-over {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 2px var(--accent),
-                0 10px 30px rgba(128, 102, 255, 0.1);
-  }
-
-  /* Drop indicator animation */
-  .drop-indicator {
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--primary));
-    border-radius: 2px;
-    margin: 4px 0;
-    animation: pulseGlow 1.5s infinite;
-    transition: all 0.2s ease;
-  }
-
-  @keyframes pulseGlow {
-    0%, 100% {
-      opacity: 0.7;
-      transform: scaleX(0.8);
-    }
-    50% {
-      opacity: 1;
-      transform: scaleX(1);
-    }
-  }
-
-  /* Touch feedback for mobile */
-  @media (hover: none) and (pointer: coarse) {
-    .kanban-task {
-      transition: transform 0.1s ease, opacity 0.1s ease;
-    }
-
-    .kanban-task:active {
-      transform: scale(0.95);
-      opacity: 0.8;
-    }
-  }
-
-  /* Improved drag image */
-  .drag-preview {
-    transform: rotate(2deg) scale(1.05);
-    opacity: 0.9;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    border: 2px solid var(--accent);
-    border-radius: 8px;
-    z-index: 9999;
-    pointer-events: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-  }
-
-  /* Smooth list animations */
-  .task-list {
-    transition: all 0.3s cubic-bezier(0.2, 0, 0.1, 1);
-  }
-
-  .task-item {
-    transition: all 0.3s cubic-bezier(0.2, 0, 0.1, 1);
-  }
-
-  /* Loading and skeleton states */
-  .skeleton-task {
-    background: linear-gradient(90deg,
-      var(--muted) 25%,
-      var(--secondary) 50%,
-      var(--muted) 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 8px;
-    height: 100px;
-    margin-bottom: 8px;
-  }
-
-  @keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-
-  /* Focus styles for accessibility */
-  .kanban-task:focus-within {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-    border-radius: 6px;
-  }
-
-  /* High contrast mode support */
-  @media (prefers-contrast: high) {
-    .kanban-task {
-      border: 2px solid var(--border);
-    }
-
-    .kanban-task.dragging {
-      border-color: var(--accent);
-      border-width: 3px;
-    }
-  }
-
-  /* Reduced motion support */
-  @media (prefers-reduced-motion: reduce) {
-    .kanban-task,
-    .kanban-column,
-    .task-list,
-    .task-item {
-      transition: none;
-    }
-
-    .drop-indicator {
-      animation: none;
-      opacity: 1;
-      transform: scaleX(1);
-    }
-  }
-
-  /* Print styles */
-  @media print {
-    .kanban-task,
-    .kanban-column {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .drag-preview,
-    .drop-indicator {
-      display: none;
-    }
-  }
-
-  /* Mobile-specific enhancements */
-  @media (max-width: 768px) {
-    /* Better touch targets */
-    .kanban-task {
-      min-height: 48px; /* iOS touch target size */
-      touch-action: manipulation; /* Prevent double-tap zoom */
-    }
-
-    /* Mobile drag handles */
-    .kanban-task [data-testid="drag-handle"] {
-      min-width: 44px;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Mobile column spacing */
-    .kanban-column {
-      margin-bottom: 1rem;
-    }
-
-    /* Mobile modal improvements */
-    .modal-overlay {
-      padding: 1rem;
-      align-items: flex-start;
-      padding-top: 4rem;
-    }
-
-    /* Mobile button sizing */
-    .mobile-button {
-      min-height: 44px;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-    }
-
-    /* Better scroll behavior on mobile */
-    .mobile-scroll {
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-    }
-
-    /* Mobile input improvements */
-    .mobile-input {
-      font-size: 16px; /* Prevent zoom on iOS */
-      padding: 0.75rem;
-      min-height: 44px;
-    }
-
-    /* Mobile file viewer improvements */
-    .mobile-file-viewer {
-      padding: 1rem;
-      font-size: 16px; /* Prevent zoom on iOS */
-    }
-
-    .mobile-back-button {
-      min-height: 44px;
-      min-width: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Better textarea on mobile */
-    .mobile-textarea {
-      font-size: 16px; /* Prevent zoom on iOS */
-      line-height: 1.5;
-      padding: 1rem;
-    }
-  }
-
-  /* Touch-specific improvements */
-  @media (hover: none) and (pointer: coarse) {
-    .kanban-task {
-      /* Hover effects don't make sense on touch */
-      transition: transform 0.2s ease;
-    }
-
-    .kanban-task:active {
-      transform: scale(0.98);
-    }
-
-    /* Make drag handles always visible on touch devices */
-    .kanban-task .drag-handle {
-      opacity: 1 !important;
-      background: var(--muted);
-      border-radius: 4px;
-      padding: 4px;
-    }
-  }
-}
-
-/* Dark mode specific enhancements */
-.dark .kanban-task.dragging {
-  box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1);
-}
-
-.dark .kanban-column.drag-over {
-  box-shadow: 0 0 0 2px var(--accent),
-              0 10px 30px rgba(128, 102, 255, 0.2);
-}
-/* ... */

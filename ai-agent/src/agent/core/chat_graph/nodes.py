@@ -22,8 +22,8 @@ def prepare_inputs_node(state: ChatGraphState) -> dict:
     light_model = state.get("light_model", settings.DEFAULT_LIGHT_MODEL)
 
     api_key = get_api_key(api_key_encrypted)
-    if "free" not in light_model and not api_key_encrypted:
-        raise ValueError("A user-provided API key is required for non-free models.")
+    if not api_key_encrypted:
+        raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
 
     # Process inputs
     processed_parts = []
@@ -79,8 +79,8 @@ def generate_answer_node(state: ChatGraphState) -> dict:
     web_search = state.get("web_search", False)
 
     api_key = get_api_key(api_key_encrypted)
-    if "free" not in heavy_model and not api_key_encrypted:
-        raise ValueError("A user-provided API key is required for non-free models.")
+    if not api_key_encrypted:
+        raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
 
     print(f"   > Using heavy model: {heavy_model}")
 
@@ -94,7 +94,7 @@ def generate_answer_node(state: ChatGraphState) -> dict:
 
     instruction = generate_answer_instruction.format(user_task=user_task, context=context)
 
-    if web_search and api_key_encrypted:  # Assuming online is a premium feature
+    if web_search:  # Web search now available to all users with API keys
         print("   > Web search enabled, using online model.")
         heavy_model += settings.ONLINE_MODEL_SUFFIX
 

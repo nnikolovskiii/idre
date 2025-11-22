@@ -53,6 +53,7 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
         {}
     );
     const [copiedMessages, setCopiedMessages] = useState<Set<string>>(new Set());
+    const [chatCopied, setChatCopied] = useState(false);
 
     useEffect(() => {
         if (containerRef.current) {
@@ -84,6 +85,26 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
             .catch((err) => {
                 console.error("Failed to copy text: ", err);
             });
+    };
+
+    const handleCopyChat = async () => {
+        if (!messages || messages.length === 0) {
+            return;
+        }
+
+        const formattedMessages = messages.map((message) => {
+            const prefix = message.type === 'human' ? '# User:' : '#AI assistant:';
+            const content = message.audioUrl ? '[Audio message]' : (message.content || '');
+            return `${prefix}\n${content}`;
+        }).join('\n\n');
+
+        try {
+            await navigator.clipboard.writeText(formattedMessages);
+            setChatCopied(true);
+            setTimeout(() => setChatCopied(false), 2000);
+        } catch (error) {
+            console.error('Failed to copy chat:', error);
+        }
     };
 
     const MessageActionButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, className, ...props }) => (
@@ -205,6 +226,20 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                             <div className="h-2 w-2 animate-pulse rounded-full bg-muted-foreground"></div>
                         </div>
                         <span className="text-sm italic">AI is processing...</span>
+                    </div>
+                )}
+
+                {/* Copy Chat Button - always at bottom, below generation animation */}
+                {messages && messages.length > 0 && (
+                    <div className="flex justify-center mt-4">
+                        <button
+                            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border border-border bg-transparent text-muted-foreground transition-all duration-200 hover:bg-muted hover:border-border hover:text-foreground"
+                            onClick={handleCopyChat}
+                            title={chatCopied ? "Copied!" : "Copy entire chat"}
+                        >
+                            <Copy size={14} />
+                            <span>{chatCopied ? "Copied!" : "Copy chat"}</span>
+                        </button>
                     </div>
                 )}
             </div>

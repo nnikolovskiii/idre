@@ -20,7 +20,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createPortal } from "react-dom";
-import { Clock, Plus, GripVertical, X, AlertCircle, Loader2 } from "lucide-react";
+import { Clock, Plus, GripVertical, X, AlertCircle, Loader2, Edit, Archive, RotateCcw, Search } from "lucide-react";
 
 // Import task service and types
 import {
@@ -31,6 +31,7 @@ import {
 } from "../../services/tasksService";
 import type {
     TaskCreateRequest,
+    TaskUpdateRequest,
     TaskMoveRequest,
     TaskReorderRequest
 } from "../../services/tasksService";
@@ -45,6 +46,7 @@ interface Task {
     dueDate?: string;
     position?: number;
     status: TaskStatus;
+    archived?: boolean;
 }
 
 interface Column {
@@ -97,8 +99,14 @@ const PriorityIndicator: React.FC<{ priority: Task["priority"] }> = ({ priority 
 };
 
 // Sortable Task Component
-// Sortable Task Component
-const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Task) => void; }> = ({ task, isMobile = false, onView }) => {
+const SortableTask: React.FC<{
+    task: Task;
+    isMobile?: boolean;
+    onView: (task: Task) => void;
+    onEdit: (task: Task) => void;
+    onArchive: (task: Task) => void;
+    onUnarchive: (task: Task) => void;
+}> = ({ task, isMobile = false, onView, onEdit, onArchive, onUnarchive }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
     const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
@@ -112,6 +120,8 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Ta
                 } ${
                     isOverdue ? 'border-orange-200 dark:border-orange-800' : 'border-border'
                 } ${
+                    task.archived ? 'opacity-60 border-dashed' : ''
+                } ${
                     isMobile
                         ? 'p-4 mb-3 active:scale-95'
                         : 'p-3 mb-2'
@@ -120,15 +130,17 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Ta
                 <div className="flex items-start gap-2">
                     <div
                         className={`flex items-center transition-opacity touch-none drag-handle cursor-grab active:cursor-grabbing ${
+                            task.archived ? 'cursor-not-allowed opacity-40' : ''
+                        } ${
                             isMobile
                                 ? 'opacity-100 p-2 bg-muted/30 rounded-md active:bg-muted/50'
                                 : 'opacity-60 group-hover:opacity-100'
                         }`}
-                        {...listeners}
+                        {...(!task.archived ? listeners : {})}
                         data-testid="drag-handle"
                         role="button"
                         aria-label="Drag task"
-                        tabIndex={0}
+                        tabIndex={task.archived ? -1 : 0}
                     >
                         <GripVertical size={isMobile ? 18 : 14} className="text-muted-foreground" />
                     </div>
@@ -139,6 +151,9 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Ta
                                 isMobile ? 'text-base' : 'text-sm'
                             }`}>{task.title}</h4>
                             {isOverdue && <AlertCircle size={12} className="text-orange-500" />}
+                            {task.archived && (
+                                <Archive size={isMobile ? 14 : 12} className="text-muted-foreground" />
+                            )}
                         </div>
                         {task.description && (
                             <p className={`text-left text-muted-foreground mb-2 line-clamp-2 ${ // <-- ADDED text-left
@@ -157,15 +172,52 @@ const SortableTask: React.FC<{ task: Task; isMobile?: boolean; onView: (task: Ta
                                 </span>
                             ))}
                         </div>
-                        <div className={`flex items-center justify-end text-muted-foreground ${
+                        <div className={`flex items-center justify-between text-muted-foreground ${
                             isMobile ? 'text-xs' : 'text-xs'
                         }`}>
-                            {task.dueDate && (
-                                <div className="flex items-center gap-1">
-                                    <Clock size={isMobile ? 12 : 10} />
-                                    <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {task.dueDate && (
+                                    <div className="flex items-center gap-1">
+                                        <Clock size={isMobile ? 12 : 10} />
+                                        <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {task.archived ? (
+                                    <button
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded-md"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onUnarchive(task);
+                                        }}
+                                        title="Unarchive task"
+                                    >
+                                        <RotateCcw size={isMobile ? 14 : 12} className="text-muted-foreground" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded-md"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onArchive(task);
+                                        }}
+                                        title="Archive task"
+                                    >
+                                        <Archive size={isMobile ? 14 : 12} className="text-muted-foreground" />
+                                    </button>
+                                )}
+                                <button
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded-md"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit(task);
+                                    }}
+                                    title="Edit task"
+                                >
+                                    <Edit size={isMobile ? 14 : 12} className="text-muted-foreground" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -203,8 +255,11 @@ const KanbanColumn: React.FC<{
     column: Column;
     onAddTask: (columnId: TaskStatus) => void;
     onViewTask: (task: Task) => void;
+    onEditTask: (task: Task) => void;
+    onArchiveTask: (task: Task) => void;
+    onUnarchiveTask: (task: Task) => void;
     isMobile?: boolean;
-}> = ({ column, onAddTask, onViewTask, isMobile = false }) => {
+}> = ({ column, onAddTask, onViewTask, onEditTask, onArchiveTask, onUnarchiveTask, isMobile = false }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
@@ -234,9 +289,19 @@ const KanbanColumn: React.FC<{
                 </button>
             </div>
 
-            <SortableContext items={column.tasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={column.tasks.filter(task => !task.archived).map(task => task.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2 flex-1">
-                    {column.tasks.map((task) => <SortableTask key={task.id} task={task} isMobile={isMobile} onView={onViewTask} />)}
+                    {column.tasks.map((task) => (
+                        <SortableTask
+                            key={task.id}
+                            task={task}
+                            isMobile={isMobile}
+                            onView={onViewTask}
+                            onEdit={onEditTask}
+                            onArchive={onArchiveTask}
+                            onUnarchive={onUnarchiveTask}
+                        />
+                    ))}
                     {column.tasks.length === 0 && (
                         <div className="text-center py-8 text-sm text-muted-foreground h-full flex items-center justify-center">
                             {isOver ? 'Drop task here' : 'No tasks yet'}
@@ -434,10 +499,362 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, isOpen, onClose
     );
 };
 
+// --- Task Edit Modal (NEW COMPONENT) ---
+interface TaskEditModalProps {
+    task: Task | null;
+    isOpen: boolean;
+    onClose: () => void;
+    onUpdate: (taskId: string, updateData: TaskUpdateRequest) => void;
+    isUpdating?: boolean;
+}
+
+const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onClose, onUpdate, isUpdating = false }) => {
+    const [formData, setFormData] = useState<NewTaskState>({
+        title: "",
+        description: "",
+        priority: "medium",
+        tags: "",
+        dueDate: ""
+    });
+
+    // Reset form when task changes
+    useEffect(() => {
+        if (task) {
+            setFormData({
+                title: task.title,
+                description: task.description || "",
+                priority: task.priority,
+                tags: task.tags?.join(", ") || "",
+                dueDate: task.dueDate || ""
+            });
+        }
+    }, [task]);
+
+    if (!isOpen || !task) return null;
+
+    const handleSubmit = () => {
+        if (!formData.title.trim()) return;
+
+        const updateData: TaskUpdateRequest = {
+            title: formData.title.trim(),
+            description: formData.description.trim() || undefined,
+            priority: formData.priority as TaskPriority,
+            tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
+            due_date: formData.dueDate || undefined,
+        };
+
+        onUpdate(task.id, updateData);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background border border-border rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto sm:max-h-[85vh]">
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                    <h2 className="text-lg font-semibold text-foreground">
+                        Edit Task
+                    </h2>
+                    <button onClick={onClose} className="p-1 hover:bg-secondary rounded-md transition-colors" disabled={isUpdating}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Title <span className="text-destructive">*</span></label>
+                        <input
+                            type="text"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            placeholder="Enter task title..."
+                            className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-base mobile-input"
+                            autoFocus
+                            disabled={isUpdating}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Description</label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Enter task description..."
+                            rows={3}
+                            className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none text-base mobile-input"
+                            disabled={isUpdating}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
+                        <div className="flex gap-2">
+                            {(["low", "medium", "high"] as const).map((priority) => (
+                                <button
+                                    key={priority}
+                                    onClick={() => setFormData({ ...formData, priority })}
+                                    disabled={isUpdating}
+                                    className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-md border border-border text-sm font-medium transition-colors mobile-button ${
+                                        formData.priority === priority
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "bg-background hover:bg-secondary text-foreground"
+                                    } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Tags</label>
+                        <input
+                            type="text"
+                            value={formData.tags}
+                            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                            placeholder="Enter tags separated by commas..."
+                            className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-base mobile-input"
+                            disabled={isUpdating}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Separate multiple tags with commas</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Due Date</label>
+                        <input
+                            type="date"
+                            value={formData.dueDate}
+                            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                            className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-base mobile-input"
+                            disabled={isUpdating}
+                        />
+                    </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-border">
+                    <button
+                        onClick={onClose}
+                        disabled={isUpdating}
+                        className="px-4 py-2 sm:px-6 sm:py-3 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors mobile-button disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!formData.title.trim() || isUpdating}
+                        className="px-4 py-2 sm:px-6 sm:py-3 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mobile-button flex items-center gap-2"
+                    >
+                        {isUpdating && <Loader2 size={16} className="animate-spin" />}
+                        Update Task
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Archived Tasks Panel Component ---
+interface ArchivedTasksPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    archivedTasks: Task[];
+    isLoading: boolean;
+    searchQuery: string;
+    onSearchChange: (query: string) => void;
+    onUnarchive: (task: Task) => void;
+    onViewTask: (task: Task) => void;
+    onEditTask: (task: Task) => void;
+}
+
+const ArchivedTasksPanel: React.FC<ArchivedTasksPanelProps> = ({
+    isOpen,
+    onClose,
+    archivedTasks,
+    isLoading,
+    searchQuery,
+    onSearchChange,
+    onUnarchive,
+    onViewTask,
+    onEditTask,
+}) => {
+    // Close on escape key
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleEscape);
+            return () => document.removeEventListener('keydown', handleEscape);
+        }
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    // Filter archived tasks based on search
+    const filteredArchivedTasks = archivedTasks.filter(task =>
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div
+                className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+                onClick={onClose}
+            />
+
+            {/* Panel */}
+            <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background border-l border-border shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+                <div className="h-full flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50">
+                        <div className="flex items-center gap-2">
+                            <Archive size={20} className="text-muted-foreground" />
+                            <h2 className="text-lg font-semibold text-foreground">Archived Tasks</h2>
+                            <span className="text-sm bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                                {archivedTasks.length}
+                            </span>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-1 hover:bg-secondary rounded-md transition-colors"
+                            title="Close archived tasks"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="p-4 border-b border-border">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search archived tasks..."
+                                value={searchQuery}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="flex-1 overflow-auto p-4">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-32">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Loader2 size={16} className="animate-spin" />
+                                    <span>Loading archived tasks...</span>
+                                </div>
+                            </div>
+                        ) : filteredArchivedTasks.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Archive size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
+                                <p className="text-muted-foreground mb-2">
+                                    {searchQuery ? 'No archived tasks found' : 'No archived tasks'}
+                                </p>
+                                {searchQuery && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Try adjusting your search terms
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredArchivedTasks.map((task) => (
+                                    <ArchivedTaskCard
+                                        key={task.id}
+                                        task={task}
+                                        onUnarchive={onUnarchive}
+                                        onView={onViewTask}
+                                        onEdit={onEditTask}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// Archived Task Card Component
+const ArchivedTaskCard: React.FC<{
+    task: Task;
+    onUnarchive: (task: Task) => void;
+    onView: (task: Task) => void;
+    onEdit: (task: Task) => void;
+}> = ({ task, onUnarchive, onView, onEdit }) => {
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+
+    return (
+        <div className="bg-background border border-border rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer group opacity-75">
+            <div onClick={() => onView(task)}>
+                <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <PriorityIndicator priority={task.priority} />
+                        <h4 className="font-medium text-foreground truncate">{task.title}</h4>
+                        <Archive size={14} className="text-muted-foreground flex-shrink-0" />
+                    </div>
+                    {isOverdue && <AlertCircle size={12} className="text-orange-500 flex-shrink-0" />}
+                </div>
+
+                {task.description && (
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        {task.description}
+                    </p>
+                )}
+
+                <div className="flex flex-wrap gap-1 mb-2">
+                    {task.tags?.map((tag) => (
+                        <span
+                            key={tag}
+                            className="inline-block px-2 py-0.5 bg-secondary text-secondary-foreground rounded-md text-xs"
+                        >
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        {task.dueDate && (
+                            <div className="flex items-center gap-1">
+                                <Clock size={10} />
+                                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onUnarchive(task);
+                    }}
+                    className="flex-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+                    title="Unarchive task"
+                >
+                    <RotateCcw size={10} />
+                    Unarchive
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(task);
+                    }}
+                    className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 transition-colors"
+                    title="Edit task"
+                >
+                    <Edit size={10} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // Main Component
 const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const [columns, setColumns] = useState<Column[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
     const [activeTask, setActiveTask] = useState<Task | null>(null);
     const [activeTaskOriginalColumn, setActiveTaskOriginalColumn] = useState<TaskStatus | null>(null);
     const [showTaskModal, setShowTaskModal] = useState(false);
@@ -445,6 +862,12 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [viewingTask, setViewingTask] = useState<Task | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [isArchivedPanelOpen, setIsArchivedPanelOpen] = useState(false);
+    const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+    const [archivedSearchQuery, setArchivedSearchQuery] = useState("");
+    const [isLoadingArchived, setIsLoadingArchived] = useState(false);
 
     // Form state for new task
     const [newTask, setNewTask] = useState<NewTaskState>({
@@ -462,18 +885,42 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
             const response = await TasksService.getTasksByNotebookId(notebookId);
             const taskList: Task[] = response.tasks.map(convertTaskResponse);
 
+            // Only show non-archived tasks in the main kanban board
+            const activeTaskList = taskList.filter(task => !task.archived);
+
             const newColumns: Column[] = COLUMN_CONFIG.map(config => ({
                 ...config,
-                tasks: taskList
+                tasks: activeTaskList
                     .filter(task => task.status === config.id)
                     .sort((a, b) => (a.position || 0) - (b.position || 0))
             }));
             setColumns(newColumns);
+
+            // Also update archived tasks for the panel
+            const archivedTasksList = taskList.filter(task => task.archived);
+            setArchivedTasks(archivedTasksList);
         } catch (err) {
             console.error("Error fetching tasks:", err);
             setError(err instanceof Error ? err.message : "Failed to fetch tasks");
         } finally {
             setIsLoading(false);
+        }
+    }, [notebookId]);
+
+    // Fetch archived tasks for the panel
+    const fetchArchivedTasks = useCallback(async () => {
+        try {
+            setIsLoadingArchived(true);
+            const response = await TasksService.getTasksByNotebookId(notebookId, {
+                includeArchived: true
+            });
+            const taskList: Task[] = response.tasks.map(convertTaskResponse);
+            const archivedTasksList = taskList.filter(task => task.archived);
+            setArchivedTasks(archivedTasksList);
+        } catch (err) {
+            console.error("Error fetching archived tasks:", err);
+        } finally {
+            setIsLoadingArchived(false);
         }
     }, [notebookId]);
 
@@ -500,6 +947,13 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
         fetchTasks();
     }, [fetchTasks]);
 
+    // Fetch archived tasks when panel opens
+    useEffect(() => {
+        if (isArchivedPanelOpen) {
+            fetchArchivedTasks();
+        }
+    }, [isArchivedPanelOpen, fetchArchivedTasks]);
+
     const collisionDetectionAlgorithm = (args: any) => {
         const pointerCollisions = pointerWithin(args);
         return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
@@ -517,6 +971,24 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     // Task view handlers
     const handleViewTask = (task: Task) => setViewingTask(task);
     const handleCloseTaskView = () => setViewingTask(null);
+
+    // Task edit handlers
+    const handleEditTask = (task: Task) => setEditingTask(task);
+    const handleCloseEditTask = () => setEditingTask(null);
+
+    const handleUpdateTask = async (taskId: string, updateData: TaskUpdateRequest) => {
+        setIsUpdating(true);
+        try {
+            await TasksService.updateTask(taskId, updateData);
+            setEditingTask(null);
+            await fetchTasks(); // Re-fetch tasks to show the updated one
+        } catch (err) {
+            console.error("Error updating task:", err);
+            setError(err instanceof Error ? err.message : "Failed to update task");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const handleCreateTask = async () => {
         if (!newTask.title.trim() || !selectedColumnId) return;
@@ -537,11 +1009,55 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
         }
     };
 
+    // Archive handlers
+    const handleArchiveTask = async (task: Task) => {
+        if (window.confirm("Are you sure you want to archive this task?")) {
+            try {
+                await TasksService.archiveTask(task.id);
+                await fetchTasks(); // Re-fetch tasks to reflect the change
+            } catch (err) {
+                console.error("Error archiving task:", err);
+                setError(err instanceof Error ? err.message : "Failed to archive task");
+            }
+        }
+    };
+
+    const handleUnarchiveTask = async (task: Task) => {
+        try {
+            await TasksService.unarchiveTask(task.id);
+            await fetchTasks(); // Re-fetch tasks to reflect the change
+            // If panel is open, also refresh archived tasks
+            if (isArchivedPanelOpen) {
+                await fetchArchivedTasks();
+            }
+        } catch (err) {
+            console.error("Error unarchiving task:", err);
+            setError(err instanceof Error ? err.message : "Failed to unarchive task");
+        }
+    };
+
+    // Archived panel handlers
+    const openArchivedPanel = () => {
+        setIsArchivedPanelOpen(true);
+        setArchivedSearchQuery("");
+    };
+
+    const closeArchivedPanel = () => {
+        setIsArchivedPanelOpen(false);
+        setArchivedSearchQuery("");
+    };
+
     // Drag and drop handlers
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
         const activeId = active.id as string;
         const foundTask = columns.flatMap(col => col.tasks).find(task => task.id === activeId);
+
+        // Prevent dragging archived tasks
+        if (foundTask?.archived) {
+            return;
+        }
+
         setActiveTask(foundTask || null);
 
         const originalColumn = findColumn(activeId);
@@ -651,22 +1167,6 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     return (
         <div className="h-full flex flex-col">
             <div className="border-b border-border bg-background flex-shrink-0">
-                {/* Mobile Header */}
-                <div className="md:hidden p-4">
-                    <div className="flex flex-col space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-xl font-bold text-foreground">Tasks</h1>
-                            <button
-                                onClick={() => openTaskModal(TaskStatus.TODO)}
-                                className="px-3 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
-                            >
-                                <Plus size={16} />
-                                <span className="hidden sm:inline">Add</span>
-                            </button>
-                        </div>
-                        <p className="text-sm text-muted-foreground text-left">Manage your project tasks</p>
-                    </div>
-                </div>
 
                 {/* Desktop Header */}
                 <div className="hidden md:block p-4">
@@ -676,13 +1176,18 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                             <p className="text-sm text-muted-foreground">Manage your project tasks and workflow</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <input
-                                type="text"
-                                placeholder="Search tasks..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-64"
-                            />
+                            <button
+                                onClick={openArchivedPanel}
+                                className="px-4 py-2 bg-secondary text-secondary-foreground text-sm font-medium rounded-md hover:bg-secondary/80 transition-colors flex items-center gap-2"
+                            >
+                                <Archive size={16} />
+                                Archived Tasks
+                                {archivedTasks.length > 0 && (
+                                    <span className="text-xs bg-background px-2 py-0.5 rounded-full text-muted-foreground">
+                                        {archivedTasks.length}
+                                    </span>
+                                )}
+                            </button>
                             <button
                                 onClick={() => openTaskModal(TaskStatus.TODO)}
                                 className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
@@ -700,7 +1205,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="block md:hidden">
                         <div className="space-y-4 pb-20">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} isMobile={true} />
+                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} onEditTask={handleEditTask} onArchiveTask={handleArchiveTask} onUnarchiveTask={handleUnarchiveTask} isMobile={true} />
                             ))}
                         </div>
                     </div>
@@ -709,7 +1214,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="hidden md:block">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-[800px]">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} isMobile={false} />
+                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} onEditTask={handleEditTask} onArchiveTask={handleArchiveTask} onUnarchiveTask={handleUnarchiveTask} isMobile={false} />
                             ))}
                         </div>
                     </div>
@@ -729,6 +1234,24 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                 isOpen={!!viewingTask}
                 task={viewingTask}
                 onClose={handleCloseTaskView}
+            />
+            <TaskEditModal
+                task={editingTask}
+                isOpen={!!editingTask}
+                onClose={handleCloseEditTask}
+                onUpdate={handleUpdateTask}
+                isUpdating={isUpdating}
+            />
+            <ArchivedTasksPanel
+                isOpen={isArchivedPanelOpen}
+                onClose={closeArchivedPanel}
+                archivedTasks={archivedTasks}
+                isLoading={isLoadingArchived}
+                searchQuery={archivedSearchQuery}
+                onSearchChange={setArchivedSearchQuery}
+                onUnarchive={handleUnarchiveTask}
+                onViewTask={handleViewTask}
+                onEditTask={handleEditTask}
             />
         </div>
     );

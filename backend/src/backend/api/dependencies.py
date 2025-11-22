@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.container import container, get_db_session
@@ -282,3 +282,47 @@ def get_task_service(
         session=session,
         task_repository=task_repo
     )
+
+
+async def require_api_key(
+        request: Request,
+        session: AsyncSession = Depends(get_db_session)
+) -> None:
+    """
+    FastAPI dependency that requires an API key for the current user.
+
+    This function checks if the authenticated user has an API key set up.
+    If not, it raises an HTTPException with a 403 status code.
+
+    Usage:
+    ```python
+    @router.get("/protected-endpoint")
+    async def protected_endpoint(
+        _: None = Depends(require_api_key)
+    ):
+        # Your endpoint logic here
+        pass
+    ```
+    """
+    # Get user ID from request state (set by auth middleware)
+    user_id = getattr(request.state, 'user_id', None)
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User authentication required"
+        )
+
+    # Create services to check API key
+    model_api_repo = ModelApiRepository(session)
+    fernet_service = FernetService()
+    model_api_service = ModelApiService(session, model_api_repo, fernet_service)
+
+    # Check if user has API key
+    has_api_key = await model_api_service.has_api_key(user_id)
+
+    if not has_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API key is required to use this application. Please set up your API key in the settings."
+        )

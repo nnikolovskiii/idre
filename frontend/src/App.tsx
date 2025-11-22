@@ -1,7 +1,8 @@
-// Path: /home/nnikolovskii/dev/general-chat/frontend/src/App.tsx
+// Path: frontend/src/App.tsx
 
 // React Router and base CSS
-import { Routes, Route, Navigate } from "react-router-dom";
+// 1. Add 'Outlet' to imports
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import "./App.css";
 
 // Context providers
@@ -22,98 +23,71 @@ import WhiteboardView from "./pages/WhiteboardView";
 import IdeaCanvas from "./pages/IdeaCanvas";
 import IdeaCanvasPage from "./pages/IdeaCanvasPage";
 import TasksPage from "./pages/TasksPage";
+import SetupApiKeyPage from "./pages/SetupApiKeyPage";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
+import AppGuard from "./components/guards/AppGuard";
 import { SseProvider } from "./context/SseContext";
 
 function App() {
     return (
         <ThemeProvider>
             <AuthProvider>
-                <SseProvider> {/* <-- 2. Wrap the core app with the SseProvider */}
+                <SseProvider>
                     <ApiKeyProvider>
+                        {/* 2. REMOVE AppGuard from wrapping the entire Routes */}
                         <Routes>
+                            {/* --- PUBLIC ROUTES (No Auth, No API Key required) --- */}
                             <Route path="/" element={<Landing />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
+
+                            {/* --- SETUP ROUTE (Requires Auth, but acts as the fallback for missing API Key) --- */}
+                            {/* This must be OUTSIDE the AppGuard to prevent the infinite loop */}
                             <Route
-                                path="/chat/:notebookId"
+                                path="/setup"
                                 element={
                                     <ProtectedRoute>
-                                        <Chat />
+                                        <SetupApiKeyPage />
                                     </ProtectedRoute>
                                 }
                             />
+
+                            {/* --- PROTECTED APP ROUTES (Require Auth AND API Key) --- */}
+                            {/* 3. Create a wrapper Route that applies the AppGuard to children */}
                             <Route
-                                path="/files/:notebookId"
                                 element={
                                     <ProtectedRoute>
-                                        <MyDriveView />
+                                        <AppGuard>
+                                            <Outlet />
+                                        </AppGuard>
                                     </ProtectedRoute>
                                 }
-                            />
-                            <Route
-                                path="/whiteboard/:notebookId"
-                                element={
-                                    <ProtectedRoute>
-                                        <WhiteboardView />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/idea/:notebookId"
-                                element={
-                                    <ProtectedRoute>
-                                        <IdeaCanvas />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/idea-canvas/:notebookId"
-                                element={
-                                    <ProtectedRoute>
-                                        <IdeaCanvasPage />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/tasks/:notebookId"
-                                element={
-                                    <ProtectedRoute>
-                                        <TasksPage />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/notebooks"
-                                element={
-                                    <ProtectedRoute>
-                                        <NotebooksDashboard />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/notebooks/create"
-                                element={
-                                    <ProtectedRoute>
-                                        <CreateNotebookPage />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/welcome/:notebookId"
-                                element={
-                                    <ProtectedRoute>
-                                        <WelcomePage />
-                                    </ProtectedRoute>
-                                }
-                            />
-                            <Route
-                                path="/default-models"
-                                element={<Navigate to="/notebooks" replace />}
-                            />
-                            <Route path="/model-api" element={<Navigate to="/notebooks" replace />} />
+                            >
+                                {/* All these routes now inherit protection from the wrapper above */}
+                                <Route path="/chat/:notebookId" element={<Chat />} />
+                                <Route path="/files/:notebookId" element={<MyDriveView />} />
+                                <Route path="/whiteboard/:notebookId" element={<WhiteboardView />} />
+                                <Route path="/idea/:notebookId" element={<IdeaCanvas />} />
+                                <Route path="/idea-canvas/:notebookId" element={<IdeaCanvasPage />} />
+                                <Route path="/tasks/:notebookId" element={<TasksPage />} />
+                                <Route path="/notebooks" element={<NotebooksDashboard />} />
+                                <Route path="/notebooks/create" element={<CreateNotebookPage />} />
+                                <Route path="/welcome/:notebookId" element={<WelcomePage />} />
+
+                                {/* Redirects */}
+                                <Route
+                                    path="/default-models"
+                                    element={<Navigate to="/notebooks" replace />}
+                                />
+                                <Route
+                                    path="/model-api"
+                                    element={<Navigate to="/notebooks" replace />}
+                                />
+                            </Route>
+
+                            {/* Catch all */}
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </ApiKeyProvider>

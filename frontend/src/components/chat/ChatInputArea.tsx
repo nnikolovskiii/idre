@@ -8,10 +8,20 @@ import { useClickOutside } from "../../hooks/useClickOutside.ts";
 import { useChatMode } from "../../hooks/useChatMode.ts";
 import { chatsService } from "../../services/chatsService.ts";
 import BrainstormSuggestions from "./BrainstormSuggestions.tsx";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 type ChatMode = "brainstorm" | "consult" | "analyser";
 
-const chatModes: ChatMode[] = ["brainstorm", "consult", "analyser"];
+const chatModes: { value: ChatMode; label: string; description?: string }[] = [
+    { value: "brainstorm", label: "Brainstorm", description: "Generate creative ideas" },
+    { value: "consult", label: "Consult", description: "Get expert advice" },
+    { value: "analyser", label: "Analyse", description: "Analyze information" },
+];
 
 interface ChatInputAreaProps {
     onTextSubmit: (text: string, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
@@ -221,33 +231,39 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                         {/* Spacer puts the controls to the right */}
                         <div className="flex-1" />
 
-                        {/* Unified Adaptive Dropdown Mode Selector */}
-                        <div className="relative flex items-center" title="Change Mode">
-                            {/* Invisible select handles logic and native UI, styled options handle theme colors */}
-                            <select
-                                value={currentMode}
-                                onChange={(e) => setCurrentMode(e.target.value as ChatMode)}
-                                disabled={isDisabled}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
-                            >
-                                {chatModes.map(mode => (
-                                    <option
-                                        key={mode}
-                                        value={mode}
-                                        className="bg-popover text-popover-foreground"
+                        {/* Mode Selector Dropdown */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    className="flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={isDisabled}
+                                    title="Change Mode"
+                                >
+                                    <span className="capitalize font-medium text-foreground">
+                                        {chatModes.find(mode => mode.value === currentMode)?.label || currentMode}
+                                    </span>
+                                    <ChevronDown size={14} className="text-muted-foreground" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                {chatModes.map((mode) => (
+                                    <DropdownMenuItem
+                                        key={mode.value}
+                                        onClick={() => setCurrentMode(mode.value)}
+                                        className={currentMode === mode.value ? "bg-accent text-accent-foreground" : ""}
                                     >
-                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                                    </option>
+                                        <div className="flex flex-col items-start gap-1">
+                                            <span className="font-medium">{mode.label}</span>
+                                            {mode.description && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {mode.description}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </DropdownMenuItem>
                                 ))}
-                            </select>
-
-                            <div className="flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
-                                <span className={`capitalize ${currentMode ? 'text-foreground font-medium' : ''}`}>
-                                    {currentMode}
-                                </span>
-                                <ChevronDown size={14} />
-                            </div>
-                        </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <button
                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"

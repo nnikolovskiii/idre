@@ -106,6 +106,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         }
     };
 
+    
     if (!isAuthenticated) return null;
 
     return (

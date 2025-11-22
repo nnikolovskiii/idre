@@ -1,82 +1,64 @@
-# #!/bin/bash
+#!/bin/bash
 
 # === CONFIGURATION ===
 DOCKER_HUB_USER="nnikolovskii"
-IMAGE_NAME="gc-frontend"
 TAG="latest"
-FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_NAME}:${TAG}"
+SERVER_USER="nnikolovskii"
 
-BUILD_DIR="/home/nnikolovskii/dev/general-chat/frontend"
-# =====================
+# Get SERVER_IP from environment variable or use default as fallback
+SERVER_IP="${SERVER_IP:-79.125.164.129}"
 
-echo "=== Building Docker image from $BUILD_DIR ==="
-docker build -t $FULL_IMAGE_NAME -f ${BUILD_DIR}/Dockerfile ${BUILD_DIR}
-
-if [ $? -ne 0 ]; then
-  echo "❌ Docker build failed."
-  exit 1
+# Check if SERVER_IP is set
+if [ -z "$SERVER_IP" ]; then
+    echo "❌ Error: SERVER_IP environment variable is not set"
+    echo "Usage: SERVER_IP=<your-server-ip> ./deploy-docker.sh"
+    exit 1
 fi
 
-echo "=== Pushing image to Docker Hub ==="
-docker push $FULL_IMAGE_NAME
+# Define Services: "ImageName:BuildDirectory"
+SERVICES=(
+  "gc-frontend:/home/nnikolovskii/dev/general-chat/frontend"
+  "gc-backend:/home/nnikolovskii/dev/general-chat/backend"
+  "gc-ai:/home/nnikolovskii/dev/general-chat/ai-agent"
+)
+
+# 1. BUILD AND PUSH LOOP
+for service in "${SERVICES[@]}"; do
+    IMAGE_NAME="${service%%:*}"
+    BUILD_DIR="${service#*:}"
+    FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_NAME}:${TAG}"
+
+    echo "========================================"
+    echo "=== Processing $IMAGE_NAME ==="
+    echo "========================================"
+
+    echo "-> Building from $BUILD_DIR"
+    docker build -t $FULL_IMAGE_NAME -f ${BUILD_DIR}/Dockerfile ${BUILD_DIR}
+    if [ $? -ne 0 ]; then echo "❌ Build failed for $IMAGE_NAME"; exit 1; fi
+
+    echo "-> Pushing to Docker Hub"
+    docker push $FULL_IMAGE_NAME
+    if [ $? -ne 0 ]; then echo "❌ Push failed for $IMAGE_NAME"; exit 1; fi
+done
+
+# 2. DEPLOYMENT
+echo "========================================"
+echo "=== Deploying to Server ($SERVER_IP) ==="
+echo "========================================"
+
+ssh ${SERVER_USER}@${SERVER_IP} << 'EOF'
+    set -e
+    cd traefik-stack
+    
+    echo "-> Restarting ai.yml stack..."
+    docker compose -f ai.yml down
+    docker compose -f ai.yml pull
+    docker compose -f ai.yml up -d --build
+EOF
 
 if [ $? -ne 0 ]; then
-  echo "❌ Docker push failed."
-  exit 1
-fi
-
-
-# # !/bin/bash
-
-# === CONFIGURATION ===
-DOCKER_HUB_USER="nnikolovskii"
-IMAGE_NAME="gc-backend"
-TAG="latest"
-FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_NAME}:${TAG}"
-
-BUILD_DIR="/home/nnikolovskii/dev/general-chat/backend"
-# =====================
-
-echo "=== Building Docker image from $BUILD_DIR ==="
-docker build -t $FULL_IMAGE_NAME -f ${BUILD_DIR}/Dockerfile ${BUILD_DIR}
-
-if [ $? -ne 0 ]; then
- echo "❌ Docker build failed."
+ echo "❌ Deployment failed."
  exit 1
 fi
 
-echo "=== Pushing image to Docker Hub ==="
-docker push $FULL_IMAGE_NAME
-
-if [ $? -ne 0 ]; then
- echo "❌ Docker push failed."
- exit 1
-fi
-
-
-# #!/bin/bash
-
-# === CONFIGURATION ===
-DOCKER_HUB_USER="nnikolovskii"
-IMAGE_NAME="gc-ai"
-TAG="latest"
-FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_NAME}:${TAG}"
-
-BUILD_DIR="/home/nnikolovskii/dev/general-chat/ai-agent"
-# =====================
-
-echo "=== Building Docker image from $BUILD_DIR ==="
-docker build -t $FULL_IMAGE_NAME -f ${BUILD_DIR}/Dockerfile ${BUILD_DIR}
-
-if [ $? -ne 0 ]; then
- echo "❌ Docker build failed."
- exit 1
-fi
-
-echo "=== Pushing image to Docker Hub ==="
-docker push $FULL_IMAGE_NAME
-
-if [ $? -ne 0 ]; then
- echo "❌ Docker push failed."
- exit 1
-fi
+echo "✅ All services built, pushed, and deployed successfully."

@@ -52,7 +52,7 @@ const EditableSpan: React.FC<{
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 disabled={disabled}
-                className={`font-semibold text-primary bg-transparent border-b border-dashed border-primary/50 focus:outline-none focus:border-solid focus:border-primary resize-none align-text-top overflow-hidden transition-all duration-300 ease-in-out ${
+                className={`font-semibold bg-transparent border-b border-dashed border-primary/50 focus:outline-none focus:border-solid focus:border-primary resize-none align-text-top overflow-hidden transition-all duration-300 ease-in-out ${
                     isExpanded
                         ? 'block w-full p-3 border-2 border-primary rounded-lg bg-card/80 shadow-sm mb-3 max-h-64'
                         : `${fullWidth ? 'block w-full' : 'inline-block min-w-[150px] max-w-[450px]'} max-h-24 overflow-y-auto leading-relaxed rounded px-2 py-1`
@@ -239,7 +239,7 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                     ) : (
                         <div className="space-y-8">
                             <div className="space-y-3">
-                                <p className="text-lg text-foreground font-medium">What is your idea?</p>
+                                <p className="text-lg text-muted-foreground font-medium">What is your idea?</p>
                                 <EditableSpan
                                     value={proposition.what || ''}
                                     onChange={(val) => handleFieldChange('what', val)}
@@ -250,7 +250,7 @@ const IdeaCanvasView: React.FC<IdeaCanvasViewProps> = ({ notebookId: propNoteboo
                             </div>
 
                             <div className="space-y-3">
-                                <p className="text-lg text-foreground font-medium">Why does it matter?</p>
+                                <p className="text-lg text-muted-foreground font-medium">Why does it matter?</p>
                                 <EditableSpan
                                     value={proposition.why || ''}
                                     onChange={(val) => handleFieldChange('why', val)}

@@ -21,6 +21,7 @@ interface LayoutProps {
     title: string;
     chatSessions: ChatSession[];
     currentChatId: string | null;
+    currentChat?: ChatSession | null;
     loadingChats: boolean;
     creatingChat: boolean;
     isTyping: boolean;
@@ -43,6 +44,7 @@ const Layout: React.FC<LayoutProps> = ({
                                            title,
                                            chatSessions,
                                            currentChatId,
+                                           currentChat,
                                            loadingChats,
                                            creatingChat,
                                            isAuthenticated,
@@ -120,11 +122,13 @@ const Layout: React.FC<LayoutProps> = ({
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col h-full min-w-0 relative">
+                {/* Mobile Header */}
                 <div className="md:hidden">
                     <ChatHeader
                         title={title}
                         onMenuClick={() => setIsSidebarOpen(true)}
                         onSettingsClick={handleOpenAIModelsSettings}
+                        currentChat={currentChat}
                     />
                 </div>
 

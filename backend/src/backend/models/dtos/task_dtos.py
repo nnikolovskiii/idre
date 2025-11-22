@@ -29,6 +29,7 @@ class TaskBase(BaseModel):
     tags: Optional[List[str]] = Field(default_factory=list, description="Task tags")
     due_date: Optional[date] = Field(None, description="Task due date")
     position: Optional[int] = Field(0, description="Task position in column")
+    archived: Optional[bool] = Field(False, description="Whether task is archived")
 
     @validator('tags')
     def validate_tags(cls, v):
@@ -76,6 +77,11 @@ class TaskMoveRequest(BaseModel):
 class TaskReorderRequest(BaseModel):
     """Schema for reordering tasks within the same column."""
     position: int = Field(..., description="New position in current column")
+
+
+class TaskArchiveRequest(BaseModel):
+    """Schema for archive operations (empty body)."""
+    pass
 
 
 class TaskResponse(TaskBase):

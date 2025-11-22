@@ -1,29 +1,49 @@
-FROM python:3.10-slim
+# ===== Build Stage =====
+FROM python:3.10-slim as builder
 
 WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
 RUN pip install poetry
 
-# Configure Poetry to not create a virtual environment
-RUN poetry config virtualenvs.create false
+# Configure Poetry to create a virtual environment
+RUN poetry config virtualenvs.create true
+RUN poetry config virtualenvs.in-project true
 
-
-# === Dependency Layer ===
-# Copy only the files needed to install dependencies
+# Copy dependency files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies ONLY. This layer will be cached by Docker,
-# making subsequent builds much faster if your dependencies don't change.
+# Update lock file first (since we changed pyproject.toml)
+RUN poetry lock
+
+# Install dependencies to the isolated virtual environment
 RUN poetry install --only=main --no-root
 
 
-# === Application Layer ===
-# Now copy the rest of your application code
+# ===== Runtime Stage =====
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
 COPY . .
 
 # Tell Python to also look for modules in the /app/src directory
 ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+# Use the virtual environment
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose the port the app runs on
 EXPOSE 8000

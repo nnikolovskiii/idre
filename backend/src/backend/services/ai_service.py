@@ -107,11 +107,15 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        # Require API key for all AI operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
         encoded_audio_data = base64.b64encode(file_data).decode('utf-8')
 
         run_input = {
             "light_model": notebook_model.model.name,
-            "api_key": model_api.value if model_api else None,
+            "api_key": model_api.value,
             "audio_data_base64": encoded_audio_data,
             "filename": filename,
             "content_type": content_type
@@ -152,9 +156,13 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        # Require API key for all AI operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
         run_input = {
             "light_model": notebook_model.model.name,
-            "api_key": model_api.value if model_api else None,
+            "api_key": model_api.value,
             "first_message": request.first_message,
         }
 
@@ -189,9 +197,13 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        # Require API key for all AI operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
         run_input = {
             "light_model": notebook_model.model.name,
-            "api_key": model_api.value if model_api else None,
+            "api_key": model_api.value,
             "messages": messages,
         }
 
@@ -227,9 +239,13 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        # Require API key for all AI operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
         run_input = {
             "light_model": notebook_model.model.name,
-            "api_key": model_api.value if model_api else None,
+            "api_key": model_api.value,
             "doc_content": doc_content,
         }
 

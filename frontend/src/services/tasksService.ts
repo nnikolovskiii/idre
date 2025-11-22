@@ -33,6 +33,7 @@ export interface TaskBase {
     tags?: string[];
     due_date?: string; // ISO date string
     position?: number;
+    archived?: boolean;
 }
 
 /**
@@ -88,6 +89,25 @@ export interface TaskResponse extends TaskBase {
     status_display?: string;
     priority_display?: string;
     is_overdue?: boolean;
+}
+
+/**
+ * Alias for TaskResponse - the main Task interface used throughout the app
+ */
+export interface Task extends TaskResponse {}
+
+/**
+ * Task archive request interface
+ */
+export interface TaskArchiveRequest {}
+
+/**
+ * Task operation response interface
+ */
+export interface TaskOperationResponse {
+    status: string;
+    message: string;
+    task?: TaskResponse;
 }
 
 /**
@@ -170,6 +190,7 @@ export const TasksService = {
             tags?: string[];
             limit?: number;
             offset?: number;
+            includeArchived?: boolean;
         }
     ): Promise<TasksListResponse> {
         const params = new URLSearchParams();
@@ -179,6 +200,7 @@ export const TasksService = {
         if (filters?.tags?.length) params.append('tags', filters.tags.join(','));
         if (filters?.limit) params.append('limit', filters.limit.toString());
         if (filters?.offset) params.append('offset', filters.offset.toString());
+        if (filters?.includeArchived) params.append('include_archived', 'true');
 
         const url = params.toString() ? `${API_BASE_URL}/${notebookId}?${params}` : `${API_BASE_URL}/${notebookId}`;
         const response = await apiFetch(url);
@@ -276,6 +298,32 @@ export const TasksService = {
     },
 
     /**
+     * Archives a task.
+     * Corresponds to: PUT /tasks/task/{task_id}/archive
+     * @param taskId The UUID of the task to archive.
+     */
+    async archiveTask(taskId: string): Promise<TaskOperationResponse> {
+        const response = await apiFetch(`${API_BASE_URL}/task/${taskId}/archive`, {
+            method: 'PUT',
+            body: JSON.stringify({}),
+        });
+        return response.json();
+    },
+
+    /**
+     * Unarchives a task.
+     * Corresponds to: PUT /tasks/task/{task_id}/unarchive
+     * @param taskId The UUID of the task to unarchive.
+     */
+    async unarchiveTask(taskId: string): Promise<TaskOperationResponse> {
+        const response = await apiFetch(`${API_BASE_URL}/task/${taskId}/unarchive`, {
+            method: 'PUT',
+            body: JSON.stringify({}),
+        });
+        return response.json();
+    },
+
+    /**
      * Searches tasks with advanced filtering.
      * Corresponds to: POST /tasks/{notebook_id}/search
      * @param notebookId The UUID of the parent notebook.
@@ -352,7 +400,8 @@ export const convertTaskResponse = (taskResponse: TaskResponse) => {
         updatedAt: taskResponse.updated_at,
         statusDisplay: taskResponse.status_display,
         priorityDisplay: taskResponse.priority_display,
-        isOverdue: taskResponse.is_overdue
+        isOverdue: taskResponse.is_overdue,
+        archived: taskResponse.archived || false
     };
 };
 

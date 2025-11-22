@@ -1,6 +1,8 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import asc
 from backend.models.generative_model import GenerativeModel
+from backend.models.dtos.generative_model_dto import GenerativeModelDTO, ModelListResponse
 from backend.repositories.generative_model_repository import GenerativeModelRepository
 
 
@@ -13,12 +15,13 @@ class GenerativeModelService:
         self.session = session
         self.repo = generative_model_repository
 
-    async def create_model(self, name: str, model_type: str, is_open_access: bool = True) -> GenerativeModel:
+    # REMOVED: delete_all_models (It is unsafe for Foreign Keys)
+
+    async def create_model(self, name: str, model_type: str) -> GenerativeModel:
         """Creates a generative model and commits the transaction."""
         generative_model = await self.repo.create(
             name=name,
-            type=model_type,
-            is_open_access=is_open_access
+            type=model_type
         )
         await self.session.commit()
         await self.session.refresh(generative_model)
@@ -82,16 +85,74 @@ class GenerativeModelService:
         """Deactivates a generative model."""
         return await self.update_model_active_status(model_id, False)
 
-    # Add this method to GenerativeModelService class
-    async def get_unique_model_names(self, open_access: bool) -> List[str]:
+    async def get_unique_model_names(self) -> List[str]:
         """
-        Returns a dictionary with two lists of unique model names:
-        - 'open_access': List of model names with is_open_access=True
-        - 'all': List of all model names regardless of access status
+        Returns a list of unique model names.
+        All models now require API keys.
         """
-        if not open_access:
-            all_models = await self.repo.list_all()
-            return list(set(model.name for model in all_models))
-        else:
-            open_access_models = await self.repo.get_by_access_status(True)
-            return list(set(model.name for model in open_access_models))
+        all_models = await self.repo.list_all()
+        return list(set(model.name for model in all_models))
+
+    async def get_models_with_recommendations(self) -> ModelListResponse:
+        """
+        Returns all models with recommendation metadata, sorted by:
+        1. Recommended models first (by recommendation_order)
+        2. Other models alphabetically by name
+        """
+        all_models = await self.repo.list_all()
+
+        # Sort models: recommended first, then by order, then alphabetically
+        sorted_models = sorted(
+            all_models,
+            key=lambda model: (
+                not model.is_recommended,  # False (recommended) comes before True (not recommended)
+                model.recommendation_order if model.recommendation_order is not None else float('inf'),
+                model.name.lower()
+            )
+        )
+
+        # Convert to DTOs
+        model_dtos = [GenerativeModelDTO.model_validate(model) for model in sorted_models]
+
+        return ModelListResponse(models=model_dtos)
+
+    async def get_models_with_recommendations_by_type(self, model_type: str) -> ModelListResponse:
+        """
+        Returns models of a specific type with recommendation metadata, sorted by:
+        1. Recommended models first (by recommendation_order)
+        2. Other models alphabetically by name
+        """
+        models_by_type = await self.repo.get_by_type(model_type)
+
+        # Sort models: recommended first, then by order, then alphabetically
+        sorted_models = sorted(
+            models_by_type,
+            key=lambda model: (
+                not model.is_recommended,  # False (recommended) comes before True (not recommended)
+                model.recommendation_order if model.recommendation_order is not None else float('inf'),
+                model.name.lower()
+            )
+        )
+
+        # Convert to DTOs
+        model_dtos = [GenerativeModelDTO.model_validate(model) for model in sorted_models]
+
+        return ModelListResponse(models=model_dtos)
+
+    async def set_recommendation(self, model_name: str, model_type: str, is_recommended: bool,
+                               recommendation_order: Optional[int] = None,
+                               recommendation_reason: Optional[str] = None) -> Optional[GenerativeModel]:
+        """
+        Sets or updates recommendation status for a model.
+        """
+        model = await self.repo.get_by_name_and_type(model_name, model_type)
+        if not model:
+            return None
+
+        update_data = {
+            'is_recommended': is_recommended,
+            'recommendation_order': recommendation_order if is_recommended else None,
+            'recommendation_reason': recommendation_reason if is_recommended else None
+        }
+
+        return await self.update_model(str(model.id), update_data)

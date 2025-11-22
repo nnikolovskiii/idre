@@ -53,7 +53,8 @@ class TaskRepository:
         priority: Optional[TaskPriority] = None,
         tags: Optional[List[str]] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        include_archived: bool = False
     ) -> List[Task]:
         """
         Retrieve tasks for a specific user with optional filters,
@@ -74,6 +75,9 @@ class TaskRepository:
             # Filter tasks that contain ANY of the specified tags
             query = query.where(Task.tags.overlap(tags))
 
+        if not include_archived:
+            query = query.where(Task.archived == False)
+
         query = query.order_by(Task.status, Task.position, Task.created_at.desc())
         query = query.limit(limit).offset(offset)
 
@@ -92,19 +96,23 @@ class TaskRepository:
         self,
         user_id: str,
         notebook_id: str,
-        status: TaskStatus
+        status: TaskStatus,
+        include_archived: bool = False
     ) -> List[Task]:
         """
         Get all tasks for a user in a specific notebook and status,
         ordered by position.
         """
-        query = select(Task).where(
-            and_(
-                Task.user_id == user_id,
-                Task.notebook_id == notebook_id,
-                Task.status == status
-            )
-        ).order_by(Task.position)
+        conditions = [
+            Task.user_id == user_id,
+            Task.notebook_id == notebook_id,
+            Task.status == status
+        ]
+
+        if not include_archived:
+            conditions.append(Task.archived == False)
+
+        query = select(Task).where(and_(*conditions)).order_by(Task.position)
 
         result = await self.session.execute(query)
         return result.scalars().all()
@@ -313,7 +321,8 @@ class TaskRepository:
         has_due_date: Optional[bool] = None,
         is_overdue: Optional[bool] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        include_archived: bool = False
     ) -> List[Task]:
         """
         Search tasks with multiple filter criteria.
@@ -365,6 +374,9 @@ class TaskRepository:
                 )
             )
 
+        if not include_archived:
+            base_query = base_query.where(Task.archived == False)
+
         base_query = base_query.order_by(Task.status, Task.position, Task.created_at.desc())
         base_query = base_query.limit(limit).offset(offset)
 
@@ -375,7 +387,8 @@ class TaskRepository:
         self,
         user_id: str,
         notebook_id: Optional[str] = None,
-        status: Optional[TaskStatus] = None
+        status: Optional[TaskStatus] = None,
+        include_archived: bool = False
     ) -> int:
         """
         Count tasks for a user with optional filters.
@@ -387,6 +400,9 @@ class TaskRepository:
 
         if status:
             query = query.where(Task.status == status)
+
+        if not include_archived:
+            query = query.where(Task.archived == False)
 
         result = await self.session.execute(query)
         return result.scalar() or 0

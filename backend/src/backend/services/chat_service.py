@@ -209,10 +209,14 @@ class ChatService:
         models_dict = {chat_model.model.type: chat_model.model.name for chat_model in chat_obj.models}
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
+        # Require API key for all chat operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
         run_input = {
             "light_model": models_dict.get("light"),
             "heavy_model": models_dict.get("heavy"),
-            "api_key": model_api.value if model_api else None,
+            "api_key": model_api.value,
             "web_search": chat_obj.web_search,
         }
 

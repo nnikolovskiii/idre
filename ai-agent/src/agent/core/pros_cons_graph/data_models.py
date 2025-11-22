@@ -1,6 +1,9 @@
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Annotated
 from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, Field
+
+from agent.core.messages_utils import manage_messages
+
 
 class ProsConsPositiveAnalysis(BaseModel):
     analysis: str = Field(..., description="Positive analysis")
@@ -19,7 +22,7 @@ class ProsConsGraphState(TypedDict):
     heavy_model: Optional[str]
 
     # Processing
-    messages: list[BaseMessage]
+    messages: Annotated[list[BaseMessage], manage_messages]
     processed_input: Optional[str]
     enhanced_transcript: Optional[str]
     context: Optional[str]

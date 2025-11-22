@@ -12,6 +12,7 @@ from backend.models.dtos.task_dtos import (
     TaskUpdateRequest,
     TaskMoveRequest,
     TaskReorderRequest,
+    TaskArchiveRequest,
     TaskSearchRequest,
     TaskResponse,
     TasksListResponse,
@@ -30,6 +31,7 @@ async def get_tasks(
     status: Optional[str] = Query(None, description="Filter by task status"),
     priority: Optional[str] = Query(None, description="Filter by task priority"),
     tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
+    include_archived: bool = Query(False, description="Include archived tasks"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip")
 ):
@@ -71,7 +73,8 @@ async def get_tasks(
             priority=priority_filter,
             tags=tags_filter,
             limit=limit,
-            offset=offset
+            offset=offset,
+            include_archived=include_archived
         )
 
         task_responses = [task_service.task_to_response(task) for task in tasks]
@@ -303,6 +306,102 @@ async def delete_task(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.put("/task/{task_id}/archive")
+async def archive_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service)
+):
+    """
+    Archive a task.
+    """
+    try:
+        task = await task_service.archive_task(
+            user_id=str(current_user.user_id),
+            task_id=task_id
+        )
+
+        if not task:
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found or access denied"
+            )
+
+        # Send SSE notification
+        await _send_task_sse_notification(task, "archived", task_service)
+
+        return TaskOperationResponse(
+            status="success",
+            message="Task archived successfully",
+            task=task_service.task_to_response(task)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.put("/task/{task_id}/unarchive")
+async def unarchive_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service)
+):
+    """
+    Unarchive a task.
+    """
+    try:
+        task = await task_service.unarchive_task(
+            user_id=str(current_user.user_id),
+            task_id=task_id
+        )
+
+        if not task:
+            raise HTTPException(
+                status_code=404,
+                detail="Task not found or access denied"
+            )
+
+        # Send SSE notification
+        await _send_task_sse_notification(task, "unarchived", task_service)
+
+        return TaskOperationResponse(
+            status="success",
+            message="Task unarchived successfully",
+            task=task_service.task_to_response(task)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+async def _send_task_sse_notification(task, action: str, task_service: TaskService):
+    """
+    Send SSE notification for task operations.
+    """
+    try:
+        from backend.container import container
+
+        redis_client = container.redis_client()
+        channel = f"sse:tasks:{str(task.notebook_id)}"
+
+        notification = {
+            "type": "task_updated",
+            "action": action,
+            "task_id": str(task.id),
+            "notebook_id": str(task.notebook_id),
+            "data": task_service.task_to_response(task).dict()
+        }
+
+        await redis_client.publish(channel, json.dumps(notification))
+    except Exception:
+        # Don't fail the operation if SSE notification fails
+        pass
 
 
 @router.post("/{notebook_id}/search")

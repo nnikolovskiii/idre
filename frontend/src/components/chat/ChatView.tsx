@@ -95,6 +95,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
             title={currentChat?.title || "AI Assistant"}
             chatSessions={chatSessions}
             currentChatId={currentChatId}
+            currentChat={currentChat}
             loadingChats={loadingChats}
             creatingChat={creatingChat}
             isTyping={isTyping}

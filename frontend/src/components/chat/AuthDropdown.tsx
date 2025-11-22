@@ -43,19 +43,18 @@ const AuthDropdown: React.FC<AuthDropdownProps> = ({
             <div className="flex flex-col gap-1 mt-2">
               {isAuthenticated ? (
                   <>
-                    {user && (
-                        <div className="flex items-center gap-3 p-3 bg-neutral-100 rounded-md text-neutral-700">
-                          <User size={24} className="flex-shrink-0" />
-                          <div>
-                            <div className="font-semibold text-sm">
-                              {user.name && user.surname
-                                  ? `${user.name} ${user.surname}`
-                                  : user.username}
-                            </div>
-                            <div className="text-xs text-neutral-500">{user.email}</div>
+                      {user && (
+                          <div className="flex w-full justify-start items-start gap-3 p-3 rounded-md text-left">
+                              <div>
+                                  <div className="font-semibold text-sm">
+                                      {user.name && user.surname
+                                          ? `${user.name} ${user.surname}`
+                                          : user.username}
+                                  </div>
+                                  <div className="text-xs text-neutral-500">{user.email}</div>
+                              </div>
                           </div>
-                        </div>
-                    )}
+                      )}
                     <button
                         className="flex items-center gap-3 w-full text-left p-2.5 px-3 rounded-md text-sm font-medium text-red-600 transition-all hover:bg-red-600 hover:text-white"
                         onClick={() => {

@@ -8,6 +8,7 @@ from sqlalchemy import (
     Text,
     DateTime,
     Integer,
+    Boolean,
     func,
     ARRAY
 )
@@ -52,6 +53,9 @@ class Task(Base):
 
     # Kanban board positioning
     position = Column(Integer, nullable=False, default=0)
+
+    # Archive status
+    archived = Column(Boolean, nullable=False, default=False)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -101,6 +105,7 @@ class Task(Base):
             'tags': self.tags or [],
             'due_date': self.due_date.isoformat() if self.due_date else None,
             'position': self.position,
+            'archived': self.archived,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'status_display': self.status_display,

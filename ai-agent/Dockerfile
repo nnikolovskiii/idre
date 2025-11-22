@@ -1,9 +1,7 @@
 FROM langchain/langgraph-api:3.11-wolfi
 
-
-
 # -- Adding local package . --
-ADD . /deps/ai-agent
+COPY . /deps/ai-agent
 # -- End of local package . --
 
 # -- Installing all local dependencies --
