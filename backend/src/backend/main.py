@@ -22,6 +22,7 @@ from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
 from backend.api.routes import propositions_route
 from backend.api.routes import tasks_route
+from backend.api.routes import whiteboards_route
 
 # --- Import the sync function ---
 from backend.utils.populate_generative_models import sync_models_to_database
@@ -155,6 +156,7 @@ app.include_router(notebooks_router, prefix="/notebooks", tags=["Notebooks"])
 
 app.include_router(propositions_route.router, prefix="/propositions", tags=["Propositions"])
 app.include_router(tasks_route.router, prefix="/tasks", tags=["Tasks"])
+app.include_router(whiteboards_route.router, prefix="/whiteboards", tags=["Whiteboards"])
 
 
 @app.get("/")

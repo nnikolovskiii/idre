@@ -15,11 +15,13 @@ from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.generative_model_repository import GenerativeModelRepository
 from backend.repositories.app_settings_repository import AppSettingsRepository
 from backend.repositories.task_repository import TaskRepository
+from backend.repositories.whiteboard_repository import WhiteboardRepository
 from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.fernet_service import FernetService
 from backend.services.file_service import FileService
 from backend.services.task_service import TaskService
+from backend.services.whiteboard_service import WhiteboardService
 from backend.services.model_api_service import ModelApiService
 from backend.services.chat_service import ChatService
 from backend.services.notebook_service import NotebookService
@@ -281,6 +283,25 @@ def get_task_service(
     return container.task_service(
         session=session,
         task_repository=task_repo
+    )
+
+
+# --- Whiteboard Dependencies ---
+def get_whiteboard_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> WhiteboardRepository:
+    """Dependency provider for the WhiteboardRepository."""
+    return container.whiteboard_repository(session=session)
+
+
+def get_whiteboard_service(
+        session: AsyncSession = Depends(get_db_session),
+        whiteboard_repo: WhiteboardRepository = Depends(get_whiteboard_repository)
+) -> WhiteboardService:
+    """Dependency provider for the WhiteboardService."""
+    return container.whiteboard_service(
+        session=session,
+        whiteboard_repository=whiteboard_repo
     )
 
 

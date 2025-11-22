@@ -22,6 +22,7 @@ from backend.repositories.proposition_repository import PropositionRepository
 from backend.repositories.task_repository import TaskRepository
 from backend.repositories.thread_repository import ThreadRepository
 from backend.repositories.user_repository import UserRepository
+from backend.repositories.whiteboard_repository import WhiteboardRepository
 from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.chat_model_service import ChatModelService
@@ -37,6 +38,7 @@ from backend.services.task_service import TaskService
 from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 from backend.services.notebook_service import NotebookService
+from backend.services.whiteboard_service import WhiteboardService
 
 load_dotenv()
 
@@ -109,6 +111,13 @@ class Container(containers.DeclarativeContainer):
     task_service = providers.Factory(
         TaskService,
         task_repository=task_repository,
+    )
+
+    whiteboard_repository = providers.Factory(WhiteboardRepository)
+
+    whiteboard_service = providers.Factory(
+        WhiteboardService,
+        whiteboard_repository=whiteboard_repository,
     )
 
     app_settings_repository = providers.Factory(AppSettingsRepository)

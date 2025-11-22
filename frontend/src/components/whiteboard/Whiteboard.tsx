@@ -9,11 +9,17 @@ import {
     ReactFlowProvider,
     useReactFlow,
     useViewport,
+    getBezierPath,
+    BaseEdge,
+    useInternalNode, // Necessary for floating edge logic
+    Position,
     type Node,
     type Edge,
     type NodeChange,
     type EdgeChange,
     type Connection,
+    type EdgeProps,
+    type InternalNode
 } from '@xyflow/react';
 import { Undo2, Redo2, Plus, Trash2, Download, Save } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
@@ -23,6 +29,153 @@ import '@xyflow/react/dist/style.css';
 import IdeaNode from './IdeaNode';
 import TopicNode from './TopicNode';
 import NoteNode from './NoteNode';
+import EditPanel from './EditPanel';
+import { whiteboardApi, type CreateChildNodeRequest } from '../../api/whiteboardApi';
+
+// --- FLOATING EDGE MATH HELPERS ---
+
+// Get the center of a node
+function getNodeCenter(node: InternalNode) {
+    return {
+        x: node.position.x + (node.measured?.width || 0) / 2,
+        y: node.position.y + (node.measured?.height || 0) / 2,
+    };
+}
+
+// Calculate where the edge should intersect the node border
+function getEdgeParams(source: InternalNode, target: InternalNode) {
+    const sourceCenter = getNodeCenter(source);
+    const targetCenter = getNodeCenter(target);
+
+    return {
+        sx: sourceCenter.x,
+        sy: sourceCenter.y,
+        tx: targetCenter.x,
+        ty: targetCenter.y,
+        sourcePos: getPosition(sourceCenter, targetCenter),
+        targetPos: getPosition(targetCenter, sourceCenter),
+    };
+}
+
+// Calculate which side of the node is closest
+function getPosition(centerA: { x: number; y: number }, centerB: { x: number; y: number }): Position {
+    const dx = centerB.x - centerA.x;
+    const dy = centerB.y - centerA.y;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        return dx > 0 ? Position.Right : Position.Left;
+    }
+    return dy > 0 ? Position.Bottom : Position.Top;
+}
+
+// Calculate the exact intersection point on the node border
+function getSmartEdgeParams(source: InternalNode, target: InternalNode) {
+    const { sx, sy, tx, ty, sourcePos, targetPos } = getEdgeParams(source, target);
+
+    const sourceIntersection = getNodeIntersection(source, tx, ty);
+    const targetIntersection = getNodeIntersection(target, sx, sy);
+
+    return {
+        sx: sourceIntersection.x,
+        sy: sourceIntersection.y,
+        tx: targetIntersection.x,
+        ty: targetIntersection.y,
+        sourcePos,
+        targetPos,
+    };
+}
+
+function getNodeIntersection(node: InternalNode, targetX: number, targetY: number) {
+    const w = (node.measured?.width || 0) / 2;
+    const h = (node.measured?.height || 0) / 2;
+    const x2 = node.position.x + w;
+    const y2 = node.position.y + h;
+    const dx = targetX - x2;
+    const dy = targetY - y2;
+    const tan = dy / dx;
+
+    let x, y;
+
+    if (Math.abs(dx) * h > Math.abs(dy) * w) {
+        // Left or Right
+        if (dx > 0) {
+            x = x2 + w;
+            y = y2 + w * tan;
+        } else {
+            x = x2 - w;
+            y = y2 - w * tan;
+        }
+    } else {
+        // Top or Bottom
+        if (dy > 0) {
+            y = y2 + h;
+            x = x2 + h / tan;
+        } else {
+            y = y2 - h;
+            x = x2 - h / tan;
+        }
+    }
+
+    return { x, y };
+}
+
+// --- CUSTOM EDGE COMPONENT ---
+
+const HierarchyEdge = ({ id, source, target, selected }: EdgeProps) => {
+    // Get the full node objects to calculate dimensions
+    const sourceNode = useInternalNode(source);
+    const targetNode = useInternalNode(target);
+
+    if (!sourceNode || !targetNode) {
+        return null;
+    }
+
+    const { sx, sy, tx, ty, sourcePos, targetPos } = getSmartEdgeParams(sourceNode, targetNode);
+
+    const [edgePath] = getBezierPath({
+        sourceX: sx,
+        sourceY: sy,
+        sourcePosition: sourcePos,
+        targetX: tx,
+        targetY: ty,
+        targetPosition: targetPos,
+    });
+
+    const markerId = `arrowhead-${id}`;
+
+    return (
+        <>
+            <defs>
+                <marker
+                    id={markerId}
+                    markerWidth="5"
+                    markerHeight="5"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerUnits="strokeWidth"
+                    orient="auto"
+                >
+                    <path
+                        d="M 0 0 L 10 5 L 0 10 z"
+                        className={`whiteboard-arrow ${selected ? 'selected' : ''}`}
+                    />
+                </marker>
+            </defs>
+            <BaseEdge
+                id={id}
+                path={edgePath}
+                markerEnd={`url(#${markerId})`}
+            />
+        </>
+    );
+};
+
+const edgeTypes = {
+    'parent-child': HierarchyEdge,
+    'default': HierarchyEdge,
+    'regular': HierarchyEdge,
+};
 
 const nodeTypes = {
     ideaNode: IdeaNode,
@@ -30,89 +183,82 @@ const nodeTypes = {
     noteNode: NoteNode,
 };
 
-// Updated initialNodes to include data for controlled components
-const initialNodes: Node[] = [
-    {
-        id: '1',
-        type: 'ideaNode',
-        position: { x: 100, y: 300 },
-        data: { idea: 'how can I make a successful saas' },
-    },
-    {
-        id: '2',
-        type: 'topicNode',
-        position: { x: 500, y: 100 },
-        data: {
-            topics: [
-                "Unlocking SaaS Success: 10 Proven Strategies for Rapid Growth",
-                "The SaaS Revolution: How to Scale Your Business Like a Pro",
-            ],
-        },
-    },
-];
+// ... Rest of the file is standard structure (Toolbar, WhiteboardComponent, etc.) ...
+// Keep initialNodes, initialEdges, WhiteboardProps, Toolbar, ZoomControls, WhiteboardComponent exactly as they were in previous responses
+// Only change was the imports at the top and the helper functions + HierarchyEdge definition above.
 
-const initialEdges: Edge[] = [
-    { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: 'var(--border)' } },
-];
+const initialNodes: Node[] = [];
+const initialEdges: Edge[] = [];
 
 type FlowState = {
     nodes: Node[];
     edges: Edge[];
 };
 
-const Toolbar = ({ onAddIdeaNode, onAddTopicNode, onAddNoteNode, onDeleteSelected, onSave, onExport }: {
-    onAddIdeaNode: () => void;
-    onAddTopicNode: () => void;
-    onAddNoteNode: () => void;
-    onDeleteSelected: () => void;
-    onSave: () => void;
-    onExport: () => void;
-}) => (
+interface WhiteboardProps {
+    initialContent?: {
+        nodes?: Node[];
+        edges?: Edge[];
+    };
+    onContentChange?: (content: { nodes: Node[]; edges: Edge[] }) => void;
+    whiteboardId?: string;
+}
+
+const Toolbar = ({ onAddIdeaNode, onAddTopicNode, onAddNoteNode, onDeleteSelected, onSave, onExport }: any) => (
     <div className="absolute top-6 left-6 bg-card rounded-lg shadow-sm flex items-center gap-2 p-2 border border-border z-10">
-        <button onClick={onAddIdeaNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors" title="Add Idea Node">
+        <button onClick={onAddIdeaNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
             <Plus size={16} /> <span>Idea</span>
         </button>
-        <button onClick={onAddTopicNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors" title="Add Topic Node">
+        <button onClick={onAddTopicNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
             <Plus size={16} /> <span>Topic</span>
         </button>
-        <button onClick={onAddNoteNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors" title="Add Note Node">
+        <button onClick={onAddNoteNode} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
             <Plus size={16} /> <span>Note</span>
         </button>
         <div className="w-px h-6 bg-border mx-1"></div>
-        <button onClick={onDeleteSelected} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Delete Selected">
+        <button onClick={onDeleteSelected} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors">
             <Trash2 size={16} /> <span>Delete</span>
         </button>
         <div className="w-px h-6 bg-border mx-1"></div>
-        <button onClick={onSave} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors" title="Save Whiteboard">
+        <button onClick={onSave} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
             <Save size={16} /> <span>Save</span>
         </button>
-        <button onClick={onExport} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors" title="Export Whiteboard">
+        <button onClick={onExport} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
             <Download size={16} /> <span>Export</span>
         </button>
     </div>
 );
 
-const ZoomControls = ({ onUndo, onRedo, canUndo, canRedo }: { onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean; }) => {
+const ZoomControls = ({ onUndo, onRedo, canUndo, canRedo }: any) => {
     const { zoomIn, zoomOut } = useReactFlow();
     const { zoom } = useViewport();
-
     return (
         <div className="absolute bottom-6 left-6 bg-card rounded-lg shadow-sm flex items-center text-sm font-medium border border-border z-10">
             <button onClick={() => zoomOut()} className="p-2.5 text-muted-foreground hover:text-foreground">-</button>
             <span className="p-2.5 text-foreground w-14 text-center">{Math.round(zoom * 100)}%</span>
             <button onClick={() => zoomIn()} className="p-2.5 text-muted-foreground hover:text-foreground">+</button>
             <div className="w-px h-5 bg-border mx-1"></div>
-            <button onClick={onUndo} disabled={!canUndo} className="p-2.5 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"><Undo2 size={16} /></button>
-            <button onClick={onRedo} disabled={!canRedo} className="p-2.5 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"><Redo2 size={16} /></button>
+            <button onClick={onUndo} disabled={!canUndo} className="p-2.5 text-muted-foreground hover:text-foreground disabled:opacity-50"><Undo2 size={16} /></button>
+            <button onClick={onRedo} disabled={!canRedo} className="p-2.5 text-muted-foreground hover:text-foreground disabled:opacity-50"><Redo2 size={16} /></button>
         </div>
     );
 };
 
-const WhiteboardComponent: React.FC = () => {
-    const [nodes, setNodes] = useState<Node[]>(initialNodes);
-    const [edges, setEdges] = useState<Edge[]>(initialEdges);
-    const [history, setHistory] = useState<FlowState[]>([]);
-    const [historyIndex, setHistoryIndex] = useState(-1);
+const WhiteboardComponent: React.FC<WhiteboardProps> = ({
+                                                            initialContent,
+                                                            onContentChange,
+                                                            whiteboardId
+                                                        }) => {
+    const getInitialState = (): FlowState => ({
+        nodes: initialContent?.nodes || initialNodes,
+        edges: initialContent?.edges || initialEdges,
+    });
+
+    const [nodes, setNodes] = useState<Node[]>(getInitialState().nodes);
+    const [edges, setEdges] = useState<Edge[]>(getInitialState().edges);
+    const [history, setHistory] = useState<FlowState[]>([getInitialState()]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     const pushToHistory = useCallback((state: FlowState) => {
         const newHistory = history.slice(0, historyIndex + 1);
@@ -127,55 +273,88 @@ const WhiteboardComponent: React.FC = () => {
         pushToHistory(newState);
     }, [pushToHistory]);
 
-    const undo = useCallback(() => {
-        if (historyIndex > 0) {
-            const prevState = history[historyIndex - 1];
-            setNodes(prevState.nodes);
-            setEdges(prevState.edges);
-            setHistoryIndex(historyIndex - 1);
-        }
-    }, [history, historyIndex]);
+    const handleEditNode = useCallback((id: string) => {
+        setEditingNodeId(id);
+    }, []);
 
-    const redo = useCallback(() => {
-        if (historyIndex < history.length - 1) {
-            const nextState = history[historyIndex + 1];
-            setNodes(nextState.nodes);
-            setEdges(nextState.edges);
-            setHistoryIndex(historyIndex + 1);
-        }
-    }, [history, historyIndex]);
+    const updateNodeData = useCallback((nodeId: string, data: object) => {
+        setNodes((nds) => {
+            const newNodes = nds.map((node) => {
+                if (node.id === nodeId) {
+                    return { ...node, data: { ...node.data, ...data } };
+                }
+                return node;
+            });
+            return newNodes;
+        });
+    }, []);
 
-    useEffect(() => {
+    const handlePanelClose = () => {
+        setEditingNodeId(null);
+        pushToHistory({ nodes, edges });
+    };
+
+    const handleCreateChildNode = useCallback(async (parentId: string, nodeType: 'ideaNode' | 'topicNode' | 'noteNode') => {
+        if (!whiteboardId) return;
+
         try {
-            const savedData = localStorage.getItem('whiteboard-data');
-            if (savedData) {
-                const { nodes: savedNodes, edges: savedEdges } = JSON.parse(savedData);
-                const initialState = { nodes: savedNodes, edges: savedEdges };
-                setNodes(savedNodes);
-                setEdges(savedEdges);
-                setHistory([initialState]);
-                setHistoryIndex(0);
-            } else {
-                const initialState = { nodes: initialNodes, edges: initialEdges };
-                setHistory([initialState]);
-                setHistoryIndex(0);
+            const createRequest: CreateChildNodeRequest = {
+                node_type: nodeType,
+                parent_id: parentId
+            };
+
+            const response = await whiteboardApi.createChildNode(whiteboardId, createRequest);
+
+            if (response.status === 'success' && response.updated_content) {
+                const newNodes = response.updated_content.nodes || [];
+                const newEdges = response.updated_content.edges || [];
+
+                const formattedEdges = newEdges.map((e: Edge) => ({ ...e, type: 'parent-child' }));
+
+                const updatedNodes = newNodes.map((node: Node) => ({
+                    ...node,
+                    data: {
+                        ...node.data,
+                        onEdit: handleEditNode,
+                        onDataChange: updateNodeData,
+                        onCreateChild: handleCreateChildNode
+                    }
+                }));
+
+                updateStateAndHistory({ nodes: updatedNodes, edges: formattedEdges });
+
+                if (response.node_id) {
+                    setEditingNodeId(response.node_id);
+                }
             }
         } catch (error) {
-            console.error("Failed to load whiteboard data:", error);
-            const initialState = { nodes: initialNodes, edges: initialEdges };
-            setHistory([initialState]);
-            setHistoryIndex(0);
+            console.error('Failed to create child node:', error);
         }
-    }, []);
+    }, [whiteboardId, handleEditNode, updateNodeData, updateStateAndHistory]);
+
+    const injectHandlers = useCallback((nds: Node[]) => {
+        return nds.map(node => ({
+            ...node,
+            data: {
+                ...node.data,
+                onEdit: handleEditNode,
+                onDataChange: updateNodeData,
+                onCreateChild: handleCreateChildNode
+            }
+        }));
+    }, [handleEditNode, updateNodeData, handleCreateChildNode]);
+
+    useEffect(() => {
+        setNodes(nds => injectHandlers(nds));
+    }, [handleEditNode, updateNodeData, handleCreateChildNode, injectHandlers]);
 
     const onNodesChange = useCallback((changes: NodeChange[]) => {
         const newNodes = applyNodeChanges(changes, nodes);
-        setNodes(newNodes);
-        // Only push to history on node removal or creation, not on drag/select
+        setNodes(injectHandlers(newNodes));
         if (changes.some(c => c.type === 'remove' || c.type === 'add')) {
             pushToHistory({ nodes: newNodes, edges });
         }
-    }, [nodes, edges, pushToHistory]);
+    }, [nodes, edges, pushToHistory, handleEditNode, updateNodeData, injectHandlers]);
 
     const onEdgesChange = useCallback((changes: EdgeChange[]) => {
         const newEdges = applyEdgeChanges(changes, edges);
@@ -184,33 +363,38 @@ const WhiteboardComponent: React.FC = () => {
     }, [edges, nodes, pushToHistory]);
 
     const onConnect = useCallback((params: Connection | Edge) => {
-        const newEdge = { ...params, animated: true, style: { stroke: 'var(--border)' } };
+        const newEdge = {
+            ...params,
+            type: 'parent-child', // Use custom edge type for intersection math
+            animated: false,
+        };
         const newEdges = addEdge(newEdge, edges);
         updateStateAndHistory({ nodes, edges: newEdges });
     }, [edges, nodes, updateStateAndHistory]);
 
-    const updateNodeData = useDebouncedCallback((nodeId: string, data: object) => {
-        const newNodes = nodes.map(node =>
-            node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
-        );
-        updateStateAndHistory({ nodes: newNodes, edges });
-    }, 300);
+    const { x: viewX, y: viewY, zoom } = useViewport();
 
     const addNode = (type: 'ideaNode' | 'topicNode' | 'noteNode') => {
         const id = `${type.replace('Node', '')}-${Date.now()}`;
-        let data: any = { onDataChange: updateNodeData };
+        let data: any = { onEdit: handleEditNode };
+
         if (type === 'ideaNode') data.idea = 'New Idea';
-        if (type === 'noteNode') data.text = 'New Note...';
-        if (type === 'topicNode') data.topics = ['New Topic'];
+        if (type === 'noteNode') data.text = '';
+        if (type === 'topicNode') data.topics = [];
+
+        const centerX = (-viewX + 400) / zoom;
+        const centerY = (-viewY + 300) / zoom;
+        const randomOffset = Math.random() * 50;
 
         const newNode: Node = {
             id, type,
-            position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
+            position: { x: centerX + randomOffset, y: centerY + randomOffset },
             data,
         };
-        // Inject the onDataChange handler into all existing nodes as well
-        const updatedNodes = nodes.map(n => ({ ...n, data: { ...n.data, onDataChange: updateNodeData } }));
-        updateStateAndHistory({ nodes: [...updatedNodes, newNode], edges });
+
+        const updatedNodes = [...nodes, newNode];
+        updateStateAndHistory({ nodes: updatedNodes, edges });
+        setEditingNodeId(id);
     };
 
     const deleteSelectedNodes = useCallback(() => {
@@ -219,44 +403,49 @@ const WhiteboardComponent: React.FC = () => {
             const newNodes = nodes.filter(n => !selectedNodeIds.has(n.id));
             const newEdges = edges.filter(e => !selectedNodeIds.has(e.source) && !selectedNodeIds.has(e.target));
             updateStateAndHistory({ nodes: newNodes, edges: newEdges });
+            setEditingNodeId(null);
         }
     }, [nodes, edges, updateStateAndHistory]);
 
-    const saveWhiteboard = useCallback(() => {
-        const whiteboardData = { nodes, edges };
-        localStorage.setItem('whiteboard-data', JSON.stringify(whiteboardData));
-        console.log('Whiteboard saved!');
-    }, [nodes, edges]);
+    const undo = useCallback(() => {
+        if (historyIndex > 0) {
+            const prevState = history[historyIndex - 1];
+            setNodes(injectHandlers(prevState.nodes));
+            setEdges(prevState.edges);
+            setHistoryIndex(historyIndex - 1);
+        }
+    }, [history, historyIndex, injectHandlers]);
 
-    const exportWhiteboard = useCallback(() => {
-        const data = JSON.stringify({ nodes, edges }, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'whiteboard.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }, [nodes, edges]);
+    const redo = useCallback(() => {
+        if (historyIndex < history.length - 1) {
+            const nextState = history[historyIndex + 1];
+            setNodes(injectHandlers(nextState.nodes));
+            setEdges(nextState.edges);
+            setHistoryIndex(historyIndex + 1);
+        }
+    }, [history, historyIndex, injectHandlers]);
 
-    // Inject onDataChange handler into nodes on initial load and when handler changes
+    const debouncedSave = useDebouncedCallback((content: { nodes: Node[]; edges: Edge[] }) => {
+        if (onContentChange) onContentChange(content);
+    }, 3000);
+
     useEffect(() => {
-        setNodes(nds => nds.map(node => ({
-            ...node,
-            data: { ...node.data, onDataChange: updateNodeData }
-        })));
-    }, [updateNodeData]);
+        debouncedSave({ nodes, edges });
+    }, [nodes, edges, debouncedSave]);
+
+    const editingNode = nodes.find(n => n.id === editingNodeId) || null;
 
     return (
-        <div style={{ width: '100%', height: '100%' }}>
+        <div className="whiteboard-wrapper" style={{ width: '100%', height: '100%', position: 'relative' }}>
             <Toolbar
                 onAddIdeaNode={() => addNode('ideaNode')}
                 onAddTopicNode={() => addNode('topicNode')}
                 onAddNoteNode={() => addNode('noteNode')}
                 onDeleteSelected={deleteSelectedNodes}
-                onSave={saveWhiteboard}
-                onExport={exportWhiteboard}
+                onSave={() => onContentChange?.({ nodes, edges })}
+                onExport={() => {}}
             />
+
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -264,20 +453,32 @@ const WhiteboardComponent: React.FC = () => {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
-                fitView
+                edgeTypes={edgeTypes}
+                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                minZoom={0.1}
+                maxZoom={2}
                 className="bg-background"
+                onPaneClick={() => handlePanelClose()}
             >
                 <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
             </ReactFlow>
+
             <ZoomControls onUndo={undo} onRedo={redo} canUndo={historyIndex > 0} canRedo={historyIndex < history.length - 1} />
+
+            <EditPanel
+                node={editingNode}
+                isOpen={!!editingNode}
+                onClose={handlePanelClose}
+                onUpdate={updateNodeData}
+            />
         </div>
     );
 };
 
-const Whiteboard: React.FC = () => {
+const Whiteboard: React.FC<WhiteboardProps> = (props) => {
     return (
         <ReactFlowProvider>
-            <WhiteboardComponent />
+            <WhiteboardComponent {...props} />
         </ReactFlowProvider>
     );
 };

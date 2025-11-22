@@ -13,7 +13,6 @@
         --popover: #ffffff;
         --popover-foreground: #212126;
 
-        /* FIXED: Made primary the brand blue instead of grey */
         --primary: #4d4dff;
         --primary-foreground: #ffffff;
         --primary-hover: #3a3aeb;
@@ -21,7 +20,6 @@
         --secondary: #f2f2f5;
         --secondary-foreground: #212126;
 
-        /* FIXED: Muted needs to be distinct for hover states */
         --muted: #f1f1f4;
         --muted-foreground: #6b6b78;
 
@@ -32,8 +30,9 @@
         --destructive-foreground: #ffffff;
 
         --border: #e0e0e6;
+        --connection: #e0e0e6;
         --input: #e0e0e6;
-        --ring: #4d4dff; /* Matches primary */
+        --ring: #4d4dff;
 
         --success: #00b32c;
         --success-foreground: #ffffff;
@@ -65,17 +64,15 @@
     }
 
     .dark {
-        --background: #09090b; /* Deep black/zinc */
+        --background: #09090b;
         --foreground: #f8fafc;
 
         --card: #0c0c0e;
         --card-foreground: #f8fafc;
 
-        /* FIXED: Popover needs to be lighter than background to be seen as a layer */
         --popover: #121214;
         --popover-foreground: #f8fafc;
 
-        /* FIXED: Primary must be bright (Blue) to be visible on dark backgrounds */
         --primary: #6366f1;
         --primary-foreground: #ffffff;
         --primary-hover: #818cf8;
@@ -83,7 +80,6 @@
         --secondary: #1e293b;
         --secondary-foreground: #f8fafc;
 
-        /* FIXED: Muted is used for hover backgrounds, needs to be lighter than popover */
         --muted: #27272a;
         --muted-foreground: #a1a1aa;
 
@@ -94,6 +90,7 @@
         --destructive-foreground: #f8fafc;
 
         --border: #27272a;
+        --connection: #27272a;
         --input: #27272a;
         --ring: #6366f1;
 
@@ -112,13 +109,6 @@
 @layer base {
     * {
         @apply border-border;
-    }
-
-    /*
-       Only apply transitions to color and background properties
-       to avoid layout jank during theme switches
-    */
-    * {
         transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
         transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         transition-duration: 200ms;
@@ -132,7 +122,6 @@
         @apply bg-background text-foreground;
     }
 
-    /* Scrollbar Styling */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -150,5 +139,76 @@
 
     ::-webkit-scrollbar-thumb:hover {
         background: var(--foreground);
+    }
+}
+
+@layer components {
+    .whiteboard-wrapper {
+        /* Light Mode Whiteboard Colors */
+        --wb-bg: #fafafa;
+        --wb-grid-dot: #a8aaad;
+        --wb-edge: #c4c9d1;
+        --wb-edge-hover: #4d4dff;
+        --wb-handle: #ffffff;
+        --wb-handle-border: #94a3b8;
+    }
+
+    .dark .whiteboard-wrapper {
+        /* Dark Mode Whiteboard Colors */
+        --wb-bg: #09090b;
+        --wb-grid-dot: #464649;
+        /* FIXED: Brighter edge color for better visibility on dark background */
+        --wb-edge: #57575b;
+        --wb-edge-hover: #818cf8;
+        --wb-handle: #18181b;
+        --wb-handle-border: #52525b;
+    }
+
+    /* --- Connection Lines (Edges) --- */
+    .whiteboard-wrapper .react-flow__edge-path {
+        stroke: var(--wb-edge);
+        stroke-width: 2px;
+        transition: stroke 0.3s ease, stroke-width 0.3s ease;
+    }
+
+    /* Edge Hover & Selection */
+    .whiteboard-wrapper .react-flow__edge:hover .react-flow__edge-path,
+    .whiteboard-wrapper .react-flow__edge.selected .react-flow__edge-path {
+        stroke: var(--wb-edge-hover);
+        stroke-width: 3px;
+        cursor: pointer;
+    }
+
+    /* --- The Arrows (Markers) --- */
+    .whiteboard-arrow {
+        fill: var(--wb-edge);
+        transition: fill 0.3s ease;
+    }
+
+    .whiteboard-wrapper .react-flow__edge:hover .whiteboard-arrow,
+    .whiteboard-arrow.selected,
+    .whiteboard-wrapper .react-flow__edge.selected .whiteboard-arrow {
+        fill: var(--wb-edge-hover);
+    }
+
+    /* --- Handles (Connection Dots) --- */
+    .whiteboard-wrapper .react-flow__handle {
+        width: 10px;
+        height: 10px;
+        background: var(--wb-handle);
+        border: 2px solid var(--wb-handle-border);
+        transition: all 0.2s;
+    }
+
+    .whiteboard-wrapper .react-flow__handle:hover {
+        background: var(--wb-edge-hover);
+        border-color: var(--wb-edge-hover);
+        width: 12px;
+        height: 12px;
+    }
+
+    /* --- Background Grid --- */
+    .whiteboard-wrapper .react-flow__background circle {
+        fill: var(--wb-grid-dot);
     }
 }
