@@ -2,7 +2,7 @@ name: Build and Deploy AI Stack
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   # JOB 1: BUILD AND PUSH TO DOCKER HUB
