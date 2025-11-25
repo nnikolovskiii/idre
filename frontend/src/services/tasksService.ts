@@ -92,6 +92,17 @@ export interface TaskResponse extends TaskBase {
 }
 
 /**
+ * Task with notebook information interface
+ */
+export interface TaskWithNotebook extends TaskResponse {
+    notebook: {
+        id: string;
+        title: string;
+        emoji: string;
+    };
+}
+
+/**
  * Alias for TaskResponse - the main Task interface used throughout the app
  */
 export interface Task extends TaskResponse {}
@@ -203,6 +214,37 @@ export const TasksService = {
         if (filters?.includeArchived) params.append('include_archived', 'true');
 
         const url = params.toString() ? `${API_BASE_URL}/${notebookId}?${params}` : `${API_BASE_URL}/${notebookId}`;
+        const response = await apiFetch(url);
+        return response.json();
+    },
+
+    /**
+     * Retrieves all tasks across all notebooks with optional filtering.
+     * Corresponds to: GET /tasks
+     * @param filters Optional filters (status, priority, tags, notebook_id, etc.)
+     */
+    async getAllTasks(
+        filters?: {
+            status?: TaskStatus;
+            priority?: TaskPriority;
+            tags?: string[];
+            notebookId?: string;
+            limit?: number;
+            offset?: number;
+            includeArchived?: boolean;
+        }
+    ): Promise<{tasks: TaskWithNotebook[], total_count: number, status: string, message: string}> {
+        const params = new URLSearchParams();
+
+        if (filters?.status) params.append('status', filters.status);
+        if (filters?.priority) params.append('priority', filters.priority);
+        if (filters?.tags?.length) params.append('tags', filters.tags.join(','));
+        if (filters?.notebookId) params.append('notebook_id', filters.notebookId);
+        if (filters?.limit) params.append('limit', filters.limit.toString());
+        if (filters?.offset) params.append('offset', filters.offset.toString());
+        if (filters?.includeArchived) params.append('include_archived', 'true');
+
+        const url = params.toString() ? `${API_BASE_URL}?${params}` : API_BASE_URL;
         const response = await apiFetch(url);
         return response.json();
     },

@@ -239,6 +239,8 @@ class ChatService:
         metadata = {"user_id": user_id, "mode": request.mode, "notebook_id": str(chat_obj.notebook_id),}
         if request.sub_mode:
             metadata["sub_mode"] = request.sub_mode
+        if request.generation_context:
+            metadata["generation_context"] = request.generation_context
 
         background_run = await self.langgraph_client.runs.create(
             thread_id=thread_id,

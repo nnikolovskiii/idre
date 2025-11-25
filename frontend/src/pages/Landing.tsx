@@ -1,109 +1,225 @@
-// Path: /home/nnikolovskii/dev/general-chat/frontend/src/pages/Landing.tsx
+// Path: /frontend/src/pages/Landing.tsx
 import React from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { MessageSquareText, BarChart3, Layers, Github, Wand2 } from "lucide-react";
+
+// --- ASSET IMPORTS ---
+import bgImage from "../assets/background-wave.png";
+import logoIcon from "../assets/idre-logo-icon.png";
+import logoText from "../assets/idre-text-logo.png";
 
 const Landing: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+    const { isAuthenticated, isLoading } = useAuth();
 
-  // If already authenticated, send users straight to the app
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/notebooks" replace />;
-  }
+    // If already authenticated, send users straight to the app
+    if (!isLoading && isAuthenticated) {
+        return <Navigate to="/notebooks" replace />;
+    }
 
-  return (
-    <div className="min-h-dvh w-full bg-background text-foreground">
-      {/* Header */}
-      <header className="w-full border-b border-border">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary font-bold">AI</div>
-            <span className="font-semibold">General Chat</span>
-          </div>
-          <nav className="flex items-center gap-3">
-            <Link className="text-sm hover:underline" to="/login">Log in</Link>
-            <Link className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground" to="/register">Sign up</Link>
-          </nav>
-        </div>
-      </header>
+    return (
+        <div className="min-h-screen w-full bg-black text-white overflow-x-hidden font-sans selection:bg-white/20 selection:text-white">
 
-      {/* Hero */}
-      <main className="mx-auto max-w-6xl px-4 py-20">
-        <div className="flex flex-col items-center text-center gap-10">
-          {/* Video-like primary hero block */}
-          <div className="relative w-full max-w-5xl">
-            <div className="aspect-video w-full rounded-xl border border-border bg-muted overflow-hidden" />
-            {/* Play button overlay (visual only) */}
-            <button
-              type="button"
-              aria-label="Play video"
-              className="absolute inset-0 flex items-center justify-center group"
-            >
-              <span className="sr-only">Play video</span>
-              <span className="h-16 w-16 rounded-full bg-white/90 text-black shadow-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </span>
-            </button>
-            {/* soft decorative glows */}
-            <div className="pointer-events-none absolute -bottom-4 -left-4 h-24 w-24 rounded-lg bg-primary/10 blur-2xl" />
-            <div className="pointer-events-none absolute -top-4 -right-4 h-24 w-24 rounded-lg bg-blue-500/10 blur-2xl" />
-          </div>
-
-          {/* Headline + CTAs below the hero video placeholder */}
-          <div className="space-y-6 max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              Chat with your notebooks, files, and the web.
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Organize knowledge in notebooks, upload files, and use powerful AI models with optional web search. Everything in one streamlined interface.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link
-                to="/register"
-                className="px-5 py-3 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90"
-              >
-                Get started — it’s free
-              </Link>
-              <Link
-                to="/login"
-                className="px-5 py-3 rounded-md border border-border hover:bg-muted"
-              >
-                I already have an account
-              </Link>
+            {/*
+             =========================================
+             BACKGROUND IMAGE LAYER
+             =========================================
+            */}
+            <div className="absolute top-0 left-0 w-full h-[100vh] z-0 overflow-hidden">
+                <img
+                    src={bgImage}
+                    alt="Background Wave"
+                    className="w-full h-full object-cover opacity-100"
+                />
+                {/* Gradient Overlay for readability */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black"></div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              By continuing you agree to our terms and privacy policy.
-            </div>
-          </div>
-        </div>
 
-        {/* Features */}
-        <section className="mt-24 grid md:grid-cols-3 gap-6">
-          <div className="rounded-lg border border-border p-6 bg-card">
-            <div className="text-sm font-semibold mb-2">Notebooks</div>
-            <p className="text-sm text-muted-foreground">Group your chats and files in notebooks to keep context and projects organized.</p>
-          </div>
-          <div className="rounded-lg border border-border p-6 bg-card">
-            <div className="text-sm font-semibold mb-2">File-aware AI</div>
-            <p className="text-sm text-muted-foreground">Upload documents and chat with them. The assistant can reference your files directly.</p>
-          </div>
-          <div className="rounded-lg border border-border p-6 bg-card">
-            <div className="text-sm font-semibold mb-2">Web search</div>
-            <p className="text-sm text-muted-foreground">Enable web search to pull in fresh information right into your conversations.</p>
-          </div>
-        </section>
-      </main>
+            {/*
+             =========================================
+             HEADER
+             =========================================
+            */}
+            <header className="relative z-50 w-full pt-6 px-6 md:px-12 flex items-center justify-between">
+                {/* Left: Logo Icon */}
+                <div className="flex items-center">
+                    <img
+                        src={logoIcon}
+                        alt="IDRE Icon"
+                        className="h-10 w-10 object-contain"
+                    />
+                </div>
 
-      {/* Footer */}
-      <footer className="mt-12 border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} General Chat. All rights reserved.
+                {/* Center: Navigation Links (Hidden on mobile) */}
+                <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+                    <Link to="#" className="hover:text-white cursor-pointer transition-colors">Use case</Link>
+                    <Link to="#" className="hover:text-white cursor-pointer transition-colors">Pricing</Link>
+                    <Link to="#" className="hover:text-white cursor-pointer transition-colors">Blog</Link>
+                    <Link to="#" className="hover:text-white cursor-pointer transition-colors">Docs</Link>
+                    <Link to="#" className="hover:text-white cursor-pointer transition-colors">Company</Link>
+                </nav>
+
+                {/* Right: Auth Buttons */}
+                <div className="flex items-center gap-4">
+                    <Link
+                        to="/login"
+                        className="px-6 py-2 rounded-full border border-gray-600 bg-black/50 text-white text-sm font-medium hover:bg-black hover:border-white transition-all backdrop-blur-sm"
+                    >
+                        Login
+                    </Link>
+                    <Link
+                        to="/register"
+                        className="px-6 py-2 rounded-full bg-white text-black text-sm font-bold hover:bg-gray-200 transition-all"
+                    >
+                        Signup
+                    </Link>
+                </div>
+            </header>
+
+            <main className="relative z-10 flex flex-col items-center w-full">
+
+                {/*
+                 =========================================
+                 HERO SECTION
+                 =========================================
+                */}
+                <section className="w-full max-w-7xl px-6 md:px-12 pt-20 pb-32 md:pt-32 md:pb-48 flex flex-col justify-center items-start text-left">
+
+                    {/* Large IDRE Text Logo */}
+                    <div className="mb-6">
+                        <img
+                            src={logoText}
+                            alt="IDRE"
+                            className="h-12 md:h-16 w-auto object-contain"
+                        />
+                    </div>
+
+                    {/* Headline */}
+                    <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white leading-[1.1] mb-6">
+                        From Idea to Realization
+                    </h1>
+
+                    {/* Subtext description */}
+                    <p className="text-base md:text-lg text-gray-300 max-w-2xl leading-relaxed mb-10">
+                        The continuous feedback loop for innovators. Experience a workspace where AI acts as your strategist, archivist, and accountability partner.
+                        Turn vague concepts into validated roadmaps.
+                    </p>
+
+                    {/* CTA Buttons */}
+                    <div className="flex flex-wrap items-center gap-4">
+                        <Link
+                            to="/register"
+                            className="flex items-center gap-2 px-8 py-3 rounded-full border border-white/20 bg-black text-white font-medium hover:bg-white hover:text-black transition-all group"
+                        >
+                            Start Generating
+                            <Wand2 className="h-4 w-4 transition-transform group-hover:rotate-12" />
+                        </Link>
+
+                        {/* UPDATED: Now a Link to /register */}
+                        <Link
+                            to="/register"
+                            className="flex items-center gap-2 px-8 py-3 rounded-full bg-white text-black font-bold hover:bg-gray-200 transition-colors"
+                        >
+                            Try it out
+                        </Link>
+                    </div>
+                </section>
+
+                {/*
+                 =========================================
+                 VIDEO SHOWCASE
+                 =========================================
+                */}
+                <section className="w-full max-w-6xl px-4 md:px-6 mb-24 mt-[-60px] relative z-20">
+                    <div className="relative rounded-2xl border border-white/10 bg-black/40 p-2 shadow-2xl backdrop-blur-sm">
+                        {/* Glow effects behind video */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-900 to-violet-900 rounded-2xl blur opacity-40"></div>
+
+                        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-900 border border-white/5 shadow-inner">
+                            <video
+                                className="w-full h-full object-cover"
+                                src="https://storage.googleapis.com/lunar-echo-storage/idre_demo_1.mp4"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/*
+                 =========================================
+                 FEATURES GRID
+                 =========================================
+                */}
+                <section className="w-full max-w-7xl px-6 py-24 border-t border-white/10 bg-black">
+                    <div className="grid md:grid-cols-3 gap-8">
+                        <FeatureCard
+                            icon={<MessageSquareText className="h-6 w-6 text-blue-400" />}
+                            title="Active Partnership"
+                            description="Don't just chat—build. Engage in an iterative loop where the AI challenges your assumptions, asks clarifying questions, and refines your strategy."
+                        />
+                        <FeatureCard
+                            icon={<Layers className="h-6 w-6 text-violet-400" />}
+                            title="Contextual Intelligence"
+                            description="Upload files, record voice notes, and chat. IDRE synthesizes your entire project context to provide specific, knowledge-based guidance."
+                        />
+                        <FeatureCard
+                            icon={<BarChart3 className="h-6 w-6 text-indigo-400" />}
+                            title="Smart Weekly Audits"
+                            description="Automated accountability. The system analyzes your weekly logs against your goals and delivers a strategic performance report to keep you on track."
+                        />
+                    </div>
+                </section>
+
+            </main>
+
+            {/*
+             =========================================
+             FOOTER
+             =========================================
+            */}
+            <footer className="border-t border-white/10 bg-black text-gray-400">
+                <div className="mx-auto max-w-7xl px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-2 opacity-80">
+                        {/* Reuse small logo icon for footer */}
+                        <img
+                            src={logoIcon}
+                            alt="IDRE"
+                            className="h-6 w-auto"
+                        />
+                    </div>
+                    <p className="text-sm">
+                        © {new Date().getFullYear()} IDRE. All rights reserved.
+                    </p>
+                    <div className="flex gap-6 text-sm">
+                        <a
+                            href="https://github.com/nnikolovskiii/idre"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-white transition-colors flex items-center gap-1"
+                        >
+                            <Github className="h-4 w-4" /> GitHub
+                        </a>
+                        <Link to="#" className="hover:text-white transition-colors">Privacy</Link>
+                        <Link to="#" className="hover:text-white transition-colors">Terms</Link>
+                    </div>
+                </div>
+            </footer>
         </div>
-      </footer>
-    </div>
-  );
+    );
 };
+
+// --- SUB-COMPONENT: Feature Card ---
+const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description: string }> = ({ icon, title, description }) => (
+    <div className="group p-8 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:shadow-lg hover:shadow-blue-900/20 cursor-default">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
+            {icon}
+        </div>
+        <h3 className="text-lg font-bold mb-3 text-white">{title}</h3>
+        <p className="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300">{description}</p>
+    </div>
+);
 
 export default Landing;

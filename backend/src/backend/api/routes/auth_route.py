@@ -210,9 +210,46 @@ async def google_auth(
 
 
 @router.post("/logout")
-async def logout(response: Response):
-    response.delete_cookie("access_token")
-    return {"status": "success", "message": "Logged out successfully"}
+async def logout(request: Request, response: Response):
+    try:
+        # Get the current token to verify it exists
+        token = request.cookies.get("access_token")
+
+        # Delete the authentication cookie with proper security attributes
+        response.delete_cookie(
+            key="access_token",
+            samesite='none',
+            secure=True,
+            httponly=True
+        )
+
+        # Clear any potential fallback Authorization header
+        response.headers["Authorization"] = ""
+
+        return {
+            "status": "success",
+            "message": "Logged out successfully",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "had_token": bool(token)
+        }
+    except Exception as e:
+        # Even if there's an error, try to delete the cookie
+        try:
+            response.delete_cookie(
+                key="access_token",
+                samesite='none',
+                secure=True,
+                httponly=True
+            )
+        except:
+            pass
+
+        return {
+            "status": "partial_success",
+            "message": "Logout completed with warnings",
+            "warning": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
 
 
 async def get_current_user(

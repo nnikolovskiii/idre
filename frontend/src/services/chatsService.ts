@@ -55,6 +55,7 @@ export interface CreateThreadResponse {
 export interface SendMessageRequest {
     message?: string;
     audio_path?: string;
+    audio_base64?: string;
     ai_model?: string;
     light_model?: string;
     heavy_model?: string;
@@ -197,6 +198,7 @@ export const chatsService = {
         threadId: string,
         message?: string,
         audioPath?: string,
+        audioBase64?: string,
         mode?: string,
         subMode?: string,
     ): Promise<SendMessageResponse> => {
@@ -209,6 +211,10 @@ export const chatsService = {
 
         if (audioPath) {
             payload.audio_path = audioPath;
+        }
+
+        if (audioBase64) {
+            payload.audio_base64 = audioBase64;
         }
 
         if (mode) {

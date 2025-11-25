@@ -1,4 +1,5 @@
-// Enhanced Tasks Kanban Board Component with Backend Integration
+// File: frontend/src/components/tasks/TasksKanbanBackend.tsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
     DndContext,
@@ -20,7 +21,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createPortal } from "react-dom";
-import { Clock, Plus, GripVertical, X, AlertCircle, Loader2, Edit, Archive, RotateCcw, Search } from "lucide-react";
+import { Clock, Plus, GripVertical, X, AlertCircle, Loader2, Edit, Archive, RotateCcw, Search, Book } from "lucide-react";
 
 // Import task service and types
 import {
@@ -33,7 +34,7 @@ import type {
     TaskCreateRequest,
     TaskUpdateRequest,
     TaskMoveRequest,
-    TaskReorderRequest
+    TaskReorderRequest,
 } from "../../services/tasksService";
 
 // Types
@@ -47,6 +48,12 @@ interface Task {
     position?: number;
     status: TaskStatus;
     archived?: boolean;
+    // Added for "All View" to show origin
+    notebook?: {
+        id: string;
+        title: string;
+        emoji: string;
+    };
 }
 
 interface Column {
@@ -58,6 +65,7 @@ interface Column {
 
 interface TasksKanbanProps {
     notebookId: string;
+    viewMode?: 'notebook' | 'all'; // Added prop
 }
 
 type NewTaskState = {
@@ -145,6 +153,15 @@ const SortableTask: React.FC<{
                         <GripVertical size={isMobile ? 18 : 14} className="text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(task)}>
+
+                        {/* Notebook Badge (Visible in All Tasks Mode) */}
+                        {task.notebook && (
+                            <div className="flex items-center gap-1 mb-1.5 text-xs text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded w-fit">
+                                <span>{task.notebook.emoji}</span>
+                                <span className="truncate max-w-[150px]">{task.notebook.title}</span>
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-2 mb-2">
                             <PriorityIndicator priority={task.priority} />
                             <h4 className={`font-medium text-foreground truncate ${
@@ -156,7 +173,7 @@ const SortableTask: React.FC<{
                             )}
                         </div>
                         {task.description && (
-                            <p className={`text-left text-muted-foreground mb-2 line-clamp-2 ${ // <-- ADDED text-left
+                            <p className={`text-left text-muted-foreground mb-2 line-clamp-2 ${
                                 isMobile ? 'text-sm' : 'text-xs'
                             }`}>{task.description}</p>
                         )}
@@ -259,7 +276,8 @@ const KanbanColumn: React.FC<{
     onArchiveTask: (task: Task) => void;
     onUnarchiveTask: (task: Task) => void;
     isMobile?: boolean;
-}> = ({ column, onAddTask, onViewTask, onEditTask, onArchiveTask, onUnarchiveTask, isMobile = false }) => {
+    canCreate?: boolean; // NEW PROP
+}> = ({ column, onAddTask, onViewTask, onEditTask, onArchiveTask, onUnarchiveTask, isMobile = false, canCreate = true }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
@@ -280,13 +298,15 @@ const KanbanColumn: React.FC<{
                         {column.tasks.length}
                     </span>
                 </h3>
-                <button
-                    className="p-1 hover:bg-background/50 rounded transition-colors"
-                    onClick={() => onAddTask(column.id)}
-                    title="Add new task"
-                >
-                    <Plus size={14} />
-                </button>
+                {canCreate && (
+                    <button
+                        className="p-1 hover:bg-background/50 rounded transition-colors"
+                        onClick={() => onAddTask(column.id)}
+                        title="Add new task"
+                    >
+                        <Plus size={14} />
+                    </button>
+                )}
             </div>
 
             <SortableContext items={column.tasks.filter(task => !task.archived).map(task => task.id)} strategy={verticalListSortingStrategy}>
@@ -313,7 +333,7 @@ const KanbanColumn: React.FC<{
     );
 };
 
-// --- Task Creation Modal (Moved outside the main component) ---
+// --- Task Creation Modal ---
 interface TaskCreationModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -423,7 +443,7 @@ const TaskCreationModal: React.FC<TaskCreationModalProps> = ({
     );
 };
 
-// --- Task Detail Modal (NEW COMPONENT) ---
+// --- Task Detail Modal ---
 interface TaskDetailModalProps {
     task: Task | null;
     isOpen: boolean;
@@ -449,8 +469,14 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, isOpen, onClose
                         <X size={20} />
                     </button>
                 </div>
-                {/* CHANGE: Added 'text-left' to ensure all text inside is aligned to the start */}
                 <div className="p-6 space-y-6 text-left">
+                    {task.notebook && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/30 p-2 rounded-md">
+                            <Book size={14} />
+                            <span className="font-medium">Notebook:</span>
+                            <span>{task.notebook.emoji} {task.notebook.title}</span>
+                        </div>
+                    )}
                     {task.description && (
                         <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
@@ -499,7 +525,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, isOpen, onClose
     );
 };
 
-// --- Task Edit Modal (NEW COMPONENT) ---
+// --- Task Edit Modal ---
 interface TaskEditModalProps {
     task: Task | null;
     isOpen: boolean;
@@ -659,16 +685,16 @@ interface ArchivedTasksPanelProps {
 }
 
 const ArchivedTasksPanel: React.FC<ArchivedTasksPanelProps> = ({
-    isOpen,
-    onClose,
-    archivedTasks,
-    isLoading,
-    searchQuery,
-    onSearchChange,
-    onUnarchive,
-    onViewTask,
-    onEditTask,
-}) => {
+                                                                   isOpen,
+                                                                   onClose,
+                                                                   archivedTasks,
+                                                                   isLoading,
+                                                                   searchQuery,
+                                                                   onSearchChange,
+                                                                   onUnarchive,
+                                                                   onViewTask,
+                                                                   onEditTask,
+                                                               }) => {
     // Close on escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -853,7 +879,7 @@ const ArchivedTaskCard: React.FC<{
 };
 
 // Main Component
-const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
+const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode = 'notebook' }) => {
     const [columns, setColumns] = useState<Column[]>([]);
     const [activeTask, setActiveTask] = useState<Task | null>(null);
     const [activeTaskOriginalColumn, setActiveTaskOriginalColumn] = useState<TaskStatus | null>(null);
@@ -869,6 +895,8 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const [archivedSearchQuery, setArchivedSearchQuery] = useState("");
     const [isLoadingArchived, setIsLoadingArchived] = useState(false);
 
+    const canCreate = viewMode === 'notebook';
+
     // Form state for new task
     const [newTask, setNewTask] = useState<NewTaskState>({
         title: "",
@@ -882,8 +910,19 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     const fetchTasks = useCallback(async () => {
         try {
             setError(null);
-            const response = await TasksService.getTasksByNotebookId(notebookId);
-            const taskList: Task[] = response.tasks.map(convertTaskResponse);
+            let taskList: Task[] = [];
+
+            if (viewMode === 'all') {
+                const response = await TasksService.getAllTasks();
+                // Map the full TaskWithNotebook to our local Task type, ensuring notebook data is preserved
+                taskList = response.tasks.map(t => ({
+                    ...convertTaskResponse(t),
+                    notebook: t.notebook
+                }));
+            } else {
+                const response = await TasksService.getTasksByNotebookId(notebookId);
+                taskList = response.tasks.map(convertTaskResponse);
+            }
 
             // Only show non-archived tasks in the main kanban board
             const activeTaskList = taskList.filter(task => !task.archived);
@@ -905,16 +944,27 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [notebookId]);
+    }, [notebookId, viewMode]);
 
     // Fetch archived tasks for the panel
     const fetchArchivedTasks = useCallback(async () => {
         try {
             setIsLoadingArchived(true);
-            const response = await TasksService.getTasksByNotebookId(notebookId, {
-                includeArchived: true
-            });
-            const taskList: Task[] = response.tasks.map(convertTaskResponse);
+            let taskList: Task[] = [];
+
+            if (viewMode === 'all') {
+                const response = await TasksService.getAllTasks({ includeArchived: true });
+                taskList = response.tasks.map(t => ({
+                    ...convertTaskResponse(t),
+                    notebook: t.notebook
+                }));
+            } else {
+                const response = await TasksService.getTasksByNotebookId(notebookId, {
+                    includeArchived: true
+                });
+                taskList = response.tasks.map(convertTaskResponse);
+            }
+
             const archivedTasksList = taskList.filter(task => task.archived);
             setArchivedTasks(archivedTasksList);
         } catch (err) {
@@ -922,10 +972,12 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
         } finally {
             setIsLoadingArchived(false);
         }
-    }, [notebookId]);
+    }, [notebookId, viewMode]);
 
-    // Set up real-time updates
+    // Set up real-time updates (Only for Notebook view)
     useEffect(() => {
+        if (viewMode !== 'notebook' || !notebookId) return;
+
         const source = TasksService.connectToTaskUpdates(
             notebookId,
             (data) => {
@@ -940,7 +992,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
             (error) => console.error("SSE error:", error)
         );
         return () => source.close();
-    }, [notebookId, fetchTasks]);
+    }, [notebookId, fetchTasks, viewMode]);
 
     // Initial load
     useEffect(() => {
@@ -964,7 +1016,12 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
     };
 
     // Task creation handlers
-    const openTaskModal = (columnId: TaskStatus) => { setSelectedColumnId(columnId); setShowTaskModal(true); resetForm(); };
+    const openTaskModal = (columnId: TaskStatus) => {
+        if (!canCreate) return;
+        setSelectedColumnId(columnId);
+        setShowTaskModal(true);
+        resetForm();
+    };
     const closeTaskModal = () => { setShowTaskModal(false); setSelectedColumnId(null); resetForm(); };
     const resetForm = () => { setNewTask({ title: "", description: "", priority: "medium", tags: "", dueDate: "" }); };
 
@@ -1172,8 +1229,14 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                 <div className="hidden md:block p-4">
                     <div className="flex items-center justify-between">
                         <div className="text-left">
-                            <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
-                            <p className="text-sm text-muted-foreground">Manage your project tasks and workflow</p>
+                            <h1 className="text-2xl font-bold text-foreground">
+                                {viewMode === 'all' ? 'All Tasks' : 'Tasks'}
+                            </h1>
+                            <p className="text-sm text-muted-foreground">
+                                {viewMode === 'all'
+                                    ? 'Overview of tasks across all notebooks'
+                                    : 'Manage your project tasks and workflow'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -1188,13 +1251,16 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                                     </span>
                                 )}
                             </button>
-                            <button
-                                onClick={() => openTaskModal(TaskStatus.TODO)}
-                                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
-                            >
-                                <Plus size={16} />
-                                Add Task
-                            </button>
+                            {/* Only show Add Task button in notebook view */}
+                            {canCreate && (
+                                <button
+                                    onClick={() => openTaskModal(TaskStatus.TODO)}
+                                    className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                >
+                                    <Plus size={16} />
+                                    Add Task
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1205,7 +1271,17 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="block md:hidden">
                         <div className="space-y-4 pb-20">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} onEditTask={handleEditTask} onArchiveTask={handleArchiveTask} onUnarchiveTask={handleUnarchiveTask} isMobile={true} />
+                                <KanbanColumn
+                                    key={column.id}
+                                    column={column}
+                                    onAddTask={openTaskModal}
+                                    onViewTask={handleViewTask}
+                                    onEditTask={handleEditTask}
+                                    onArchiveTask={handleArchiveTask}
+                                    onUnarchiveTask={handleUnarchiveTask}
+                                    isMobile={true}
+                                    canCreate={canCreate}
+                                />
                             ))}
                         </div>
                     </div>
@@ -1214,7 +1290,17 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId }) => {
                     <div className="hidden md:block">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-[800px]">
                             {columns.map((column) => (
-                                <KanbanColumn key={column.id} column={column} onAddTask={openTaskModal} onViewTask={handleViewTask} onEditTask={handleEditTask} onArchiveTask={handleArchiveTask} onUnarchiveTask={handleUnarchiveTask} isMobile={false} />
+                                <KanbanColumn
+                                    key={column.id}
+                                    column={column}
+                                    onAddTask={openTaskModal}
+                                    onViewTask={handleViewTask}
+                                    onEditTask={handleEditTask}
+                                    onArchiveTask={handleArchiveTask}
+                                    onUnarchiveTask={handleUnarchiveTask}
+                                    isMobile={false}
+                                    canCreate={canCreate}
+                                />
                             ))}
                         </div>
                     </div>

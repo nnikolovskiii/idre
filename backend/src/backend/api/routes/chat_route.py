@@ -6,11 +6,12 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.api.dependencies import get_chat_service
+from backend.api.dependencies import get_chat_service, get_ai_service, get_whiteboard_service
 from backend.models import User
 from backend.api.routes.auth_route import get_current_user
 from backend.models.dtos.chat import ChatResponse, MessageResponse, SendMessageRequest, CreateThreadRequest, \
     UpdateWebSearchRequest
+from backend.services.ai_service import AIService
 from backend.services.chat_service import ChatService
 from backend.container import container
 
@@ -226,3 +227,55 @@ async def toggle_chat_web_search(
     except Exception as e:
         await chat_service.session.rollback()
         raise HTTPException(status_code=500, detail=f"Error updating web search status: {str(e)}")
+
+
+@router.post("/generate-whiteboard")
+async def generate_whiteboard_content(
+        request: dict,
+        current_user: User = Depends(get_current_user),
+        ai_service: AIService = Depends(get_ai_service),
+        whiteboard_service = Depends(get_whiteboard_service)
+):
+    """
+    Stateless whiteboard content generation endpoint.
+    Directly calls AI service without creating a persistent chat thread.
+    """
+    try:
+        # Validate required fields
+        required_fields = ["whiteboard_id", "node_id", "parent_id", "node_type", "parent_content"]
+        for field in required_fields:
+            if field not in request:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+        # Get whiteboard to validate ownership and get notebook_id
+        whiteboard = await whiteboard_service.get_whiteboard_by_id(
+            user_id=str(current_user.user_id),
+            whiteboard_id=request["whiteboard_id"]
+        )
+
+        if not whiteboard:
+            raise HTTPException(status_code=404, detail="Whiteboard not found")
+
+        # Prepare generation context for webhook
+        generation_context = {
+            "whiteboard_id": request["whiteboard_id"],
+            "node_id": request["node_id"],
+            "parent_id": request["parent_id"],
+            "node_type": request["node_type"]
+        }
+
+        # Call AI service for stateless generation
+        result = await ai_service.generate_whiteboard_content(
+            notebook_id=str(whiteboard.notebook_id),
+            user_id=str(current_user.user_id),
+            parent_content=request["parent_content"],
+            node_type=request["node_type"],
+            generation_context=generation_context
+        )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in generate_whiteboard_content: {str(e)}")  # Debug log
+        raise HTTPException(status_code=500, detail=f"Error generating whiteboard content: {str(e)}")

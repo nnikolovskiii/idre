@@ -25,6 +25,7 @@ class MessageResponse(BaseModel):
 class SendMessageRequest(BaseModel):
     message: Optional[str] = None
     audio_path: Optional[str] = None
+    audio_base64: Optional[str] = None
     light_model: Optional[str] = None
     heavy_model: Optional[str] = None
     file_id : Optional[str] = None
@@ -32,6 +33,7 @@ class SendMessageRequest(BaseModel):
     chat_id: Optional[str] = None
     mode: Optional[str] = None
     sub_mode: Optional[str] = None
+    generation_context: Optional[Dict[str, Any]] = None
 
 
 class CreateThreadRequest(BaseModel):

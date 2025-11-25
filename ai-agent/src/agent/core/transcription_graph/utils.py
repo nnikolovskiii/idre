@@ -14,7 +14,12 @@ def get_api_key(encrypted_api_key: str | None) -> str:
 
 def decode_audio_to_temp(base64_data: str, original_filename: str) -> str:
     audio_bytes = base64.b64decode(base64_data)
-    ext = os.path.splitext(original_filename)[1] or '.tmp'
+
+    # FIX: Default to .webm instead of .tmp if extension is missing
+    # InputArea.tsx records in "audio/webm", so this matches the source.
+    ext = os.path.splitext(original_filename)[1]
+    if not ext:
+        ext = '.webm'
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as f:
         f.write(audio_bytes)

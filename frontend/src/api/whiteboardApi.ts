@@ -83,6 +83,8 @@ export interface EnhancedNodeData {
   text?: string;
   onEdit?: (id: string) => void;
   onDataChange?: (id: string, data: any) => void;
+  onGenerate?: (parentId: string) => void;
+  isGenerating?: boolean;
   // Hierarchy fields
   parentId?: string | null;
   childrenOrder?: string[];

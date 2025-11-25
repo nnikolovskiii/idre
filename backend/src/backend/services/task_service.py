@@ -343,6 +343,31 @@ class TaskService:
             offset=search_data.offset
         )
 
+    async def get_tasks_for_user_across_notebooks(
+        self,
+        user_id: str,
+        status: Optional[TaskStatus] = None,
+        priority: Optional[TaskPriority] = None,
+        tags: Optional[List[str]] = None,
+        notebook_id: Optional[str] = None,
+        limit: int = 1000,
+        offset: int = 0,
+        include_archived: bool = False
+    ) -> List[Task]:
+        """
+        Retrieve tasks for a user across all notebooks with optional filtering.
+        """
+        return await self.repo.list_by_user_id_without_notebook_filter(
+            user_id=user_id,
+            notebook_id=notebook_id,
+            status=status,
+            priority=priority,
+            tags=tags,
+            limit=limit,
+            offset=offset,
+            include_archived=include_archived
+        )
+
     async def get_task_statistics(
         self,
         user_id: str,
@@ -388,3 +413,37 @@ class TaskService:
             priority_display=task.priority_display,
             is_overdue=task.is_overdue
         )
+
+    async def task_to_response_with_notebook(self, task: Task) -> dict:
+        """
+        Convert a Task entity to response dict including notebook information.
+        """
+        from backend.repositories.notebook_repository import NotebookRepository
+        notebook_repo = NotebookRepository(self.session)
+
+        # Get notebook information
+        notebook = await notebook_repo.get_by_id(task.notebook_id)
+
+        return {
+            "id": task.id,
+            "user_id": task.user_id,
+            "notebook_id": task.notebook_id,
+            "title": task.title,
+            "description": task.description,
+            "status": task.status,
+            "priority": task.priority,
+            "tags": task.tags or [],
+            "due_date": task.due_date.date() if task.due_date else None,
+            "position": task.position,
+            "archived": task.archived,
+            "created_at": task.created_at,
+            "updated_at": task.updated_at,
+            "status_display": task.status_display,
+            "priority_display": task.priority_display,
+            "is_overdue": task.is_overdue,
+            "notebook": {
+                "id": notebook.id if notebook else task.notebook_id,
+                "title": notebook.title if notebook else "Unknown Notebook",
+                "emoji": notebook.emoji if notebook else "📓"
+            }
+        }

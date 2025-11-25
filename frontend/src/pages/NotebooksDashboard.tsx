@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from "react";
-import {Plus, MoreVertical, User, LogOut, ChevronDown, Trash2} from "lucide-react";
+import {Plus, MoreVertical, User, LogOut, ChevronDown, Trash2, CheckSquare} from "lucide-react";
 import {useNavigate} from "react-router-dom";
 import {useTheme} from "../context/ThemeContext";
 import {useAuth} from "../contexts/AuthContext";
@@ -238,6 +238,19 @@ const NotebooksDashboard: React.FC = () => {
                     My notebooks
                 </h1>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => navigate("/tasks")}
+                        className={`flex items-center gap-2 rounded-md py-2 px-4 transition-colors ${
+                            theme === 'dark'
+                                ? 'bg-gray-800 text-gray-200 border border-gray-600 hover:bg-gray-700'
+                                : 'bg-white text-gray-800 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                    >
+                        <CheckSquare size={16} className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}/>
+                        <span className="text-sm font-medium">
+                            All Tasks
+                        </span>
+                    </button>
                     <div className="relative" ref={dropdownRef}>
                         <button
                             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}

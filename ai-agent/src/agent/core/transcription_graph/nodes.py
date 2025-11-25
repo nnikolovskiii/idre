@@ -26,6 +26,7 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
         print(f"   > Audio decoded to: {local_audio_path}")
 
         transcript = transcribe_audio(local_audio_path)
+        print(f"   > Raw transcript: {transcript}")
 
         open_router = container.openrouter_model(api_key=api_key, model=light_model)
 
@@ -33,6 +34,7 @@ def transcribe_and_enhance_audio_node(state: TranscriptionGraphState):
         structured_enhance = open_router.with_structured_output(RestructuredText)
         enhance_instruction = enhance_transcript_prompt.format(transcript=transcript)
         enhanced_text = structured_enhance.invoke(enhance_instruction).text
+        print(f"   > Enhanced transcript: {enhanced_text}")
 
         # Generate Name
         structured_name = open_router.with_structured_output(GeneratedFileName)

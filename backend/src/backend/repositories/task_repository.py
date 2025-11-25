@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 from sqlalchemy import select, delete, and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from backend.models.task import Task, TaskStatus, TaskPriority
+from backend.models.notebook import Notebook
 
 
 class TaskRepository:
@@ -406,3 +407,41 @@ class TaskRepository:
 
         result = await self.session.execute(query)
         return result.scalar() or 0
+
+    async def list_by_user_id_without_notebook_filter(
+        self,
+        user_id: str,
+        notebook_id: Optional[str] = None,
+        status: Optional[TaskStatus] = None,
+        priority: Optional[TaskPriority] = None,
+        tags: Optional[List[str]] = None,
+        limit: int = 100,
+        offset: int = 0,
+        include_archived: bool = False
+    ) -> List[Task]:
+        """
+        Retrieve tasks for a specific user across all notebooks with optional filters.
+        """
+        query = select(Task).where(Task.user_id == user_id)
+
+        if notebook_id:
+            query = query.where(Task.notebook_id == notebook_id)
+
+        if status:
+            query = query.where(Task.status == status)
+
+        if priority:
+            query = query.where(Task.priority == priority)
+
+        if tags:
+            # Filter tasks that contain ANY of the specified tags
+            query = query.where(Task.tags.overlap(tags))
+
+        if not include_archived:
+            query = query.where(Task.archived == False)
+
+        query = query.order_by(Task.notebook_id, Task.status, Task.position, Task.created_at.desc())
+        query = query.limit(limit).offset(offset)
+
+        result = await self.session.execute(query)
+        return result.scalars().all()

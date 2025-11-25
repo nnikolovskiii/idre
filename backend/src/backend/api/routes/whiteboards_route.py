@@ -372,6 +372,82 @@ async def whiteboards_sse(
         raise HTTPException(status_code=500, detail=f"SSE error: {str(e)}")
 
 
+# --- FIXED SSE ENDPOINT ---
+@router.get("/whiteboard/{whiteboard_id}/sse")
+async def whiteboard_sse(
+    whiteboard_id: str,
+    current_user: User = Depends(get_current_user),
+    # FIX: Inject the service properly using Depends, do not await it here
+    whiteboard_service: WhiteboardService = Depends(get_whiteboard_service)
+):
+    """
+    Server-Sent Events endpoint for real-time whiteboard-specific updates (generation, etc.).
+    """
+    try:
+        # Import here to avoid circular imports
+        from backend.container import container
+
+        # Verify whiteboard access using the injected service
+        whiteboard = await whiteboard_service.get_whiteboard_by_id(
+            user_id=str(current_user.user_id),
+            whiteboard_id=whiteboard_id
+        )
+
+        if not whiteboard:
+            raise HTTPException(
+                status_code=404,
+                detail="Whiteboard not found or access denied"
+            )
+
+        redis_client = container.redis_client()
+        channel = f"sse:whiteboard:{whiteboard_id}"
+
+        async def event_generator():
+            pubsub = redis_client.pubsub()
+            await pubsub.subscribe(channel)
+
+            try:
+                # Send initial connection message
+                yield f"data: {json.dumps({'type': 'connected', 'whiteboard_id': whiteboard_id})}\n\n"
+
+                async for message in pubsub.listen():
+                    if message["type"] == "message":
+                        # Parse the message to ensure it's valid JSON
+                        try:
+                            data = json.loads(message["data"])
+                            # Add timestamp
+                            data["timestamp"] = asyncio.get_event_loop().time()
+                            yield f"data: {json.dumps(data)}\n\n"
+                        except json.JSONDecodeError:
+                            # If the message is already valid JSON, just forward it
+                            yield f"data: {message['data']}\n\n"
+            except Exception as e:
+                # Send error message to client
+                error_data = {
+                    "type": "error",
+                    "message": str(e),
+                    "timestamp": asyncio.get_event_loop().time()
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+            finally:
+                await pubsub.unsubscribe(channel)
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # Disable buffering in nginx
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SSE error: {str(e)}")
+
+
 # Hierarchy Management Endpoints
 
 @router.post("/whiteboard/{whiteboard_id}/nodes/hierarchy")

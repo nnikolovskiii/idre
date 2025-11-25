@@ -7,6 +7,21 @@ import type { ChatSession, Message } from "../types/chat";
 import type { MessageResponse } from "../services/chatsService";
 import { getChatModels } from "../services/chatModelService";
 import {useSse} from "../context/SseContext.tsx";
+
+// Helper function to convert Blob to Base64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
+            const base64 = result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
 const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
     return messages
         .filter((msg) => msg.type === "human" || msg.type === "ai")
@@ -291,10 +306,27 @@ export const useChats = (notebookIdParam?: string) => {
     };
     const handleSendMessage = async (
         text?: string,
-        audioPath?: string,
+        audioData?: string | Blob,
         options?: { webSearch?: boolean; mode?: string; subMode?: string }
     ) => {
-        if (!text?.trim() && !audioPath) return;
+        if (!text?.trim() && !audioData) return;
+
+        let audioPath: string | undefined = undefined;
+        let audioBase64: string | undefined = undefined;
+
+        // Determine if input is a path (string) or raw audio (Blob)
+        if (typeof audioData === 'string') {
+            audioPath = audioData;
+        } else if (audioData instanceof Blob) {
+            // Convert Blob to Base64
+            try {
+                audioBase64 = await blobToBase64(audioData);
+            } catch (e) {
+                console.error("Failed to convert audio blob to base64", e);
+                return;
+            }
+        }
+
         if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
             let newChat: ChatSession | undefined;
             try {
@@ -325,6 +357,7 @@ export const useChats = (notebookIdParam?: string) => {
                     newChat.thread_id,
                     text,
                     audioPath,
+                    audioBase64,
                     options?.mode,
                     options?.subMode,
                 );
@@ -366,6 +399,7 @@ export const useChats = (notebookIdParam?: string) => {
                 currentChat.thread_id,
                 text,
                 audioPath,
+                audioBase64,
                 options?.mode,
                 options?.subMode,
             );

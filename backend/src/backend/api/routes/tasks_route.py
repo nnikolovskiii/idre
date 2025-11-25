@@ -23,6 +23,80 @@ from backend.services.task_service import TaskService
 router = APIRouter()
 
 
+@router.get("")
+async def get_all_tasks(
+    current_user: User = Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service),
+    status: Optional[str] = Query(None, description="Filter by task status"),
+    priority: Optional[str] = Query(None, description="Filter by task priority"),
+    tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
+    notebook_id: Optional[str] = Query(None, description="Filter by specific notebook"),
+    include_archived: bool = Query(False, description="Include archived tasks"),
+    limit: int = Query(1000, ge=1, le=2000, description="Maximum number of results"),
+    offset: int = Query(0, ge=0, description="Number of results to skip")
+):
+    """
+    Get all tasks for a user across all notebooks with optional filtering.
+    """
+    try:
+        # Parse filters
+        from backend.models.task import TaskStatus, TaskPriority
+
+        status_filter = None
+        if status:
+            try:
+                status_filter = TaskStatus(status)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid status '{status}'. Must be one of: {list(TaskStatus)}"
+                )
+
+        priority_filter = None
+        if priority:
+            try:
+                priority_filter = TaskPriority(priority)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid priority '{priority}'. Must be one of: {list(TaskPriority)}"
+                )
+
+        tags_filter = None
+        if tags:
+            tags_filter = [tag.strip() for tag in tags.split(',') if tag.strip()]
+
+        tasks = await task_service.get_tasks_for_user_across_notebooks(
+            user_id=str(current_user.user_id),
+            status=status_filter,
+            priority=priority_filter,
+            tags=tags_filter,
+            notebook_id=notebook_id,
+            limit=limit,
+            offset=offset,
+            include_archived=include_archived
+        )
+
+        task_responses = await asyncio.gather(
+            *[task_service.task_to_response_with_notebook(task) for task in tasks]
+        )
+
+        # FIX: Return a plain dictionary instead of the Pydantic model (TasksListResponse).
+        # This ensures the 'notebook' field inside task_responses is not stripped out 
+        # by Pydantic validation if the TasksListResponse schema definitions are too strict.
+        return {
+            "tasks": task_responses,
+            "total_count": len(task_responses),
+            "status": "success",
+            "message": f"Retrieved {len(task_responses)} tasks across all notebooks"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
 @router.get("/{notebook_id}")
 async def get_tasks(
     notebook_id: str,

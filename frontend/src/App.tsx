@@ -23,12 +23,14 @@ import WhiteboardView from "./pages/WhiteboardView";
 import IdeaCanvas from "./pages/IdeaCanvas";
 import IdeaCanvasPage from "./pages/IdeaCanvasPage";
 import TasksPage from "./pages/TasksPage";
+import TasksKanbanAllView from "./components/tasks/TasksKanbanAllView";
 import SetupApiKeyPage from "./pages/SetupApiKeyPage";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
 import AppGuard from "./components/guards/AppGuard";
 import { SseProvider } from "./context/SseContext";
+// import ReliablLandingPage from "./pages/ReliablLandingPage.tsx";
 
 function App() {
     return (
@@ -40,6 +42,7 @@ function App() {
                         <Routes>
                             {/* --- PUBLIC ROUTES (No Auth, No API Key required) --- */}
                             <Route path="/" element={<Landing />} />
+                            {/* <Route path="/reliabl" element={<ReliablLandingPage />} /> */}
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
 
@@ -50,6 +53,18 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <SetupApiKeyPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            {/* --- PURE KANBAN TASKS ROUTE (Requires Auth AND API Key, but no layout whatsoever) --- */}
+                            <Route
+                                path="/tasks"
+                                element={
+                                    <ProtectedRoute>
+                                        <AppGuard>
+                                            <TasksKanbanAllView />
+                                        </AppGuard>
                                     </ProtectedRoute>
                                 }
                             />

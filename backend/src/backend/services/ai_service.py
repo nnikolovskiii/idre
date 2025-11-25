@@ -179,6 +179,55 @@ class AIService:
 
         return {"status": "started"}
 
+    async def generate_whiteboard_content(
+            self,
+            notebook_id: str,
+            user_id: str,
+            parent_content: str,
+            node_type: str,
+            generation_context: dict,
+            graph_id: str = "chat_agent"
+    ):
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
+
+        if not notebook_model:
+            raise ValueError(f"No notebook model found for: {notebook_id}")
+
+        model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
+
+        # Require API key for all AI operations
+        if not model_api:
+            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+
+        run_input = {
+            "light_model": notebook_model.model.name,
+            "api_key": model_api.value,
+            "text_input": f"Based on this parent node content: '{parent_content}', please generate appropriate content for a child {node_type}. Make it relevant and expand on the parent idea.",
+            "mode": "brainstorm",
+        }
+
+        assistant_id = await self._get_assistant_id(graph_id)
+
+        background_run = await self.langgraph_client.runs.create(
+            thread_id=None,
+            assistant_id=assistant_id,
+            input=run_input,
+            webhook=LANGGRAPH_WEBHOOK_URL + "/whiteboard-generation",
+            metadata={
+                "generation_context": generation_context,
+                "temp_thread": True,
+                "user_id": user_id,
+                "notebook_id": notebook_id
+            },
+            on_completion="keep",
+        )
+
+        return {"status": "started"}
+
     async def generate_idea_proposition(
             self,
             notebook_id: str,

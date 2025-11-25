@@ -141,16 +141,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      await fetch(getAuthUrl('LOGOUT'), {
+
+      // Call backend logout endpoint
+      const logoutResponse = await fetch(getAuthUrl('LOGOUT'), {
         method: 'POST',
         credentials: 'include',
       });
 
+      if (!logoutResponse.ok) {
+        console.warn('Logout endpoint returned an error, but continuing with client-side cleanup');
+      }
+
+      // Clear authentication state
       setUser(null);
       setIsAuthenticated(false);
-      // Navigation is now handled by the component
+
+      // Clear all browser storage
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (error) {
+        console.warn('Failed to clear browser storage:', error);
+      }
+
+      // Clear any potential auth-related cookies (backup measure)
+      document.cookie.split(';').forEach(cookie => {
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+        if (name.includes('token') || name.includes('auth') || name.includes('access')) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname};secure;samesite=none;`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;secure;samesite=strict;`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;`;
+        }
+      });
+
     } catch (error) {
       console.error('Logout failed:', error);
+      // Still clear local state even if network request fails
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.clear();
+      sessionStorage.clear();
     } finally {
       setIsLoading(false);
     }
