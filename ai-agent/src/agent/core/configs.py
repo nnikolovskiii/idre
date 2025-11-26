@@ -10,6 +10,11 @@ from agent.core.brainstorm_graph.data_models import BrainstormGraphState
 from agent.core.brainstorm_graph.nodes import prepare_inputs_node as brain_prepare, \
     generate_answer_node as brain_generate
 
+# Questioner Graph Imports
+from agent.core.questioner_graph.data_models import QuestionerGraphState
+from agent.core.questioner_graph.nodes import prepare_inputs_node as quest_prepare, \
+    generate_questions_node as quest_generate
+
 # Transcription Graph Imports
 from agent.core.transcription_graph.data_models import TranscriptionGraphState
 from agent.core.transcription_graph.nodes import transcribe_and_enhance_audio_node
@@ -53,6 +58,16 @@ def brainstorm_graph():
     workflow.set_entry_point("prepare_inputs")
     workflow.add_edge("prepare_inputs", "generate_answer")
     workflow.add_edge("generate_answer", END)
+    return workflow
+
+
+def questioner_graph():
+    workflow = StateGraph(QuestionerGraphState)
+    workflow.add_node("prepare_inputs", quest_prepare)
+    workflow.add_node("generate_questions", quest_generate)
+    workflow.set_entry_point("prepare_inputs")
+    workflow.add_edge("prepare_inputs", "generate_questions")
+    workflow.add_edge("generate_questions", END)
     return workflow
 
 
@@ -106,6 +121,7 @@ def pros_cons_graph():
 # Compilation
 chat_graph = simple_graph().compile()
 brainstorm_compiled_graph = brainstorm_graph().compile()
+questioner_compiled_graph = questioner_graph().compile()
 transcription_graph_compiled = transcription_graph().compile()
 chat_name_graph_compiled = chat_name_graph().compile()
 idea_proposition_compiled_graph = idea_proposition_graph().compile()

@@ -15,12 +15,13 @@ import {
     DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-type ChatMode = "brainstorm" | "consult" | "analyser";
+type ChatMode = "brainstorm" | "consult" | "analyser" | "questioner";
 
 const chatModes: { value: ChatMode; label: string; description?: string }[] = [
     { value: "brainstorm", label: "Brainstorm", description: "Generate creative ideas" },
     { value: "consult", label: "Consult", description: "Get expert advice" },
     { value: "analyser", label: "Analyse", description: "Analyze information" },
+    { value: "questioner", label: "Questioner", description: "Ask clarifying questions" },
 ];
 
 interface ChatInputAreaProps {

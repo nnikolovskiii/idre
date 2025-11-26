@@ -211,4 +211,47 @@
     .whiteboard-wrapper .react-flow__background circle {
         fill: var(--wb-grid-dot);
     }
+
+    /* Override React Flow Controls for Dark Mode */
+    .whiteboard-wrapper .react-flow__controls {
+        background-color: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .whiteboard-wrapper .react-flow__controls-button {
+        background-color: transparent;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted-foreground);
+        transition: color 0.2s, background-color 0.2s;
+    }
+
+    .whiteboard-wrapper .react-flow__controls-button:last-child {
+        border-bottom: none;
+    }
+
+    .whiteboard-wrapper .react-flow__controls-button:hover {
+        background-color: var(--accent);
+        color: var(--foreground);
+    }
+
+    /* Fix icon colors inside buttons */
+    .whiteboard-wrapper .react-flow__controls-button svg {
+        fill: currentColor;
+        max-width: 14px;
+        max-height: 14px;
+    }
+
+    /* Override MiniMap Backgrounds */
+    .whiteboard-wrapper .react-flow__minimap {
+        background-color: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+    }
+
+    .dark .whiteboard-wrapper .react-flow__minimap-mask {
+        fill: rgba(0, 0, 0, 0.4); /* Darker mask for dark mode */
+    }
 }

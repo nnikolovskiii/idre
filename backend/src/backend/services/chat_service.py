@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.chat import Chat
 from backend.models.dtos.chat import SendMessageRequest, CreateThreadRequest
 from backend.models.notebook_model import NotebookModel
+from backend.repositories.notebook_repository import NotebookRepository
 from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.file_service import FileService
@@ -36,6 +38,7 @@ class ChatService:
             session: AsyncSession,
             chat_repository: ChatRepository,
             thread_repository: ThreadRepository,
+            notebook_repository: NotebookRepository,
             model_api_service: ModelApiService,
             notebook_model_service: NotebookModelService,
             chat_model_service: ChatModelService,
@@ -60,6 +63,7 @@ class ChatService:
         self.session = session
         self.chat_repo = chat_repository
         self.thread_repo = thread_repository
+        self.notebook_repo = notebook_repository
         self.model_api_service = model_api_service
         self.notebook_model_service = notebook_model_service
         self.chat_model_service = chat_model_service
@@ -85,7 +89,8 @@ class ChatService:
         graph_id_map = {
             "brainstorm": "brainstorm_graph",
             "consult": "chat_agent",
-            "analyser" : "pros_cons_graph"
+            "analyser" : "pros_cons_graph",
+            "questioner": "questioner_graph"
         }
 
         graph_id = graph_id_map.get(mode)
@@ -142,6 +147,15 @@ class ChatService:
             title=request.title,
             web_search=request.web_search
         )
+
+        # 2. Update Notebook Timestamp
+        if request.notebook_id:
+            # Explicitly update the updated_at field for the parent notebook
+            await self.notebook_repo.update(
+                str(request.notebook_id),
+                {"updated_at": datetime.now(timezone.utc)}
+            )
+
         try:
             await self.ai_service.generate_chat_name(
                 request.notebook_id,
@@ -149,8 +163,10 @@ class ChatService:
                 SendMessageRequest(first_message=request.text, chat_id=str(new_chat.chat_id), mode=request.mode, sub_mode=request.sub_mode)
             )
         except Exception as e:
-            print(e)
+            print(f"Error generating chat name: {e}")
+
         await self.session.flush()
+
         # Track created models for potential later refresh
         created_models = []
 
@@ -163,7 +179,7 @@ class ChatService:
                 notebook_id=request.notebook_id, model_type="heavy", user_id=user_id
             )
 
-            # 4. Create chat models based on notebook models (no commits here)
+            # 4. Create chat models based on notebook models
             if notebook_light_model:
                 light_model = await self.chat_model_service.create_ai_model(
                     user_id=user_id,
@@ -180,31 +196,30 @@ class ChatService:
                 )
                 created_models.append(heavy_model)
 
-        # 5. Single commit for everything
+        # 5. Single commit for everything (Chat, Models, and Notebook update)
         await self.session.commit()
 
-        # 6. Refresh the main chat object (and optionally the models if needed)
+        # 6. Refresh the main chat object
         await self.session.refresh(new_chat)
-        # If you need refreshed model instances, uncomment and refresh them too:
-        # for model in created_models:
-        #     await self.session.refresh(model)
 
         return new_chat
 
     async def send_message_to_graph(self, thread_id: str, user_id: str, request: SendMessageRequest):
         """
         Orchestrates sending a message by gathering all data and invoking LangGraph.
-
-        Args:
-            thread_id (str): The ID of the LangGraph thread.
-            user_id (str): The ID of the user sending the message.
-            request (SendMessageRequest): The DTO containing message details.
-            mode (str): The operational mode ("consult" or "brainstorm") to determine the assistant.
-            sub_mode (str): The sub-mode for additional granularity within the mode.
         """
         chat_obj = await self.chat_repo.get_by_thread_id(thread_id=thread_id)
         if not chat_obj:
             raise ValueError(f"No chat found for thread_id: {thread_id}")
+
+        # --- Update Notebook Timestamp (Send Message) ---
+        if chat_obj.notebook_id:
+            await self.notebook_repo.update(
+                str(chat_obj.notebook_id),
+                {"updated_at": datetime.now(timezone.utc)}
+            )
+            # Commit the timestamp update immediately so it persists even if the LangGraph run takes time
+            await self.session.commit()
 
         models_dict = {chat_model.model.type: chat_model.model.name for chat_model in chat_obj.models}
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
@@ -232,10 +247,8 @@ class ChatService:
         if request.sub_mode:
             run_input["sub_mode"] = request.sub_mode
 
-        # Get the correct assistant ID based on the specified mode
         assistant_id = await self._get_assistant_id(request.mode.lower())
 
-        # Prepare metadata including both mode and sub_mode
         metadata = {"user_id": user_id, "mode": request.mode, "notebook_id": str(chat_obj.notebook_id),}
         if request.sub_mode:
             metadata["sub_mode"] = request.sub_mode
@@ -249,8 +262,6 @@ class ChatService:
             webhook=webhook_url,
             metadata=metadata,
         )
-
-    # --- Data Retrieval and Deletion Methods (delegated to repository) ---
 
     async def get_chats_for_user(self, user_id: str, notebook_id: Optional[str] = None) -> List[Chat]:
         """Gets all chats for a user by calling the repository."""

@@ -73,9 +73,16 @@ export const useNotebooks = (): UseNotebooksReturn => {
         setError(null);
         try {
             const response: NotebooksListResponse = await NotebookService.getAllNotebooks();
+            // Sort notebooks by updated_at in descending order (latest first)
+            const sortedNotebooks = response.data.sort((a, b) => {
+                const dateA = new Date(a.updated_at || a.created_at || 0);
+                const dateB = new Date(b.updated_at || b.created_at || 0);
+                return dateB.getTime() - dateA.getTime(); // Descending order
+            });
+
             setState(prev => ({
                 ...prev,
-                notebooks: response.data,
+                notebooks: sortedNotebooks,
                 loading: false,
             }));
         } catch (err) {

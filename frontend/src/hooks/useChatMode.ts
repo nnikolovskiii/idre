@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const chatModes = ["brainstorm", "consult", "analyser"] as const;
+const chatModes = ["brainstorm", "consult", "analyser", "questioner"] as const;
 type ChatMode = typeof chatModes[number];
 
 const STORAGE_KEY = 'chatMode';

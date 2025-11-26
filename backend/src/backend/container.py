@@ -151,18 +151,6 @@ class Container(containers.DeclarativeContainer):
         assistant_service=assistant_service,
     )
 
-    chat_service = providers.Factory(
-        ChatService,
-        model_api_service=model_api_service,
-        chat_repository=chat_repository,
-        thread_repository=thread_repository,
-        notebook_model_service=notebook_model_service,
-        chat_model_service=chat_model_service,
-        assistant_service=assistant_service,
-        file_service=file_service,
-        ai_service=ai_service,
-    )
-
     user_repository = providers.Factory(UserRepository)
 
     user_service = providers.Factory(
@@ -182,6 +170,19 @@ class Container(containers.DeclarativeContainer):
         notebook_repository=notebook_repository,
         thread_repository=thread_repository,
         notebook_model_service=notebook_model_service,
+    )
+
+    chat_service = providers.Factory(
+        ChatService,
+        model_api_service=model_api_service,
+        chat_repository=chat_repository,
+        thread_repository=thread_repository,
+        notebook_repository=notebook_repository,
+        notebook_model_service=notebook_model_service,
+        chat_model_service=chat_model_service,
+        assistant_service=assistant_service,
+        file_service=file_service,
+        ai_service=ai_service,
     )
 
 

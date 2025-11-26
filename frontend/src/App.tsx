@@ -30,7 +30,6 @@ import SetupApiKeyPage from "./pages/SetupApiKeyPage";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
 import AppGuard from "./components/guards/AppGuard";
 import { SseProvider } from "./context/SseContext";
-// import ReliablLandingPage from "./pages/ReliablLandingPage.tsx";
 
 function App() {
     return (
@@ -42,7 +41,6 @@ function App() {
                         <Routes>
                             {/* --- PUBLIC ROUTES (No Auth, No API Key required) --- */}
                             <Route path="/" element={<Landing />} />
-                            {/* <Route path="/reliabl" element={<ReliablLandingPage />} /> */}
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
 
