@@ -1,450 +1,434 @@
-import {useState, useEffect, useCallback, useRef} from "react";
-import {useParams} from "react-router-dom";
-import {fileService, type FileData} from "../services/filesService";
-import InputArea from "../components/chat/InputArea";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useParams } from "react-router-dom";
+import { PanelLeft, FolderOpen } from "lucide-react";
+
+import { fileService, type FileData } from "../services/filesService";
 import Layout from "../components/layout/Layout";
-import {useChats} from "../hooks/useChats.ts";
-import {useAuth} from "../contexts/AuthContext";
-import {
-    DriveError,
-    DriveFileList,
-    DriveHeader,
-    DriveLoading,
-    FileViewerModal,
-    TranscriptionModal
-} from "../components/drive";
+import { useChats } from "../hooks/useChats";
+import { useAuth } from "../contexts/AuthContext";
 
-// --- START: Delete Confirmation Modal (no changes here) ---
-interface DeleteConfirmationModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onConfirm: () => void;
-    fileName: string;
-}
-
-const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({isOpen, onClose, onConfirm, fileName}) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            <div className="bg-background rounded-lg p-4 sm:p-6 shadow-xl max-w-sm w-full">
-                <h2 className="text-lg font-semibold text-foreground">Confirm Deletion</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                    Are you sure you want to delete the file: <br/>
-                    <strong className="text-foreground">{fileName}</strong>?
-                </p>
-                <p className="mt-2 text-sm text-red-500">This action cannot be undone.</p>
-                <div className="mt-6 flex justify-end space-x-3">
-                    <button onClick={onClose}
-                            className="px-4 py-2 rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-                        Cancel
-                    </button>
-                    <button onClick={onConfirm}
-                            className="px-4 py-2 rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-// --- END: Delete Confirmation Modal ---
+// Child Components
+import SidebarExplorer from "../components/drive/SidebarExplorer";
+import FileTabs from "../components/drive/FileTabs";
+import MarkdownEditor from "../components/drive/editor/MarkdownEditor";
 
 const MyDriveView = () => {
-    const {notebookId} = useParams<{ notebookId: string }>();
+    const { notebookId } = useParams<{ notebookId: string }>();
 
+    // --- DATA STATE ---
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [fileViewerOpen, setFileViewerOpen] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
-    const [transcriptionOpen, setTranscriptionOpen] = useState(false);
-    const [selectedTranscription, setSelectedTranscription] = useState('');
-    const [selectedFilename, setSelectedFilename] = useState('');
+
+    // --- TABS & CONTENT STATE ---
+    const [openFiles, setOpenFiles] = useState<FileData[]>([]);
+    const [activeFileId, setActiveFileId] = useState<string | null>(null);
+    const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+    const [fileContents, setFileContents] = useState<Record<string, string>>({});
+
+    // --- MODAL STATE ---
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
 
-    const [editorContent, setEditorContent] = useState<string>("");
-    const [isDirty, setIsDirty] = useState(false);
+    // --- PERSISTENCE STATE ---
+    const hasRestoredTabs = useRef(false);
 
-    // --- START: State and Logic for Resizable Pane ---
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [sidebarWidth, setSidebarWidth] = useState(400);
-    const minSidebarWidth = 250;
-    const minEditorWidth = 300;
+    // --- UI STATE ---
+    const [viewMode, setViewMode] = useState<'edit' | 'preview' | 'split'>('edit');
+    const [sidebarWidth, setSidebarWidth] = useState(260);
+    const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+    const [isDragging, setIsDragging] = useState(false);
 
-    // Set initial sidebar width based on container size on mount
-    useEffect(() => {
-        if (containerRef.current) {
-            const initialWidth = containerRef.current.offsetWidth * 0.4;
-            setSidebarWidth(Math.max(minSidebarWidth, initialWidth));
-        }
-    }, []);
+    // --- RECORDING STATE ---
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = sidebarWidth;
-        const container = containerRef.current;
+    // --- HOOKS ---
+    const { chatSessions, currentChatId, loadingChats, creatingChat, isTyping, createNewChat, switchToChat, handleDeleteChat } = useChats(notebookId);
+    const { isAuthenticated, user } = useAuth();
 
-        if (!container) return;
-
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-            const dx = moveEvent.clientX - startX;
-            const newWidth = Math.max(
-                minSidebarWidth,
-                Math.min(startWidth + dx, container.clientWidth - minEditorWidth)
-            );
-            setSidebarWidth(newWidth);
-        };
-
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    }, [sidebarWidth]);
-    // --- END: State and Logic for Resizable Pane ---
-
-
-    const {
-        chatSessions,
-        currentChatId,
-        loadingChats,
-        creatingChat,
-        isTyping,
-        createNewChat,
-        switchToChat,
-        handleDeleteChat
-    } = useChats(notebookId);
-    const {isAuthenticated, user} = useAuth();
-
+    // --- FETCHING ---
     const fetchFiles = useCallback(async () => {
-        if (!notebookId) {
-            setError("No notebook ID provided");
-            setLoading(false);
-            return;
-        }
+        if (!notebookId) return;
+        setLoading(true);
         try {
-            setLoading(true);
-            setError(null);
-            const fileData = await fileService.getUserFiles(notebookId);
-            setFiles(fileData.data);
+            const res = await fileService.getUserFiles(notebookId);
+            setFiles(res.data);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to load files");
+            console.error("Failed to load files", err);
         } finally {
             setLoading(false);
         }
     }, [notebookId]);
 
-    useEffect(() => {
-        fetchFiles();
-    }, [notebookId, fetchFiles]);
+    useEffect(() => { fetchFiles(); }, [fetchFiles]);
 
+    // --- HELPERS ---
+    const activeFile = openFiles.find(f => f.file_id === activeFileId) || null;
+
+    const isFileDirty = (fileId: string) => {
+        const file = files.find(f => f.file_id === fileId);
+        const currentContent = fileContents[fileId];
+        if (!file || currentContent === undefined) return false;
+        return (file.content || "") !== currentContent;
+    };
+
+    // --- PERSISTENCE LOGIC ---
     useEffect(() => {
-        if (selectedFile && !files.find(f => f.file_id === selectedFile.file_id)) {
-            setSelectedFile(null);
-            setEditorContent('');
-            setIsDirty(false);
+        if (loading || files.length === 0 || !notebookId || hasRestoredTabs.current) return;
+
+        const storageKey = `notebook_tabs_${notebookId}`;
+        const savedData = localStorage.getItem(storageKey);
+
+        if (savedData) {
+            try {
+                const { openIds, activeId, previewId } = JSON.parse(savedData);
+                const restoredFiles = files.filter(f => openIds.includes(f.file_id));
+
+                if (restoredFiles.length > 0) {
+                    setOpenFiles(restoredFiles);
+                    const contentMap: Record<string, string> = {};
+                    restoredFiles.forEach(f => {
+                        contentMap[f.file_id] = f.content || "";
+                    });
+                    setFileContents(prev => ({ ...prev, ...contentMap }));
+
+                    if (activeId && restoredFiles.find(f => f.file_id === activeId)) {
+                        setActiveFileId(activeId);
+                        const activeFile = restoredFiles.find(f => f.file_id === activeId);
+                        if (activeFile?.filename.endsWith('.md')) setViewMode('split');
+                    } else {
+                        setActiveFileId(restoredFiles[0].file_id);
+                    }
+
+                    if (previewId && restoredFiles.find(f => f.file_id === previewId)) {
+                        setPreviewFileId(previewId);
+                    }
+                }
+            } catch (e) {
+                localStorage.removeItem(storageKey);
+            }
         }
-    }, [files, selectedFile]);
+        hasRestoredTabs.current = true;
+    }, [files, loading, notebookId]);
 
-    const handleDeleteRequest = (file: FileData) => setFileToDelete(file);
+    useEffect(() => {
+        if (loading || !notebookId) return;
+        if (files.length > 0 && !hasRestoredTabs.current) return;
 
-    const confirmDelete = useCallback(async () => {
+        const dataToSave = {
+            openIds: openFiles.map(f => f.file_id),
+            activeId: activeFileId,
+            previewId: previewFileId
+        };
+
+        localStorage.setItem(`notebook_tabs_${notebookId}`, JSON.stringify(dataToSave));
+    }, [openFiles, activeFileId, previewFileId, notebookId, loading, files.length]);
+
+
+    // --- FILE OPERATIONS ---
+    const handleOpenFile = (file: FileData) => {
+        if (fileContents[file.file_id] === undefined) {
+            setFileContents(prev => ({ ...prev, [file.file_id]: file.content || "" }));
+        }
+
+        const isAlreadyOpen = openFiles.some(f => f.file_id === file.file_id);
+
+        if (isAlreadyOpen) {
+            setActiveFileId(file.file_id);
+        } else {
+            if (previewFileId && !isFileDirty(previewFileId)) {
+                setOpenFiles(prev => prev.map(f => f.file_id === previewFileId ? file : f));
+            } else {
+                if (previewFileId && isFileDirty(previewFileId)) {
+                    setPreviewFileId(null);
+                }
+                setOpenFiles(prev => [...prev, file]);
+            }
+            setPreviewFileId(file.file_id);
+            setActiveFileId(file.file_id);
+        }
+
+        if (file.filename.endsWith('.md')) setViewMode('split');
+        else setViewMode('edit');
+    };
+
+    const handlePinFile = (fileId: string) => {
+        if (previewFileId === fileId) {
+            setPreviewFileId(null);
+        }
+    };
+
+    const handleDoubleClickFile = (file: FileData) => {
+        if (fileContents[file.file_id] === undefined) {
+            setFileContents(prev => ({ ...prev, [file.file_id]: file.content || "" }));
+        }
+        if (!openFiles.find(f => f.file_id === file.file_id)) {
+            setOpenFiles(prev => [...prev, file]);
+        }
+        setActiveFileId(file.file_id);
+        setPreviewFileId(null);
+        if (file.filename.endsWith('.md')) setViewMode('split');
+        else setViewMode('edit');
+    };
+
+    const handleEditorChange = (val: string) => {
+        if (activeFileId) {
+            setFileContents(prev => ({ ...prev, [activeFileId]: val }));
+            if (activeFileId === previewFileId) setPreviewFileId(null);
+        }
+    };
+
+    const handleCloseTab = (e: React.MouseEvent, fileId: string) => {
+        e.stopPropagation();
+        if (isFileDirty(fileId)) {
+            if (!confirm(`Save changes before closing?`)) return;
+        }
+        const newOpenFiles = openFiles.filter(f => f.file_id !== fileId);
+        setOpenFiles(newOpenFiles);
+        if (previewFileId === fileId) setPreviewFileId(null);
+        setFileContents(prev => {
+            const next = { ...prev };
+            delete next[fileId];
+            return next;
+        });
+        if (activeFileId === fileId) {
+            setActiveFileId(newOpenFiles.length > 0 ? newOpenFiles[newOpenFiles.length - 1].file_id : null);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!activeFile || !activeFileId) return;
+        const contentToSave = fileContents[activeFileId];
+        try {
+            await fileService.updateFile(activeFileId, { content: contentToSave });
+            const updatedFile = { ...activeFile, content: contentToSave };
+            setFiles(prev => prev.map(f => f.file_id === activeFileId ? updatedFile : f));
+            setOpenFiles(prev => prev.map(f => f.file_id === activeFileId ? updatedFile : f));
+        } catch (err) {
+            alert("Failed to save file.");
+        }
+    };
+
+    // --- DELETE LOGIC (Trigger Modal) ---
+    const initiateDelete = () => {
+        if (activeFile) {
+            setFileToDelete(activeFile);
+        }
+    };
+
+    // --- DELETE LOGIC (Execute) ---
+    const confirmDelete = async () => {
         if (!fileToDelete) return;
+
         try {
             await fileService.deleteFile(fileToDelete.file_id);
-            await fetchFiles();
+            setFiles(prev => prev.filter(f => f.file_id !== fileToDelete.file_id));
+            setOpenFiles(prev => prev.filter(f => f.file_id !== fileToDelete.file_id));
+
+            if (previewFileId === fileToDelete.file_id) setPreviewFileId(null);
+            if (activeFileId === fileToDelete.file_id) setActiveFileId(null);
+
+            setFileToDelete(null); // Close modal
         } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to delete file");
-        } finally {
+            alert("Failed to delete file");
             setFileToDelete(null);
         }
-    }, [fileToDelete, fetchFiles]);
-
-    const handleEdit = useCallback(async (file: FileData, newFilename: string) => {
-        try {
-            await fileService.updateFile(file.file_id, {filename: newFilename});
-            await fetchFiles();
-        } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to update file name");
-        }
-    }, [fetchFiles]);
-
-    const handleViewTranscription = useCallback((file: FileData) => {
-        setSelectedTranscription(file.processing_result?.transcription || '');
-        setSelectedFilename(file.filename);
-        setTranscriptionOpen(true);
-    }, []);
-
-    const handleFileClick = (item: FileData) => {
-        if (isDirty && !window.confirm("You have unsaved changes that will be lost. Are you sure?")) {
-            return;
-        }
-        if (item.file_id === selectedFile?.file_id) return;
-
-
-        setSelectedFile(item);
-        setEditorContent(item.content || '');
-        setIsDirty(false);
-        setFileViewerOpen(false);
-
     };
 
-    const closeFileViewer = () => {
-        setFileViewerOpen(false);
-        setSelectedFile(null);
+    const handleDownload = () => {
+        if (activeFile) window.open(activeFile.url, '_blank');
     };
 
-    const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newContent = e.target.value;
-        setEditorContent(newContent);
-        if (selectedFile) {
-            const sourceText = selectedFile.content;
-            setIsDirty(newContent !== (sourceText || ''));
-        }
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || !e.target.files[0] || !notebookId) return;
+        await fileService.uploadFile(e.target.files[0], notebookId);
+        await fetchFiles();
     };
 
-    const handleSaveContent = useCallback(async () => {
-        if (!selectedFile || !isDirty) return;
-
-        try {
-            await fileService.updateFile(selectedFile.file_id, {content: editorContent});
-            const updatedFile = {...selectedFile, content: editorContent};
-            if (selectedFile.content_type.startsWith('audio/')) {
-                updatedFile.processing_result = {
-                    ...selectedFile.processing_result,
-                    transcription: editorContent,
-                };
-            }
-            setSelectedFile(updatedFile);
-            setFiles(files.map(f => f.file_id === selectedFile.file_id ? updatedFile : f));
-            setIsDirty(false);
-            await fetchFiles();
-        } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to save content");
-        }
-    }, [selectedFile, editorContent, isDirty, files, fetchFiles]);
-
-
-    const handleCloseEditor = () => {
-        if (isDirty && !window.confirm("You have unsaved changes that will be lost. Are you sure?")) {
-            return;
-        }
-        setSelectedFile(null);
-        setEditorContent('');
-        setIsDirty(false);
+    const handleCreateFile = async () => {
+        const name = prompt("Enter file name (e.g., notes.md):");
+        if (!name || !notebookId) return;
+        const emptyFile = new File([""], name, { type: "text/plain" });
+        await fileService.uploadFile(emptyFile, notebookId);
+        await fetchFiles();
     };
 
-    const uploadAndRefresh = async (file: File) => {
+    const startRecording = async () => { /* ...existing... */
         if (!notebookId) return;
         try {
-            await fileService.uploadFile(file, notebookId);
-            await fetchFiles();
-        } catch (err) {
-            console.error("Upload failed:", err);
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+            mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const filename = `recording-${timestamp}.webm`;
+                const file = new File([audioBlob], filename, { type: 'audio/webm' });
+                try {
+                    setLoading(true);
+                    await fileService.uploadFile(file, notebookId);
+                    await fetchFiles();
+                } catch (err) { alert("Failed to upload recording"); } finally { setLoading(false); }
+                stream.getTracks().forEach(track => track.stop());
+            };
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) { alert("Could not access microphone."); }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
         }
     };
 
-    const handleTextSubmit = async (text: string) => {
-        const file = new File([text], `message-${Date.now()}.txt`, {type: "text/plain"});
-        await uploadAndRefresh(file);
-    };
+    // --- RESIZER LOGIC ---
+    const startResizing = useCallback(() => setIsDragging(true), []);
+    const stopResizing = useCallback(() => setIsDragging(false), []);
+    const resize = useCallback((e: MouseEvent) => {
+        if (isDragging) {
+            const w = e.clientX - 60;
+            if (w > 180 && w < 600) setSidebarWidth(w);
+        }
+    }, [isDragging]);
 
-    const handleAudioSubmit = async (text: string, blob: Blob) => {
-        const audioFile = new File([blob], `recording-${Date.now()}.webm`, {type: "audio/webm"});
-        await uploadAndRefresh(audioFile);
-        if (text.trim()) await handleTextSubmit(text);
-    };
+    useEffect(() => {
+        window.addEventListener("mousemove", resize);
+        window.addEventListener("mouseup", stopResizing);
+        return () => {
+            window.removeEventListener("mousemove", resize);
+            window.removeEventListener("mouseup", stopResizing);
+        };
+    }, [resize, stopResizing]);
 
-    const handleFileSubmit = async (file: File) => await uploadAndRefresh(file);
-
-    if (!notebookId) {
-        return (
-            <div className="flex h-screen relative">
-                <main className="flex-1 overflow-hidden flex flex-col">
-                    <div
-                        className="font-sans bg-white text-gray-800 p-4 border border-gray-200 box-border flex-1 overflow-auto">
-                        <DriveError
-                            error="No notebook ID provided in URL"
-                            onRetry={() => window.history.back()}
-                        />
-                    </div>
-                </main>
-            </div>
-        );
-    }
-
-    const isEditorOpen = selectedFile && (
-        selectedFile.content_type.startsWith('text/') ||
-        (selectedFile.content_type.startsWith('audio/') && selectedFile.processing_status === 'completed')
-    );
-
-    const children = (
-        <>
-            {/* Mobile View: Single pane at a time */}
-            <div className="md:hidden flex flex-1 overflow-hidden h-full">
-                {/* Mobile File List */}
-                {!isEditorOpen && (
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="p-3">
-                            <DriveHeader/>
-                            {loading && <DriveLoading/>}
-                            {error && <DriveError error={error} onRetry={fetchFiles}/>}
-                            {!loading && !error && (
-                                <DriveFileList
-                                    items={files}
-                                    onFileClick={handleFileClick}
-                                    onViewTranscription={handleViewTranscription}
-                                    onDelete={handleDeleteRequest}
-                                    onEdit={handleEdit}
-                                />
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Mobile Editor */}
-                {isEditorOpen && selectedFile && (
-                    <div className="flex-1 flex flex-col bg-background">
-                        <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
-                            <div className="flex items-center min-w-0">
-                                <button
-                                    onClick={handleCloseEditor}
-                                    className="mobile-back-button p-1 mr-2 -ml-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                                    title="Back to file list"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                         strokeLinejoin="round">
-                                        <polyline points="15 18 9 12 15 6"></polyline>
-                                    </svg>
-                                </button>
-                                <h3 className="font-semibold text-foreground truncate"
-                                    title={selectedFile.filename}>{selectedFile.filename}</h3>
-                            </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                                <button
-                                    onClick={handleSaveContent}
-                                    disabled={!isDirty}
-                                    className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    Save
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex-1 relative">
-                            <textarea
-                                value={editorContent}
-                                onChange={handleContentChange}
-                                className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-base mobile-textarea"
-                                placeholder="File content..."
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Desktop View: Side-by-side layout */}
-            <div className="hidden md:flex flex-1 overflow-hidden h-full" ref={containerRef}>
-                {/* --- File List Pane --- */}
-                <div
-                    className="flex-shrink-0 overflow-y-auto flex flex-col"
-                    style={{width: sidebarWidth}}
-                >
-                    <div className="p-6">
-                        <DriveHeader/>
-                        {loading && <DriveLoading/>}
-                        {error && <DriveError error={error} onRetry={fetchFiles}/>}
-                        {!loading && !error && (
-                            <DriveFileList
-                                items={files}
-                                onFileClick={handleFileClick}
-                                onViewTranscription={handleViewTranscription}
-                                onDelete={handleDeleteRequest}
-                                onEdit={handleEdit}
-                            />
-                        )}
-                    </div>
+    const renderWorkspace = () => {
+        if (!activeFile) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 bg-muted/5">
+                    <FolderOpen size={48} className="opacity-40" />
+                    <p>Select a file to open</p>
                 </div>
+            );
+        }
+        const isImage = activeFile.content_type.startsWith('image/');
+        const isText = !isImage;
 
-                {/* --- Resizer Handle --- */}
-                <div
-                    onMouseDown={handleMouseDown}
-                    className="w-1.5 cursor-col-resize flex-shrink-0 bg-border hover:bg-primary transition-colors"
+        if (isText) {
+            return (
+                <MarkdownEditor
+                    content={fileContents[activeFile.file_id] || ""}
+                    onChange={handleEditorChange}
+                    onSave={handleSave}
+                    viewMode={viewMode}
                 />
-
-                {/* --- Editor/Placeholder Pane --- */}
-                <div className="flex-1 bg-background min-w-0 flex flex-col">
-                    {isEditorOpen && selectedFile ? (
-                        <>
-                            <div className="p-4 border-b border-border flex justify-between items-center flex-shrink-0">
-                                <div className="flex items-center min-w-0">
-                                    <h3 className="font-semibold text-foreground truncate"
-                                        title={selectedFile.filename}>{selectedFile.filename}</h3>
-                                </div>
-                                <div className="flex items-center space-x-2 flex-shrink-0">
-                                    <button onClick={handleSaveContent} disabled={!isDirty}
-                                            className="px-3 py-1 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
-                                        Save
-                                    </button>
-                                    <button onClick={handleCloseEditor}
-                                            className="p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                                            title="Close editor">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                             strokeLinejoin="round">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="flex-1 relative">
-                                <textarea value={editorContent} onChange={handleContentChange}
-                                          className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none focus:outline-none font-mono text-sm"
-                                          placeholder="File content..."/>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex justify-center items-center h-full text-muted-foreground">
-                            <p className="text-center px-4">
-                                Select a text file or an audio file with a<br/>transcription to edit its content.
-                            </p>
-                        </div>
-                    )}
+            );
+        }
+        if (isImage) {
+            return (
+                <div className="w-full h-full flex items-center justify-center p-8 bg-muted/10">
+                    <img src={activeFile.url} alt={activeFile.filename} className="max-w-full max-h-full object-contain shadow-lg" />
                 </div>
-            </div>
-        </>
-    );
-
-    const inputArea = (
-        <div className="p-3 md:p-4 bg-background">
-            <InputArea onTextSubmit={handleTextSubmit} onAudioSubmit={handleAudioSubmit} onFileSubmit={handleFileSubmit}
-                       onModelsRequired={() => {
-                       }} hasModelsConfigured={true}/>
-        </div>
-    );
+            );
+        }
+        return <div className="p-10 text-center">Preview not available</div>;
+    };
 
     return (
-        <>
-            <Layout notebookId={notebookId} title="My Drive" chatSessions={chatSessions} currentChatId={currentChatId}
-                    loadingChats={loadingChats} creatingChat={creatingChat} isTyping={isTyping}
-                    isAuthenticated={isAuthenticated} user={user} createNewChat={createNewChat}
-                    switchToChat={switchToChat} handleDeleteChat={handleDeleteChat} children={children}
-                    inputArea={inputArea}/>
-            {selectedFile &&
-                <FileViewerModal isOpen={fileViewerOpen} onClose={closeFileViewer} fileName={selectedFile.filename}
-                                 fileId={selectedFile.file_id} fileUrl={selectedFile.url}
-                                 contentType={selectedFile.content_type}/>}
-            {transcriptionOpen &&
-                <TranscriptionModal isOpen={transcriptionOpen} onClose={() => setTranscriptionOpen(false)}
-                                    transcription={selectedTranscription} filename={selectedFilename}/>}
-            {fileToDelete && <DeleteConfirmationModal isOpen={!!fileToDelete} onClose={() => setFileToDelete(null)}
-                                                      onConfirm={confirmDelete} fileName={fileToDelete.filename}/>}
-        </>
+        <Layout
+            notebookId={notebookId}
+            title="Files"
+            chatSessions={chatSessions}
+            currentChatId={currentChatId}
+            loadingChats={loadingChats}
+            creatingChat={creatingChat}
+            isTyping={isTyping}
+            isAuthenticated={isAuthenticated}
+            user={user}
+            createNewChat={createNewChat}
+            switchToChat={switchToChat}
+            handleDeleteChat={handleDeleteChat}
+        >
+            <div className="flex h-full w-full bg-background overflow-hidden relative">
+                {isSidebarVisible && (
+                    <div style={{ width: sidebarWidth }} className="h-full shrink-0">
+                        <SidebarExplorer
+                            files={files}
+                            activeFileId={activeFileId}
+                            onFileClick={handleOpenFile}
+                            onFileDoubleClick={handleDoubleClickFile}
+                            onUpload={handleFileUpload}
+                            onCreateFile={handleCreateFile}
+                            onRefresh={fetchFiles}
+                            onCloseSidebar={() => setIsSidebarVisible(false)}
+                            isRecording={isRecording}
+                            onToggleRecording={isRecording ? stopRecording : startRecording}
+                            isFileDirty={isFileDirty}
+                        />
+                    </div>
+                )}
+
+                {isSidebarVisible ? (
+                    <div className="w-1 h-full cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors shrink-0 z-10 bg-border/30" onMouseDown={startResizing} />
+                ) : (
+                    <div className="w-10 border-r border-border bg-muted/10 flex flex-col items-center py-2 shrink-0">
+                        <button onClick={() => setIsSidebarVisible(true)} className="p-2 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Open Explorer">
+                            <PanelLeft size={20} />
+                        </button>
+                    </div>
+                )}
+
+                <div className="flex-1 flex flex-col min-w-0 bg-background h-full">
+                    <FileTabs
+                        openFiles={openFiles}
+                        activeFileId={activeFileId}
+                        previewFileId={previewFileId}
+                        setActiveFileId={setActiveFileId}
+                        onCloseTab={handleCloseTab}
+                        onPinTab={handlePinFile}
+                        isFileDirty={isFileDirty}
+                        activeFile={activeFile}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        onSave={handleSave}
+                        onDownload={handleDownload}
+                        onDelete={initiateDelete} // CHANGED: Calls initiateDelete now
+                    />
+
+                    <div className="flex-1 overflow-hidden relative">
+                        {renderWorkspace()}
+                    </div>
+                </div>
+
+                {/* DELETE CONFIRMATION MODAL */}
+                {fileToDelete && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px] animate-in fade-in duration-200">
+                        <div className="bg-popover border border-border shadow-2xl rounded-lg w-full max-w-sm p-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+                            <h3 className="text-lg font-semibold mb-2 text-popover-foreground">Delete File?</h3>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Are you sure you want to delete <span className="font-medium text-foreground">{fileToDelete.filename}</span>? This action cannot be undone.
+                            </p>
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setFileToDelete(null)}
+                                    className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-sm"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Layout>
     );
 };
 

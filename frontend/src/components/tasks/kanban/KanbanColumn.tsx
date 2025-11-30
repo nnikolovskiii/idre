@@ -15,43 +15,48 @@ interface KanbanColumnProps {
     onUnarchiveTask: (task: Task) => void;
     isMobile?: boolean;
     canCreate?: boolean;
+    showPriorities?: boolean;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
                                                        column, onAddTask, onViewTask, onEditTask, onArchiveTask, onUnarchiveTask,
-                                                       isMobile = false, canCreate = true
+                                                       isMobile = false, canCreate = true, showPriorities = true
                                                    }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
         <div
             ref={setNodeRef}
-            className={`${column.color} border rounded-lg p-4 flex flex-col transition-all kanban-column ${
-                isOver ? 'ring-2 ring-primary ring-opacity-50 scale-[1.02]' : ''
-            } ${
-                isMobile ? 'min-h-[200px] w-full' : 'min-h-[500px] min-w-[280px]'
-            }`}
+            className={`flex flex-col h-full rounded-xl transition-colors ${
+                isMobile ? 'min-h-[200px] w-full' : 'min-h-[500px] min-w-[300px]'
+            } ${isOver ? 'bg-secondary/30' : ''}`}
         >
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                    {column.title}
-                    <span className="text-xs bg-background px-2 py-0.5 rounded-full text-muted-foreground">
+            {/* Clean Header */}
+            <div className="flex items-center justify-between px-2 py-3 mb-1 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-offset-2 ring-offset-background ${column.accentColor}`} />
+                    <h3 className="font-semibold text-sm text-foreground">
+                        {column.title}
+                    </h3>
+                    <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full font-medium">
                         {column.tasks.length}
                     </span>
-                </h3>
+                </div>
+
                 {canCreate && (
                     <button
-                        className="p-1 hover:bg-background/50 rounded transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-all"
                         onClick={() => onAddTask(column.id)}
                         title="Add new task"
                     >
-                        <Plus size={14} />
+                        <Plus size={16} />
                     </button>
                 )}
             </div>
 
+            {/* Task Area */}
             <SortableContext items={column.tasks.filter(task => !task.archived).map(task => task.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2 flex-1">
+                <div className="flex-1 px-2 pb-4 space-y-3 overflow-y-auto custom-scrollbar">
                     {column.tasks.map((task) => (
                         <SortableTask
                             key={task.id}
@@ -61,11 +66,13 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                             onEdit={onEditTask}
                             onArchive={onArchiveTask}
                             onUnarchive={onUnarchiveTask}
+                            showPriorities={showPriorities}
                         />
                     ))}
+
                     {column.tasks.length === 0 && (
-                        <div className="text-center py-8 text-sm text-muted-foreground h-full flex items-center justify-center">
-                            {isOver ? 'Drop task here' : 'No tasks yet'}
+                        <div className="h-32 border border-dashed border-border/50 rounded-lg flex items-center justify-center text-muted-foreground text-xs opacity-50 hover:opacity-100 transition-opacity">
+                            {isOver ? 'Drop task here' : 'No tasks'}
                         </div>
                     )}
                 </div>

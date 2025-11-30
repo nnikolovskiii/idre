@@ -3,7 +3,7 @@
 // Centralized API configuration
 
 // First, try to get the URL from the runtime environment injected by Docker
-const runtimeApiUrl = window.ENV?.VITE_API_BASE_URL;
+const runtimeApiUrl = (window as any).ENV?.VITE_API_BASE_URL;
 
 export const API_CONFIG = {
     // Priority:
@@ -61,6 +61,15 @@ export const getFilesUrl = (endpoint: keyof typeof API_CONFIG.ENDPOINTS.FILES, p
     return param ? `${baseUrl}/${param}` : baseUrl;
 };
 
+/**
+ * Generates the full URL for downloading/streaming a file via the backend proxy.
+ * Use this for <audio src="..."> or <a href="..."> tags.
+ */
+export const getFileDownloadUrl = (fileId: string) => {
+    // Result: http://localhost:8001/files/download/{fileId}
+    return getFilesUrl('DOWNLOAD', fileId);
+};
+
 export const getChatsUrl = (endpoint: string = '') => {
     const baseUrl = buildApiUrl(API_CONFIG.ENDPOINTS.CHATS);
     return endpoint ? `${baseUrl}${endpoint}` : baseUrl;
@@ -98,12 +107,10 @@ export const deleteMessageUrl = (threadId: string, messageId: string) => {
 
 // Default AI Models API functions
 export const getDefaultAIModelsUrl = () => {
-    // FIXED: Added a trailing slash to match the FastAPI router
     return buildApiUrl('/default-ai-models/');
 };
 
 export const updateDefaultAIModelsUrl = () => {
-    // FIXED: Added a trailing slash to match the FastAPI router
     return buildApiUrl('/default-ai-models/');
 };
 
@@ -115,5 +122,3 @@ export const getOpenRouterModelsUrl = () => {
 export const getGenerativeModelsUrl = () => {
     return buildApiUrl('/generative-models/');
 };
-
-// --- END OF REFACTORED CODE ---

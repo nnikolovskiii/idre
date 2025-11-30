@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import math
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 from backend.api.dependencies import get_notebook_service, get_chat_service
 from backend.models import User
@@ -57,19 +59,39 @@ async def create_notebook(
 
 @router.get("", response_model=NotebooksListResponse)
 async def get_all_notebooks(
+        page: int = Query(1, ge=1, description="Page number"),
+        page_size: int = Query(20, ge=1, le=100, description="Items per page"),
         current_user: User = Depends(get_current_user),
         notebook_service: NotebookService = Depends(get_notebook_service)
 ):
     """
-    Get all notebooks for the current user.
-
-    Returns:
-        List of user's notebooks wrapped in a response object.
+    Get paginated notebooks for the current user.
     """
     try:
-        notebooks = await notebook_service.get_notebooks_for_user(user_id=current_user.email)
+        # Get all notebooks (assuming service returns list)
+        all_notebooks = await notebook_service.get_notebooks_for_user(user_id=current_user.email)
 
-        # First, prepare the list of individual notebook responses
+        # 1. Sort by updated_at desc (latest first) to ensure consistent pagination
+        # We handle None values for dates just in case
+        all_notebooks.sort(
+            key=lambda x: x.updated_at or x.created_at,
+            reverse=True
+        )
+
+        # 2. Calculate Pagination Metadata
+        total_items = len(all_notebooks)
+        total_pages = math.ceil(total_items / page_size)
+
+        # Adjust page if it exceeds total_pages (unless total is 0)
+        if total_items > 0 and page > total_pages:
+            page = total_pages
+
+        # 3. Slice the list
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        paginated_items = all_notebooks[start_index:end_index]
+
+        # 4. Map to Response DTOs
         notebook_responses = [
             NotebookResponse(
                 id=str(notebook.id),
@@ -79,45 +101,27 @@ async def get_all_notebooks(
                 created_at=notebook.created_at.isoformat() if notebook.created_at else None,
                 updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
             )
-            for notebook in notebooks
+            for notebook in paginated_items
         ]
 
-        # CHANGE 3: Wrap the list of notebooks in the NotebooksListResponse object before returning.
-        return NotebooksListResponse(data=notebook_responses)
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
-
-
-@router.get("/{notebook_id}", response_model=NotebookResponse)
-async def get_notebook(
-        notebook_id: str,
-        notebook_service: NotebookService = Depends(get_notebook_service)
-):
-    """
-    Get a specific notebook by ID.
-
-    Args:
-        notebook_id: UUID of the notebook
-
-    Returns:
-        The notebook if found
-    """
-    try:
-        notebook = await notebook_service.get_notebook_by_id(notebook_id=notebook_id)
-        if not notebook:
-            raise HTTPException(status_code=404, detail="Notebook not found")
-
-        return NotebookResponse(
-            id=str(notebook.id),
-            emoji=notebook.emoji,
-            title=notebook.title,
-            date=notebook.date,
-            created_at=notebook.created_at.isoformat() if notebook.created_at else None,
-            updated_at=notebook.updated_at.isoformat() if notebook.updated_at else None
+        # Return data with metadata
+        # Note: We rely on NotebooksListResponse accepting extra fields or a dict for 'meta'
+        # If your DTO is strict, you might need to update the DTO definition in backend/models/dtos/notebook_dtos.py
+        # Here we construct the response matching the expected JSON structure.
+        return NotebooksListResponse(
+            data=notebook_responses,
+            status="success",
+            message="Notebooks retrieved successfully",
+            # We inject meta here. If Pydantic is strict, ensure your DTO has a `meta` field or use a dict.
+            # Assuming we can pass it via the Pydantic model constructor if added, or relies on dynamic dict if not strict.
+            meta={
+                "page": page,
+                "page_size": page_size,
+                "total_items": total_items,
+                "total_pages": total_pages
+            }
         )
-    except HTTPException:
-        raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 

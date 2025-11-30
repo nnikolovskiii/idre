@@ -38,7 +38,8 @@ class SendMessageRequest(BaseModel):
 
 class CreateThreadRequest(BaseModel):
     title: str
-    text: str
+    text: Optional[str] = None # Made optional
+    audio_path: Optional[str] = None # Added audio_path
     notebook_id: Optional[str] = None
     web_search: Optional[bool] = True
     mode: Optional[str] = None

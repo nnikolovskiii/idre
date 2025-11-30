@@ -28,8 +28,7 @@ def pros_cons_prepare_inputs(state: ProsConsGraphState):
     enhanced_transcript = None
     if text_input: processed_parts.append(text_input)
     if audio_path:
-        docker_path = audio_path.replace(settings.FILE_SERVICE_URL, settings.FILE_SERVICE_URL_DOCKER)
-        enhanced_transcript = process_audio_input_pros_cons(docker_path, light_model, api_key)
+        enhanced_transcript = process_audio_input_pros_cons(audio_path, light_model, api_key)
         processed_parts.append(enhanced_transcript)
     if files_contents: processed_parts.append(files_contents)
 
@@ -100,5 +99,7 @@ def pros_cons_combine_responses(state: ProsConsGraphState):
     return {
         "messages": [ai_msg],
         "processed_input": None,
-        "context": None
+        "context": None,
+        "text_input": None,
+        "audio_path": None,
     }

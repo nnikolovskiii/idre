@@ -1,11 +1,13 @@
 import os
-
+import boto3
+from botocore.client import Config
 from cryptography.fernet import Fernet
 from dependency_injector import containers, providers
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
 from agent.services.fernet_service import FernetService
+from agent.tools.kokoroko_utils import TTSService
 
 load_dotenv()
 
@@ -16,7 +18,20 @@ def create_fernet():
     encryption_key = os.getenv("ENCRYPTION_KEY")
     if not encryption_key:
         raise ValueError("ENCRYPTION_KEY environment variable is not set.")
-    return Fernet(encryption_key.encode())  # Ensure proper encoding
+    return Fernet(encryption_key.encode())
+
+
+def create_s3_client():
+    """Factory function to create S3/SeaweedFS client"""
+    load_dotenv()
+    return boto3.client(
+        's3',
+        endpoint_url=os.getenv("S3_ENDPOINT_URL", "http://seaweedfs:8333"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "any"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "any"),
+        config=Config(signature_version='s3v4'),
+        region_name='us-east-1'
+    )
 
 
 def create_openrouter_model(api_key: str, model: str):
@@ -41,18 +56,24 @@ def create_openai_model(api_key: str, model: str):
 
 
 class Container(containers.DeclarativeContainer):
-    # Use the async version of the PostgreSQL database provider
+    # Core Dependencies
     fernet = providers.Singleton(create_fernet)
+    s3_client = providers.Singleton(create_s3_client)
 
+    # Services
     fernet_service = providers.Factory(
         FernetService,
         fernet=fernet
     )
 
-    # OpenRouter ChatOpenAI provider - parameters will be passed at call time
-    openrouter_model = providers.Factory(create_openrouter_model)
+    tts_service = providers.Factory(
+        TTSService,
+        s3_client=s3_client
+    )
 
-    # OpenAI ChatOpenAI provider - parameters will be passed at call time
+    # Models
+    openrouter_model = providers.Factory(create_openrouter_model)
     openai_model = providers.Factory(create_openai_model)
+
 
 container = Container()

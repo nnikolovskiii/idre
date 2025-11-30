@@ -28,8 +28,7 @@ def prepare_inputs_node(state: BrainstormGraphState):
         processed_parts.append(f"{text_input}")
 
     if audio_path:
-        docker_path = audio_path.replace(settings.FILE_SERVICE_URL, settings.FILE_SERVICE_URL_DOCKER)
-        enhanced_transcript = process_audio_input(docker_path, light_model, api_key)
+        enhanced_transcript = process_audio_input(audio_path, light_model, api_key)
         processed_parts.append(f"{enhanced_transcript}")
 
     if files_contents:
@@ -88,7 +87,9 @@ def generate_answer_node(state: BrainstormGraphState):
         return {
             "messages": [result],
             "processed_input": None,
-            "enhanced_transcript": None
+            "enhanced_transcript": None,
+            "text_input": None,
+            "audio_path": None,
         }
     except Exception as e:
         error_msg = AIMessage(content=f"Error: {e}", id=str(uuid.uuid4()))

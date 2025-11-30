@@ -6,7 +6,7 @@ import {
     closestCenter, type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { Plus, Archive, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Archive, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 
 // Services
 import {
@@ -21,7 +21,7 @@ import {
 import {type Column, COLUMN_CONFIG, type NewTaskState, type Task} from "./kanban/types";
 import KanbanColumn from "./kanban/KanbanColumn";
 import { TaskDragOverlay } from "./kanban/TaskCard";
-import { TaskCreationModal, TaskDetailModal, TaskEditModal } from "./kanban/TaskModals";
+import { TaskCreationModal, TaskDetailModal, TaskEditModal, ConfirmationModal } from "./kanban/TaskModals";
 import ArchivedTasksPanel from "./kanban/ArchivedTasksPanel";
 
 interface TasksKanbanProps {
@@ -35,6 +35,12 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
     const [activeTask, setActiveTask] = useState<Task | null>(null);
     const [activeTaskOriginalColumn, setActiveTaskOriginalColumn] = useState<TaskStatus | null>(null);
 
+    // UI Preferences
+    const [showPriorities, setShowPriorities] = useState<boolean>(() => {
+        const saved = localStorage.getItem('kanban-show-priorities');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
     // UI State
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,6 +51,9 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
     const [viewingTask, setViewingTask] = useState<Task | null>(null);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [isUpdating, setIsUpdating] = useState(false);
+
+    // Confirmation States
+    const [taskToArchive, setTaskToArchive] = useState<Task | null>(null);
 
     // Archive State
     const [isArchivedPanelOpen, setIsArchivedPanelOpen] = useState(false);
@@ -122,6 +131,11 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
 
     useEffect(() => { if (isArchivedPanelOpen) fetchArchivedTasks(); }, [isArchivedPanelOpen, fetchArchivedTasks]);
 
+    // Persist priority visibility preference
+    useEffect(() => {
+        localStorage.setItem('kanban-show-priorities', JSON.stringify(showPriorities));
+    }, [showPriorities]);
+
     // --- Handlers ---
     const resetForm = () => setNewTask({ title: "", description: "", priority: "medium", tags: "", dueDate: "" });
 
@@ -157,10 +171,21 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
         }
     };
 
-    const handleArchiveTask = async (task: Task) => {
-        if (window.confirm("Archive this task?")) {
-            try { await TasksService.archiveTask(task.id); await fetchTasks(); }
-            catch (err) { setError("Failed to archive"); }
+    // Triggered when clicking the trash/archive icon
+    const handleArchiveTaskRequest = (task: Task) => {
+        setTaskToArchive(task);
+    };
+
+    // Triggered when confirming in the modal
+    const executeArchiveTask = async () => {
+        if (!taskToArchive) return;
+        try {
+            await TasksService.archiveTask(taskToArchive.id);
+            setTaskToArchive(null);
+            await fetchTasks();
+        } catch (err) {
+            setError("Failed to archive");
+            setTaskToArchive(null);
         }
     };
 
@@ -252,19 +277,37 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
     const selectedColumn = columns.find(col => col.id === selectedColumnId);
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="border-b border-border bg-background flex-shrink-0 hidden md:block p-4">
+        <div className="h-full flex flex-col bg-background">
+            <div className="border-b border-border bg-background flex-shrink-0 hidden md:block px-6 py-4">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold">{viewMode === 'all' ? 'All Tasks' : 'Tasks'}</h1>
+                    <div className="text-left">
+                        <h1 className="text-2xl font-bold tracking-tight">{viewMode === 'all' ? 'All Tasks' : 'Tasks'}</h1>
                         <p className="text-sm text-muted-foreground">Manage your workflow</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => { setIsArchivedPanelOpen(true); setArchivedSearchQuery(""); }} className="px-4 py-2 bg-secondary rounded-md flex items-center gap-2 text-sm">
-                            <Archive size={16} /> Archived {archivedTasks.length > 0 && <span className="bg-background px-2 rounded-full text-xs">{archivedTasks.length}</span>}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => { setIsArchivedPanelOpen(true); setArchivedSearchQuery(""); }}
+                            className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md flex items-center gap-2 transition-colors"
+                        >
+                            <Archive size={16} />
+                            Archived
+                            {archivedTasks.length > 0 && <span className="bg-secondary-foreground/10 px-2 py-0.5 rounded-full text-xs font-medium">{archivedTasks.length}</span>}
+                        </button>
+                        <button
+                            onClick={() => setShowPriorities(!showPriorities)}
+                            className={`px-3 py-2 text-sm hover:bg-secondary rounded-md flex items-center gap-2 transition-colors ${
+                                showPriorities ? 'text-foreground' : 'text-muted-foreground'
+                            }`}
+                            title={showPriorities ? "Hide priorities" : "Show priorities"}
+                        >
+                            {showPriorities ? <EyeOff size={16} /> : <Eye size={16} />}
+                            Priorities
                         </button>
                         {canCreate && (
-                            <button onClick={() => { setSelectedColumnId(TaskStatus.TODO); setShowTaskModal(true); resetForm(); }} className="px-4 py-2 bg-primary text-primary-foreground rounded-md flex items-center gap-2 text-sm">
+                            <button
+                                onClick={() => { setSelectedColumnId(TaskStatus.TODO); setShowTaskModal(true); resetForm(); }}
+                                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+                            >
                                 <Plus size={16} /> Add Task
                             </button>
                         )}
@@ -272,24 +315,26 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                 </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 mobile-scroll">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
                 <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-full md:min-w-[800px]">
+                    <div className="flex h-full gap-6 min-w-full">
                         {columns.map((column) => (
-                            <KanbanColumn
-                                key={column.id}
-                                column={column}
-                                onAddTask={(id) => { setSelectedColumnId(id); setShowTaskModal(true); resetForm(); }}
-                                onViewTask={setViewingTask}
-                                onEditTask={setEditingTask}
-                                onArchiveTask={handleArchiveTask}
-                                onUnarchiveTask={handleUnarchiveTask}
-                                isMobile={false} // You can implement a hook for window size here
-                                canCreate={canCreate}
-                            />
+                            <div key={column.id} className="w-[320px] flex-shrink-0 h-full">
+                                <KanbanColumn
+                                    column={column}
+                                    onAddTask={(id) => { setSelectedColumnId(id); setShowTaskModal(true); resetForm(); }}
+                                    onViewTask={setViewingTask}
+                                    onEditTask={setEditingTask}
+                                    onArchiveTask={handleArchiveTaskRequest}
+                                    onUnarchiveTask={handleUnarchiveTask}
+                                    isMobile={false}
+                                    canCreate={canCreate}
+                                    showPriorities={showPriorities}
+                                />
+                            </div>
                         ))}
                     </div>
-                    {createPortal(<DragOverlay>{activeTask ? <TaskDragOverlay task={activeTask} /> : null}</DragOverlay>, document.body)}
+                    {createPortal(<DragOverlay>{activeTask ? <TaskDragOverlay task={activeTask} showPriorities={showPriorities} /> : null}</DragOverlay>, document.body)}
                 </DndContext>
             </div>
 
@@ -313,6 +358,15 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                 onClose={() => setEditingTask(null)}
                 onUpdate={handleUpdateTask}
                 isUpdating={isUpdating}
+            />
+            <ConfirmationModal
+                isOpen={!!taskToArchive}
+                onClose={() => setTaskToArchive(null)}
+                onConfirm={executeArchiveTask}
+                title="Archive Task"
+                message={`Are you sure you want to archive "${taskToArchive?.title}"? You can view it later in the Archived folder.`}
+                confirmText="Archive"
+                isDestructive={true}
             />
             <ArchivedTasksPanel
                 isOpen={isArchivedPanelOpen}

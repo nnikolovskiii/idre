@@ -1,5 +1,3 @@
-// /home/nnikolovskii/dev/general-chat/frontend/src/components/chat/ChatView.tsx:
-
 import React from "react";
 import {useParams} from "react-router-dom";
 
@@ -48,6 +46,12 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         await handleSendMessage(text, undefined, options);
     };
 
+    // New: Handle Audio Submit
+    const handleAudioSubmit = async (blob: Blob, options: { webSearch: boolean, mode: string }) => {
+        // Pass the raw blob. useChats -> handleSendMessage handles the upload to backend.
+        await handleSendMessage(undefined, blob, options);
+    };
+
     const handleFileSubmit = async (file: File, options: { webSearch: boolean, mode: string }) => {
         try {
             // Re-using file upload logic from MyDriveView for consistency
@@ -67,6 +71,7 @@ const ChatView: React.FC<ChatViewProps> = ({notebookId: propNotebookId}) => {
         <ChatInputArea
             onTextSubmit={handleTextSubmit}
             onFileSubmit={handleFileSubmit}
+            onAudioSubmit={handleAudioSubmit} // Passed here
             disabled={!currentChatId || creatingChat || isTyping}
             hasModelsConfigured={true}
             loadingMessages={loadingMessages}

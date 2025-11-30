@@ -8,6 +8,8 @@ import React, {
     useCallback,
     useEffect, type ReactNode,
 } from "react";
+import { API_CONFIG } from "../services/api";
+
 
 interface SseEventData {
     event: string;
@@ -117,7 +119,7 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
             console.log("SSE Context: Connecting to new thread:", threadId);
             setConnectionStatus("connecting");
 
-            const apiUrl = window.ENV?.VITE_API_BASE_URL || "http://localhost:8001";
+            const apiUrl = API_CONFIG.URL;
             const url = `${apiUrl}/chats/sse/${threadId}`;
             const es = new EventSource(url);
 
@@ -193,7 +195,7 @@ export const SseProvider: React.FC<{ children: ReactNode }> = ({
             console.log("SSE Context: Connecting to proposition for notebook:", notebookId);
             setPropositionConnectionStatus("connecting");
 
-            const apiUrl = window.ENV?.VITE_API_BASE_URL || "http://localhost:8001";
+            const apiUrl = API_CONFIG.URL;
             const url = `${apiUrl}/propositions/sse/${notebookId}`;
             const es = new EventSource(url);
 

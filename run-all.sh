@@ -7,7 +7,8 @@ set -e
 echo "Starting all services..."
 
 # Go to ai-agent directory and run docker-compose up
-echo "Starting ai-agent with docker-compose..."
+# This now includes the backend service and frontend
+echo "Starting infrastructure, ai-agent, backend, and frontend with docker-compose..."
 cd ai-agent
 
 # Ask user if they want to run langgraph build
@@ -21,31 +22,10 @@ else
     echo "Skipping langgraph build..."
 fi
 
-docker compose up -d
 cd ..
-
-# Stop any process on port 8001
-echo "Stopping any process on port 8001..."
-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
-
-# Go to backend directory and run poetry command in background
-echo "Starting backend..."
-cd backend
-poetry lock
-poetry install
-poetry run python src/backend/main.py &
-cd ..
-
-# Stop any process on port 5173
-echo "Stopping any process on port 5173..."
-lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-
-# Go to frontend directory and run npm dev
-# Frontend
-echo "Starting frontend..."
-cd frontend
-npm install
-npm run dev
-cd ..
+docker compose up -d --build
 
 echo "All services started!"
+echo "Frontend is available at http://localhost:5173"
+echo "Backend is available at http://localhost:8001"
+echo "LangGraph API is available at http://localhost:8123"

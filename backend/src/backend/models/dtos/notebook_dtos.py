@@ -21,7 +21,15 @@ class NotebookResponse(BaseModel):
     updated_at: Optional[str] = None
 
 
+class PaginationMeta(BaseModel):
+    page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+
+# Update this class
 class NotebooksListResponse(BaseModel):
-    status: str = "success"
-    message: str = "Notebooks retrieved successfully"
+    status: str
+    message: str
     data: List[NotebookResponse]
+    meta: Optional[PaginationMeta] = None # <--- THIS IS CRITICAL

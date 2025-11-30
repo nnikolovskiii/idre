@@ -1,7 +1,5 @@
-// /home/nnikolovskii/dev/general-chat/frontend/src/components/chat/ChatInputArea.tsx:
-
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Plus, SlidersHorizontal, ArrowUp, ChevronDown } from "lucide-react";
+import { Plus, SlidersHorizontal, ArrowUp, ChevronDown, Mic, Square } from "lucide-react";
 import type { ChatModel } from '../../services/chatModelService';
 import { SettingsPopover } from "./SettingsPopover.tsx";
 import { useClickOutside } from "../../hooks/useClickOutside.ts";
@@ -27,6 +25,7 @@ const chatModes: { value: ChatMode; label: string; description?: string }[] = [
 interface ChatInputAreaProps {
     onTextSubmit: (text: string, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
     onFileSubmit: (file: File, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>;
+    onAudioSubmit?: (blob: Blob, options: { webSearch: boolean; mode: ChatMode }) => Promise<void>; // Made Optional
     disabled?: boolean;
     hasModelsConfigured?: boolean;
     loadingMessages?: boolean;
@@ -40,6 +39,7 @@ interface ChatInputAreaProps {
 const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                                                          onTextSubmit,
                                                          onFileSubmit,
+                                                         onAudioSubmit,
                                                          disabled = false,
                                                          hasModelsConfigured = false,
                                                          onModelsRequired,
@@ -48,9 +48,12 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                                                      }) => {
     const [textInput, setTextInput] = useState("");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isRecording, setIsRecording] = useState(false); // Recording state
+
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
     const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled);
     const [isUpdatingWebSearch, setIsUpdatingWebSearch] = useState(false);
@@ -58,7 +61,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
 
     // Check if we should show brainstorm suggestions
     const isTemporaryChat = chatId?.startsWith("temp_") || false;
-    const shouldShowSuggestions = isTemporaryChat && currentMode === "brainstorm" && !textInput.trim();
+    const shouldShowSuggestions = isTemporaryChat && currentMode === "brainstorm" && !textInput.trim() && !isRecording;
 
     useEffect(() => {
         setWebSearchEnabled(initialWebSearchEnabled);
@@ -164,13 +167,60 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
 
     const handleSuggestionClick = (suggestion: string) => {
         setTextInput(suggestion);
-        // Focus the textarea after setting the text
         setTimeout(() => {
             if (textareaRef.current) {
                 textareaRef.current.focus();
                 autoResize();
             }
         }, 0);
+    };
+
+    // --- Audio Recording Logic ---
+    const startRecording = async () => {
+        if (isRecording || isDisabled || !onAudioSubmit) return; // Guard against missing prop
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+            mediaRecorderRef.current = recorder;
+
+            const chunks: Blob[] = [];
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const audioBlob = new Blob(chunks, { type: "audio/webm" });
+                // Send the blob to the parent component
+                onAudioSubmit(audioBlob, { webSearch: webSearchEnabled, mode: currentMode })
+                    .catch((err) => console.error("Error submitting audio:", err));
+
+                // Stop all tracks to release microphone
+                stream.getTracks().forEach((track) => track.stop());
+            };
+
+            recorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Error starting recording:", err);
+            alert("Could not access microphone. Please check browser permissions.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const toggleRecording = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
     };
 
     const iconButtonClasses = "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border-none bg-transparent text-muted-foreground transition-colors hover:enabled:bg-background/20 disabled:cursor-not-allowed disabled:opacity-50";
@@ -184,19 +234,28 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
             />
 
             <div className="relative mx-auto max-w-3xl">
-                <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted px-2 pb-1 pt-4">
-                    <textarea
-                        ref={textareaRef}
-                        className="w-full resize-none border-none bg-transparent px-2 text-base leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm max-h-[120px]"
-                        placeholder={hasModelsConfigured ? "How can I help you today?" : "Configure models to start chatting..."}
-                        value={textInput}
-                        onChange={handleTextChange}
-                        onKeyPress={handleKeyPress}
-                        onClick={handleInputClick}
-                        rows={1}
-                        disabled={isDisabled}
-                        style={{ overflowY: 'hidden' }}
-                    />
+                <div className={`flex flex-col gap-2 rounded-xl border border-border bg-muted px-2 pb-1 pt-4 transition-colors ${isRecording ? "border-red-500/50 bg-red-500/5" : ""}`}>
+
+                    {/* Input Area / Recording Indicator */}
+                    {isRecording ? (
+                        <div className="flex items-center justify-center h-[28px] gap-2 mb-2 animate-pulse text-red-500 font-medium">
+                            <div className="w-3 h-3 bg-red-500 rounded-full" />
+                            <span>Recording audio...</span>
+                        </div>
+                    ) : (
+                        <textarea
+                            ref={textareaRef}
+                            className="w-full resize-none border-none bg-transparent px-2 text-base leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm max-h-[120px]"
+                            placeholder={hasModelsConfigured ? "How can I help you today?" : "Configure models to start chatting..."}
+                            value={textInput}
+                            onChange={handleTextChange}
+                            onKeyPress={handleKeyPress}
+                            onClick={handleInputClick}
+                            rows={1}
+                            disabled={isDisabled}
+                            style={{ overflowY: 'hidden' }}
+                        />
+                    )}
 
                     <div className="flex items-center gap-2">
                         <input
@@ -206,14 +265,14 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                             style={{ display: "none" }}
                             accept="*/*"
                         />
-                        <button className={iconButtonClasses} onClick={triggerFileUpload} disabled={isDisabled} title="Upload File">
+                        <button className={iconButtonClasses} onClick={triggerFileUpload} disabled={isDisabled || isRecording} title="Upload File">
                             <Plus size={20} />
                         </button>
 
                         <div className="relative">
                             <button
                                 className={iconButtonClasses}
-                                disabled={isDisabled && !chatId?.startsWith("temp_")}
+                                disabled={(isDisabled && !chatId?.startsWith("temp_")) || isRecording}
                                 title="Settings"
                                 onClick={() => setIsSettingsOpen(prev => !prev)}
                             >
@@ -237,7 +296,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                             <DropdownMenuTrigger asChild>
                                 <button
                                     className="flex h-8 items-center gap-1.5 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    disabled={isDisabled}
+                                    disabled={isDisabled || isRecording}
                                     title="Change Mode"
                                 >
                                     <span className="capitalize font-medium text-foreground">
@@ -266,10 +325,23 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
                             </DropdownMenuContent>
                         </DropdownMenu>
 
+                        {/* Microphone Button - Only show if onAudioSubmit is provided */}
+                        {onAudioSubmit && (
+                            <button
+                                className={`${iconButtonClasses} ${isRecording ? "text-red-500 hover:text-red-600 bg-red-100 dark:bg-red-900/20" : ""}`}
+                                onClick={toggleRecording}
+                                disabled={isDisabled}
+                                title={isRecording ? "Stop Recording" : "Start Recording"}
+                            >
+                                {isRecording ? <Square size={18} fill="currentColor" /> : <Mic size={20} />}
+                            </button>
+                        )}
+
+                        {/* Send Button */}
                         <button
                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-primary-foreground transition-colors hover:enabled:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                             onClick={sendTextMessage}
-                            disabled={isDisabled || !textInput.trim()}
+                            disabled={isDisabled || !textInput.trim() || isRecording}
                             title="Send Message"
                         >
                             <ArrowUp size={20} />

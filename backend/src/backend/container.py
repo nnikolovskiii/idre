@@ -39,8 +39,21 @@ from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 from backend.services.notebook_service import NotebookService
 from backend.services.whiteboard_service import WhiteboardService
+import boto3  # <--- Add this
+from botocore.client import Config  # <--- Add this
 
 load_dotenv()
+
+
+def create_s3_client():
+    return boto3.client(
+        's3',
+        endpoint_url=os.getenv("S3_ENDPOINT_URL", "http://seaweedfs:8333"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "any"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "any"),
+        config=Config(signature_version='s3v4'),
+        region_name='us-east-1'  # SeaweedFS defaults
+    )
 
 
 def create_fernet() -> Fernet:
@@ -59,8 +72,10 @@ class Container(containers.DeclarativeContainer):
     db = providers.Singleton(AsyncPostgreSQLDatabase)
 
     fernet = providers.Singleton(create_fernet)
-    
+
     redis_client = providers.Singleton(create_redis_client)
+
+    s3_client = providers.Singleton(create_s3_client)
 
     chat_repository = providers.Factory(ChatRepository)
     thread_repository = providers.Factory(ThreadRepository)
@@ -90,6 +105,7 @@ class Container(containers.DeclarativeContainer):
     file_service = providers.Factory(
         FileService,
         file_repository=file_repository,
+        s3_client=s3_client,
     )
 
     generative_model_repository = providers.Factory(GenerativeModelRepository)

@@ -3,25 +3,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { chatsService, type ChatResponse } from "../services/chatsService";
+import { fileService } from "../services/filesService"; // Import fileService
 import type { ChatSession, Message } from "../types/chat";
 import type { MessageResponse } from "../services/chatsService";
 import { getChatModels } from "../services/chatModelService";
-import {useSse} from "../context/SseContext.tsx";
+import { useSse } from "../context/SseContext.tsx";
 
-// Helper function to convert Blob to Base64
-const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const result = reader.result as string;
-            // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
-            const base64 = result.split(',')[1];
-            resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-};
 const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
     return messages
         .filter((msg) => msg.type === "human" || msg.type === "ai")
@@ -29,11 +16,14 @@ const convertBackendMessages = (messages: MessageResponse[]): Message[] => {
             id: msg.id,
             type: msg.type as "human" | "ai",
             content: msg.content,
-            audioUrl: msg.additional_kwargs?.file_url,
+            audioUrl: msg.additional_kwargs?.file_url, // This might be internal URL
+            // Pass the file_id if available so components can generate the proxy URL
+            file_id: msg.additional_kwargs?.file_id,
             additional_kwargs: msg.additional_kwargs,
             timestamp: new Date(),
         }));
 };
+
 const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSession[] => {
     return backendChats
         .map((chat) => ({
@@ -46,6 +36,7 @@ const convertBackendChatsToSessions = (backendChats: ChatResponse[]): ChatSessio
         }))
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
+
 export const useChats = (notebookIdParam?: string) => {
     const { latestEvent, connectToThread, addTypingThread, removeTypingThread, isThreadTyping } = useSse();
     const location = useLocation();
@@ -61,6 +52,7 @@ export const useChats = (notebookIdParam?: string) => {
     const [hasModelsConfigured, setHasModelsConfigured] = useState<boolean>(false);
     const [isTemporaryChat, setIsTemporaryChat] = useState(false);
     const [currentChatModels, setCurrentChatModels] = useState<Record<string, any>>({});
+
     const fetchMessagesForCurrentChat = useCallback(async () => {
         if (!currentThreadId) {
             console.log('No currentThreadId, skipping fetch');
@@ -94,6 +86,7 @@ export const useChats = (notebookIdParam?: string) => {
             setLoadingMessages(false);
         }
     }, [currentThreadId]);
+
     useEffect(() => {
         const fetchInitialChats = async () => {
             setLoadingChats(true);
@@ -101,8 +94,7 @@ export const useChats = (notebookIdParam?: string) => {
             try {
                 const backendChats = await chatsService.getChats(notebookIdParam);
                 const convertedChats = convertBackendChatsToSessions(backendChats);
-                console.log('Converted chats', convertedChats);
-                console.log(convertedChats)
+
                 // Check if we should force a temporary chat (from navigation state)
                 const shouldForceTemporary = location.state?.forceTemporaryChat;
                 setChatSessions(convertedChats);
@@ -149,12 +141,13 @@ export const useChats = (notebookIdParam?: string) => {
             initialFetchDone.current = true;
         }
     }, [notebookIdParam, location.state]);
+
     useEffect(() => {
         if (currentThreadId) {
-            console.log('Effect triggered, fetching messages for:', currentThreadId);
             fetchMessagesForCurrentChat();
         }
     }, [currentThreadId, fetchMessagesForCurrentChat]);
+
     useEffect(() => {
         const checkModels = async () => {
             if (!currentChatId) {
@@ -179,12 +172,19 @@ export const useChats = (notebookIdParam?: string) => {
         };
         checkModels();
     }, [currentChatId]);
-    const createNewChat = async (notebookId?: string, text?: string, options?: { webSearch?: boolean; mode?: string; subMode?: string }) => {
+
+    const createNewChat = async (
+        notebookId?: string,
+        text?: string,
+        audioPath?: string, // Added argument
+        options?: { webSearch?: boolean; mode?: string; subMode?: string }
+    ) => {
         setCreatingChat(true);
         try {
             const newThreadData = await chatsService.createThread({
                 title: `New Chat`,
                 text: text,
+                audio_path: audioPath, // Pass to backend
                 notebook_id: notebookId || notebookIdParam,
                 web_search: options?.webSearch,
                 mode: options?.mode,
@@ -219,6 +219,7 @@ export const useChats = (notebookIdParam?: string) => {
             setCreatingChat(false);
         }
     };
+
     const createTemporaryChat = () => {
         const tempChatId = "temp_" + Date.now();
         const tempChat: ChatSession = {
@@ -227,28 +228,25 @@ export const useChats = (notebookIdParam?: string) => {
             title: "New Chat",
             messages: [],
             createdAt: new Date(),
-            web_search: false, // Default for new temporary chats - changed to false
+            web_search: false,
         };
         setChatSessions((prev) => [tempChat, ...prev]);
         setCurrentChatId(tempChatId);
         setCurrentThreadId(null);
         setIsTemporaryChat(true);
-        // Return the temp chat ID for immediate use
         return tempChatId;
     };
+
     const switchToChat = (chatId: string) => {
-        console.log('Switching to chat:', chatId);
         const found = chatSessions.find((c) => c.id === chatId);
         if (found) {
-            console.log('Found chat with thread_id:', found.thread_id);
             setLoadingMessages(true);
             setCurrentChatId(found.id);
             setCurrentThreadId(found.thread_id);
             setIsTemporaryChat(found.id.startsWith("temp_"));
-        } else {
-            console.log('Chat not found:', chatId);
         }
     };
+
     const handleDeleteChat = async (chatId: string) => {
         if (chatId.startsWith("temp_")) {
             setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
@@ -287,6 +285,7 @@ export const useChats = (notebookIdParam?: string) => {
             console.error("Error deleting chat:", errorMessage);
         }
     };
+
     const addOptimisticMessage = (content: string, audioUrl?: string) => {
         if (!currentChatId) return;
         const optimisticMessage: Message = {
@@ -304,6 +303,7 @@ export const useChats = (notebookIdParam?: string) => {
             )
         );
     };
+
     const handleSendMessage = async (
         text?: string,
         audioData?: string | Blob,
@@ -312,21 +312,32 @@ export const useChats = (notebookIdParam?: string) => {
         if (!text?.trim() && !audioData) return;
 
         let audioPath: string | undefined = undefined;
-        let audioBase64: string | undefined = undefined;
 
-        // Determine if input is a path (string) or raw audio (Blob)
-        if (typeof audioData === 'string') {
-            audioPath = audioData;
-        } else if (audioData instanceof Blob) {
-            // Convert Blob to Base64
+        // 1. Handle Audio Upload if Blob
+        if (audioData instanceof Blob) {
             try {
-                audioBase64 = await blobToBase64(audioData);
+                // Create a File object from Blob
+                const audioFile = new File([audioData], "audio_message.webm", { type: audioData.type });
+
+                // Upload to S3 via backend
+                const uploadResponse = await fileService.uploadFile(
+                    audioFile,
+                    notebookIdParam,
+                    false // Don't auto-transcribe here, the agent will handle it
+                );
+
+                // Use the returned internal URL
+                audioPath = uploadResponse.url;
+
             } catch (e) {
-                console.error("Failed to convert audio blob to base64", e);
+                console.error("Failed to upload audio file", e);
                 return;
             }
+        } else if (typeof audioData === 'string') {
+            audioPath = audioData;
         }
 
+        // 2. Logic for Temporary Chats (Create real chat first)
         if (isTemporaryChat && currentChatId?.startsWith("temp_")) {
             let newChat: ChatSession | undefined;
             try {
@@ -336,9 +347,10 @@ export const useChats = (notebookIdParam?: string) => {
                     id: "msg_optimistic_" + Date.now(),
                     type: "human",
                     content: optimisticText,
-                    audioUrl: audioPath,
+                    audioUrl: audioData instanceof Blob ? URL.createObjectURL(audioData) : audioPath,
                     timestamp: new Date(),
                 };
+
                 setChatSessions((prev) =>
                     prev.map((chat) =>
                         chat.id === currentChatId
@@ -346,18 +358,23 @@ export const useChats = (notebookIdParam?: string) => {
                             : chat
                     )
                 );
-                newChat = await createNewChat(notebookIdParam, text, options);
+
+                // Pass both text and audioPath to createNewChat
+                newChat = await createNewChat(notebookIdParam, text, audioPath, options);
+
                 if (!newChat) {
                     console.error("Failed to create chat");
                     return;
                 }
+
                 // Remove temporary chat from sessions
                 setChatSessions((prev) => prev.filter((chat) => !chat.id.startsWith("temp_")));
+
                 await chatsService.sendMessageToThread(
                     newChat.thread_id,
                     text,
-                    audioPath,
-                    audioBase64,
+                    audioPath, // Pass the S3 URL
+                    undefined,
                     options?.mode,
                     options?.subMode,
                 );
@@ -366,6 +383,7 @@ export const useChats = (notebookIdParam?: string) => {
                 const errorMessage =
                     err instanceof Error ? err.message : "An unknown error occurred.";
                 console.error("Error creating chat and sending message:", errorMessage);
+                // Revert state if failed
                 setChatSessions((prev) =>
                     prev.map((chat) =>
                         chat.id === currentChatId
@@ -387,27 +405,31 @@ export const useChats = (notebookIdParam?: string) => {
             }
             return;
         }
+
+        // 3. Logic for Existing Chats
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) {
             console.error("No active chat session selected.");
             return;
         }
+
         const optimisticText = text || "Audio message sent...";
-        addOptimisticMessage(optimisticText, audioPath);
+        const optimisticAudioUrl = audioData instanceof Blob ? URL.createObjectURL(audioData) : audioPath;
+        addOptimisticMessage(optimisticText, optimisticAudioUrl);
+
         try {
             await chatsService.sendMessageToThread(
                 currentChat.thread_id,
                 text,
                 audioPath,
-                audioBase64,
+                undefined,
                 options?.mode,
                 options?.subMode,
             );
             addTypingThread(currentChat.thread_id);
         } catch (err) {
-            const errorMessage =
-                err instanceof Error ? err.message : "An unknown error occurred.";
-            console.error("Error sending message:", errorMessage);
+            console.error("Error sending message:", err);
+            // Remove optimistic message
             setChatSessions((prev) =>
                 prev.map((chat) =>
                     chat.id === currentChatId
@@ -420,17 +442,17 @@ export const useChats = (notebookIdParam?: string) => {
                         : chat
                 )
             );
-            if (currentChat) {
-                removeTypingThread(currentChat.thread_id);
-            }
+            removeTypingThread(currentChat.thread_id);
         }
     };
+
     // Effect to MANAGE the connection via the global context
     useEffect(() => {
         if (currentThreadId) {
             connectToThread(currentThreadId);
         }
     }, [currentThreadId, connectToThread]);
+
     // Effect to REACT to new messages from the global context
     useEffect(() => {
         if (!latestEvent || !currentThreadId) {
@@ -451,14 +473,13 @@ export const useChats = (notebookIdParam?: string) => {
                     return chat;
                 })
             );
-            // The update for this thread has been processed, so stop the typing indicator.
             removeTypingThread(currentThreadId);
         } else if (latestEvent.event === 'error') {
             console.error('SSE error event from context:', latestEvent.data.error);
-            // An error occurred for this thread, so stop the typing indicator.
             removeTypingThread(currentThreadId);
         }
     }, [latestEvent, currentThreadId, removeTypingThread]);
+
     const handleDeleteMessage = async (messageId: string) => {
         const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
         if (!currentChat || !currentChat.thread_id) return;
@@ -471,9 +492,10 @@ export const useChats = (notebookIdParam?: string) => {
             console.error("Error deleting message:", errorMessage);
         }
     };
+
     const currentChat = chatSessions.find((chat) => chat.id === currentChatId);
-    // DERIVE isTyping for the CURRENT chat from global state
     const isTyping = currentThreadId ? isThreadTyping(currentThreadId) : false;
+
     return {
         chatSessions,
         currentChat,

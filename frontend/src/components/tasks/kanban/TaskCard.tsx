@@ -1,13 +1,22 @@
-    import React from "react";
+import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Clock, GripVertical, AlertCircle, Edit, Archive, RotateCcw } from "lucide-react";
+import { AlertCircle, Calendar, Edit2, Archive, RotateCcw } from "lucide-react";
 import type { Task } from "./types.ts";
 
-// Helper Component
+// Updated Priority Component - Pill style
 export const PriorityIndicator: React.FC<{ priority: Task["priority"] }> = ({ priority }) => {
-    const colors = { high: "bg-red-500", medium: "bg-yellow-500", low: "bg-green-500" };
-    return <div className={`w-2 h-2 rounded-full ${colors[priority]}`} aria-label={`${priority} priority`} />;
+    const styles = {
+        high: "bg-red-500/10 text-red-500 border-red-500/20",
+        medium: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+        low: "bg-green-500/10 text-green-500 border-green-500/20",
+    };
+
+    return (
+        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${styles[priority]}`}>
+            {priority}
+        </span>
+    );
 };
 
 interface SortableTaskProps {
@@ -17,118 +26,128 @@ interface SortableTaskProps {
     onEdit: (task: Task) => void;
     onArchive: (task: Task) => void;
     onUnarchive: (task: Task) => void;
+    showPriorities?: boolean;
 }
 
-export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = false, onView, onEdit, onArchive, onUnarchive }) => {
+export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = false, onView, onEdit, onArchive, onUnarchive, showPriorities = true }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-    const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1
+    };
+
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
 
     return (
-        <div ref={setNodeRef} style={style} className="group kanban-task" {...attributes}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="group relative"
+            {...attributes}
+            {...listeners}
+        >
             <div
-                className={`bg-background border rounded-lg shadow-sm hover:shadow-md transition-all ${
-                    isDragging ? 'dragging' : ''
-                } ${
-                    isOverdue ? 'border-orange-200 dark:border-orange-800' : 'border-border'
-                } ${
-                    task.archived ? 'opacity-60 border-dashed' : ''
-                } ${
-                    isMobile ? 'p-4 mb-3 active:scale-95' : 'p-3 mb-2'
-                }`}
+                onClick={() => onView(task)}
+                className={`
+                    bg-card hover:bg-accent/40
+                    border border-border/60 hover:border-primary/40
+                    rounded-lg shadow-sm transition-all duration-200
+                    cursor-default text-left
+                    ${task.archived ? 'opacity-60 grayscale border-dashed' : ''}
+                    ${isMobile ? 'p-3' : 'p-3'}
+                `}
             >
-                <div className="flex items-start gap-2">
-                    <div
-                        className={`flex items-center transition-opacity touch-none drag-handle cursor-grab active:cursor-grabbing ${
-                            task.archived ? 'cursor-not-allowed opacity-40' : ''
-                        } ${
-                            isMobile
-                                ? 'opacity-100 p-2 bg-muted/30 rounded-md active:bg-muted/50'
-                                : 'opacity-60 group-hover:opacity-100'
-                        }`}
-                        {...(!task.archived ? listeners : {})}
-                        data-testid="drag-handle"
-                        role="button"
-                    >
-                        <GripVertical size={isMobile ? 18 : 14} className="text-muted-foreground" />
+                {/* Header: Notebook & Options */}
+                <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2 flex-wrap max-w-[80%]">
+                        {task.notebook ? (
+                            // Removed bg-secondary, px-2, rounded-full to align flush left
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium max-w-full">
+                                <span className="text-xs">{task.notebook.emoji}</span>
+                                <span className="truncate">{task.notebook.title}</span>
+                            </div>
+                        ) : null}
+                        {/* Dot separator if notebook exists */}
+                        {task.notebook && <span className="text-[10px] text-muted-foreground/50">•</span>}
+                        {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
                     </div>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onView(task)}>
-                        {task.notebook && (
-                            <div className="flex items-center gap-1 mb-1.5 text-xs text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded w-fit">
-                                <span>{task.notebook.emoji}</span>
-                                <span className="truncate max-w-[150px]">{task.notebook.title}</span>
-                            </div>
+
+                    {/* Hover Actions */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 bg-background/95 shadow-sm border border-border rounded-md p-1 flex gap-1 z-10 backdrop-blur-sm">
+                        {task.archived ? (
+                            <button
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); onUnarchive(task); }}
+                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-primary transition-colors"
+                                title="Unarchive"
+                            >
+                                <RotateCcw size={14} />
+                            </button>
+                        ) : (
+                            <button
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); onArchive(task); }}
+                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-destructive transition-colors"
+                                title="Archive"
+                            >
+                                <Archive size={14} />
+                            </button>
                         )}
-
-                        <div className="flex items-center gap-2 mb-2">
-                            <PriorityIndicator priority={task.priority} />
-                            <h4 className={`font-medium text-foreground truncate ${isMobile ? 'text-base' : 'text-sm'}`}>{task.title}</h4>
-                            {isOverdue && <AlertCircle size={12} className="text-orange-500" />}
-                            {task.archived && <Archive size={isMobile ? 14 : 12} className="text-muted-foreground" />}
-                        </div>
-
-                        {task.description && (
-                            <p className={`text-left text-muted-foreground mb-2 line-clamp-2 ${isMobile ? 'text-sm' : 'text-xs'}`}>{task.description}</p>
-                        )}
-
-                        <div className="flex flex-wrap gap-1 mb-2">
-                            {task.tags?.map((tag) => (
-                                <span key={tag} className="inline-block px-2 py-0.5 bg-secondary text-secondary-foreground rounded-md text-xs">
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-
-                        <div className={`flex items-center justify-between text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                            <div className="flex items-center gap-2">
-                                {task.dueDate && (
-                                    <div className="flex items-center gap-1">
-                                        <Clock size={isMobile ? 12 : 10} />
-                                        <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded-md"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (task.archived) {
-                                            onUnarchive(task);
-                                        } else {
-                                            onArchive(task);
-                                        }
-                                    }}
-                                >
-                                    {task.archived ? <RotateCcw size={isMobile ? 14 : 12} /> : <Archive size={isMobile ? 14 : 12} />}
-                                </button>
-                                <button
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded-md"
-                                    onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-                                >
-                                    <Edit size={isMobile ? 14 : 12} />
-                                </button>
-                            </div>
-                        </div>
+                        <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                            className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
+                            title="Edit"
+                        >
+                            <Edit2 size={14} />
+                        </button>
                     </div>
+                </div>
+
+                {/* Title */}
+                <h4 className="font-medium text-sm text-foreground mb-1.5 leading-snug break-words text-left">
+                    {task.title}
+                </h4>
+
+                {/* Description Preview */}
+                {task.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 font-normal text-left">
+                        {task.description}
+                    </p>
+                )}
+
+                {/* Footer: Tags & Date */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                    <div className="flex gap-1 overflow-hidden">
+                        {task.tags?.slice(0, 3).map((tag) => (
+                            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded">
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
+
+                    {task.dueDate && (
+                        <div className={`flex items-center gap-1 text-[10px] font-medium ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            {isOverdue ? <AlertCircle size={12} /> : <Calendar size={12} />}
+                            <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-export const TaskDragOverlay: React.FC<{ task: Task }> = ({ task }) => {
+// The item being dragged (the ghost image)
+export const TaskDragOverlay: React.FC<{ task: Task; showPriorities?: boolean }> = ({ task, showPriorities = true }) => {
     return (
-        <div className="bg-background border-2 border-primary rounded-lg p-3 shadow-2xl rotate-2 scale-105 opacity-90 cursor-grabbing">
-            <div className="flex items-start gap-2">
-                <div className="flex items-center"><GripVertical size={14} className="text-primary" /></div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                        <PriorityIndicator priority={task.priority} />
-                        <h4 className="font-medium text-sm text-foreground truncate">{task.title}</h4>
-                    </div>
-                </div>
+        <div className="bg-card border border-primary/50 rounded-lg p-3 shadow-2xl cursor-grabbing w-[300px] rotate-2 opacity-90 ring-2 ring-primary/20 text-left">
+            <div className="flex items-center gap-2 mb-2">
+                {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
             </div>
+            <h4 className="font-medium text-sm text-foreground text-left">{task.title}</h4>
         </div>
     );
 };

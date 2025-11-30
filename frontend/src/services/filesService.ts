@@ -12,7 +12,7 @@ export interface ProcessingResult {
 export interface FileUploadResponse {
     filename: string;
     file_id: string;
-    url: string;
+    url: string; // This is the internal S3 URL (http://seaweedfs:8333/...)
     processing_status: string;
     is_audio: boolean;
 }
@@ -39,21 +39,12 @@ export interface FileListResponse {
     data: Array<FileData>;
 }
 
-// --- NEW INTERFACES START ---
-
-/**
- * The payload for updating a file's details.
- * All fields are optional.
- */
 export interface UpdateFilePayload {
     filename?: string;
     notebook_id?: string;
     content?: string;
 }
 
-/**
- * The structure of the 'data' object in the update file API response.
- */
 export interface UpdatedFileData {
     file_id: string;
     filename: string;
@@ -66,20 +57,14 @@ export interface UpdatedFileData {
     updated_at: string | null;
 }
 
-/**
- * The full API response for a successful file update.
- */
 export interface UpdateFileApiResponse {
     status: string;
     message: string;
     data: UpdatedFileData;
 }
 
-// --- NEW INTERFACES END ---
-
-
 // Configuration
-const FILE_SERVICE_URL = API_CONFIG.getApiUrl() + '/files'
+const FILE_BACKEND_SERVICE_URL = API_CONFIG.getApiUrl() + '/files'
 
 // Upload service
 export const fileService = {
@@ -91,7 +76,7 @@ export const fileService = {
         const formData = new FormData();
         formData.append('file', file);
 
-        let uploadUrl = `${FILE_SERVICE_URL}/upload`;
+        let uploadUrl = `${FILE_BACKEND_SERVICE_URL}/upload`;
         const params = new URLSearchParams();
         if (notebook_id) {
             params.append('notebook_id', notebook_id);
@@ -127,7 +112,7 @@ export const fileService = {
      * Endpoint: GET /files/{notebook_id}
      */
     getUserFiles: async (notebook_id: string): Promise<FileListResponse> => {
-        const response = await fetch(`${FILE_SERVICE_URL}/${notebook_id}`, {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${notebook_id}`, {
             method: 'GET',
             credentials: 'include',
         });
@@ -145,7 +130,7 @@ export const fileService = {
      * Endpoint: POST /files/transcribe/{notebook_id}
      */
     transcribeFile: async (notebook_id: string, audio_path: string, file_id: string): Promise<void> => {
-        const response = await fetch(`${FILE_SERVICE_URL}/transcribe/${notebook_id}`, {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/transcribe/${notebook_id}`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -168,7 +153,7 @@ export const fileService = {
      * Endpoint: PATCH /files/{file_id}
      */
     updateFile: async (file_id: string, updates: UpdateFilePayload): Promise<UpdateFileApiResponse> => {
-        const response = await fetch(`${FILE_SERVICE_URL}/${file_id}`, {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${file_id}`, {
             method: 'PATCH',
             credentials: 'include',
             headers: {
@@ -191,7 +176,7 @@ export const fileService = {
      * Returns the file content as a Blob
      */
     downloadFile: async (file_id: string): Promise<Blob> => {
-        const response = await fetch(`${FILE_SERVICE_URL}/download/${file_id}`, {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/download/${file_id}`, {
             method: 'GET',
             credentials: 'include',
         });
@@ -209,7 +194,7 @@ export const fileService = {
      * Endpoint: DELETE /files/{file_id}
      */
     deleteFile: async (file_id: string): Promise<void> => {
-        const response = await fetch(`${FILE_SERVICE_URL}/${file_id}`, {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${file_id}`, {
             method: 'DELETE',
             credentials: 'include',
         });

@@ -1,19 +1,18 @@
-import React, { useState, useEffect, memo } from "react";
+import React, {useState, useEffect, memo} from "react";
 import {
     ChevronLeft, X,
     LayoutGrid, CheckSquare, Plus
 } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useTheme } from "../../context/ThemeContext";
-import { useNotebooks } from "../../hooks/useNotebooks";
-import { Icon, type IconName } from "../Icon";
+import {useNavigate, useLocation} from "react-router-dom";
+import {useTheme} from "../../context/ThemeContext";
+import {useNotebooks} from "../../hooks/useNotebooks";
+import {Icon, type IconName} from "../Icon";
 import idreLogo from "../../assets/idre_logo_v2_white.png";
 import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
 
-// Reusing existing dropdowns for consistency
 import SettingsDropdown from "../chat/SettingsDropdown";
 import AuthDropdown from "../chat/AuthDropdown";
-import { ThemeToggle } from "../ThemeToggle";
+import {ThemeToggle} from "../ThemeToggle";
 
 interface GlobalSidebarProps {
     collapsed: boolean;
@@ -24,7 +23,7 @@ interface GlobalSidebarProps {
     isAuthenticated: boolean;
     onLoginClick: () => void;
     onRegisterClick: () => void;
-    onCreateNotebook: () => void; // Trigger create modal from sidebar
+    onCreateNotebook: () => void;
 }
 
 const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
@@ -40,11 +39,10 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                                                      }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { theme } = useTheme();
-    const { notebooks, getAllNotebooks } = useNotebooks();
+    const {theme} = useTheme();
+    const {notebooks, getAllNotebooks} = useNotebooks();
     const [isMobile, setIsMobile] = useState(false);
 
-    // Fetch notebooks on mount to populate the list
     useEffect(() => {
         getAllNotebooks();
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -64,28 +62,47 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
 
     const isActive = (path: string) => location.pathname === path;
 
+    const handleNavigation = (e: React.MouseEvent, path: string) => {
+        e.stopPropagation();
+        navigate(path);
+    };
+
+    const handleNotebookNavigation = (e: React.MouseEvent, notebookId: string) => {
+        e.stopPropagation();
+        const lastTab = localStorage.getItem(`notebook-last-tab-${notebookId}`) || 'chat';
+        let path = `/${lastTab}/${notebookId}`;
+        // The path for 'idea' is '/idea-canvas/:notebookId' as per ChatSidebar.tsx
+        if (lastTab === 'idea') {
+            path = `/idea-canvas/${notebookId}`;
+        }
+        navigate(path);
+    };
+
     return (
         <aside className={sidebarClasses}>
             <div className={`flex flex-col h-full ${collapsed && !isMobile ? "p-2 overflow-hidden" : "p-2"}`}>
 
                 {/* Header / Logo */}
-                <header className={`flex items-center ${collapsed && !isMobile ? "justify-center py-2 pb-3" : "justify-between px-1 pb-3"}`}>
-                    <div className={`flex items-center gap-2 font-semibold text-lg text-sidebar-foreground ${collapsed && !isMobile ? "hidden" : ""}`}>
-                        <img src={theme === 'dark' ? idreWhiteLogo : idreLogo} alt="IDRE Logo" width={100} height={100} />
+                <header
+                    className={`flex items-center ${collapsed && !isMobile ? "justify-center py-2 pb-3" : "justify-between px-1 py-3 pb-4"}`}>
+                    <div
+                        className={`flex items-center gap-2 font-semibold text-lg text-sidebar-foreground ${collapsed && !isMobile ? "hidden" : ""}`}>
+                        <img className={'ml-2.5'}
+                             src={theme === 'dark' ? idreWhiteLogo : idreLogo} alt="IDRE Logo" width={60} height={60}/>
                     </div>
                     {isMobile ? (
                         <button
                             className="flex items-center justify-center p-2 rounded-md bg-sidebar-accent text-sidebar-foreground"
-                            onClick={onToggleCollapse}
+                            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
                         >
-                            <X size={20} />
+                            <X size={20}/>
                         </button>
                     ) : (
                         <button
                             className={`flex items-center justify-center p-1 rounded-md text-muted-foreground hover:bg-sidebar-accent transition-transform ${collapsed ? "rotate-180" : ""}`}
-                            onClick={onToggleCollapse}
+                            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
                         >
-                            <ChevronLeft size={18} />
+                            <ChevronLeft size={18}/>
                         </button>
                     )}
                 </header>
@@ -95,7 +112,7 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                     {/* Main Navigation */}
                     <section className="flex flex-col gap-1 w-full">
                         <button
-                            onClick={() => navigate("/notebooks")}
+                            onClick={(e) => handleNavigation(e, "/notebooks")}
                             className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
                                 isActive("/notebooks")
                                     ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
@@ -103,12 +120,12 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                             } ${collapsed && !isMobile ? "justify-center" : ""}`}
                             title="Notebooks Dashboard"
                         >
-                            <LayoutGrid size={18} />
+                            <LayoutGrid size={18}/>
                             {!collapsed && <span>Notebooks</span>}
                         </button>
 
                         <button
-                            onClick={() => navigate("/tasks")}
+                            onClick={(e) => handleNavigation(e, "/tasks")}
                             className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
                                 isActive("/tasks")
                                     ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
@@ -116,51 +133,61 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                             } ${collapsed && !isMobile ? "justify-center" : ""}`}
                             title="All Tasks"
                         >
-                            <CheckSquare size={18} />
+                            <CheckSquare size={18}/>
                             {!collapsed && <span>All Tasks</span>}
                         </button>
                     </section>
 
-                    <div className="w-full border-t border-sidebar-border my-1"></div>
+                    {/* Notebook List (Hidden when collapsed) */}
+                    {(!collapsed || isMobile) && (
+                        <>
+                            <div className="w-full border-t border-sidebar-border my-1"></div>
 
-                    {/* Notebooks List */}
-                    <div className="flex flex-col w-full flex-1 min-h-0">
-                        {!collapsed && (
-                            <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                <span>Your Notebooks</span>
-                                <button onClick={onCreateNotebook} className="hover:text-sidebar-primary">
-                                    <Plus size={14} />
-                                </button>
+                            <div className="flex flex-col w-full flex-1 min-h-0">
+                                <div
+                                    className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    <span>Your Notebooks</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onCreateNotebook(); }}
+                                        className="hover:text-sidebar-primary"
+                                    >
+                                        <Plus size={14}/>
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
+                                    {notebooks.map((nb) => (
+                                        <button
+                                            key={nb.id}
+                                            onClick={(e) => handleNotebookNavigation(e, nb.id)}
+                                            className="flex items-center gap-3 w-full p-2.5 rounded-md text-sm text-left transition-all text-sidebar-foreground hover:bg-sidebar-accent"
+                                            title={nb.title}
+                                        >
+                                            <Icon name={nb.emoji as IconName} className="w-4 h-4 flex-shrink-0"/>
+                                            <span className="truncate">{nb.title}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        )}
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
-                            {notebooks.map((nb) => (
-                                <button
-                                    key={nb.id}
-                                    onClick={() => navigate(`/chat/${nb.id}`)}
-                                    className={`flex items-center gap-3 w-full p-2.5 rounded-md text-sm text-left transition-all text-sidebar-foreground hover:bg-sidebar-accent ${
-                                        collapsed && !isMobile ? "justify-center" : ""
-                                    }`}
-                                    title={nb.title}
-                                >
-                                    <Icon name={nb.emoji as IconName} className="w-4 h-4 flex-shrink-0" />
-                                    {!collapsed && <span className="truncate">{nb.title}</span>}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Footer */}
                 <footer className="mt-auto pt-4 border-t border-sidebar-border">
-                    <div className={collapsed && !isMobile ? "hidden" : "contents"}>
+                    <div className="flex flex-col gap-2">
                         <SettingsDropdown
                             collapsed={collapsed}
                             onToggleCollapse={onToggleCollapse}
                             onSettingsClick={onSettingsClick}
                         />
-                        <div className="flex items-center justify-between p-2">
+                        <div
+                            className={`flex items-center ${
+                                collapsed && !isMobile
+                                    ? "flex-col justify-center gap-4 py-2" // Vertical stack when collapsed
+                                    : "justify-between p-2"
+                            }`}
+                        >
                             <AuthDropdown
                                 collapsed={collapsed}
                                 user={user}
@@ -170,7 +197,7 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                                 onLoginClick={onLoginClick}
                                 onRegisterClick={onRegisterClick}
                             />
-                            <ThemeToggle />
+                            <ThemeToggle/>
                         </div>
                     </div>
                 </footer>

@@ -34,8 +34,7 @@ def prepare_inputs_node(state: ChatGraphState) -> dict:
     enhanced_transcript = None
     if audio_path := state.get("audio_path"):
         print("   > Audio path detected. Processing...")
-        docker_audio_path = audio_path.replace(settings.FILE_SERVICE_URL, settings.FILE_SERVICE_URL_DOCKER)
-        enhanced_transcript = process_audio_input(docker_audio_path, light_model, api_key)
+        enhanced_transcript = process_audio_input(audio_path, light_model, api_key)
         processed_parts.append(enhanced_transcript)
 
     if files_contents := state.get("files_contents"):
@@ -124,4 +123,6 @@ def generate_answer_node(state: ChatGraphState) -> dict:
         "messages": final_messages,
         "processed_input": None,
         "enhanced_transcript": None,
+        "text_input": None,
+        "audio_path": None,
     }

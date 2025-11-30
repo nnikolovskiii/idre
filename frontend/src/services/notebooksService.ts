@@ -25,14 +25,22 @@ export interface NotebookResponse {
     updated_at: string;
 }
 
+export interface PaginationMeta {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+}
+
 export interface NotebooksListResponse {
     status: string;
     message: string;
     data: NotebookResponse[];
+    meta?: PaginationMeta; // Add optional meta
 }
 
 // Base URL — update to match your backend
-const API_BASE_URL = API_CONFIG.URL+"/notebooks"; // adjust path if needed
+const API_BASE_URL = API_CONFIG.URL+"/notebooks";
 
 // Generic fetch wrapper with auth and error handling
 const apiFetch = async (url: string, options: RequestInit = {}) => {
@@ -41,10 +49,10 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
         ...options.headers,
     };
 
-    const response = await fetch(url, { 
-        ...options, 
+    const response = await fetch(url, {
+        ...options,
         headers,
-        credentials: 'include' // Use cookie-based auth like other services
+        credentials: 'include'
     });
 
     if (!response.ok) {
@@ -67,9 +75,15 @@ export const NotebookService = {
         return response.json();
     },
 
-    // GET /notebooks
-    async getAllNotebooks(): Promise<NotebooksListResponse> {
-        const response = await apiFetch(API_BASE_URL);
+    // GET /notebooks (Modified for pagination)
+    async getAllNotebooks(page: number = 1, pageSize: number = 20): Promise<NotebooksListResponse> {
+        // Construct query parameters
+        const queryParams = new URLSearchParams({
+            page: page.toString(),
+            page_size: pageSize.toString()
+        });
+
+        const response = await apiFetch(`${API_BASE_URL}?${queryParams.toString()}`);
         return response.json();
     },
 

@@ -8,11 +8,9 @@ echo "Starting all services..."
 
 # Go to ai-agent directory and run docker-compose up
 echo "Starting ai-agent with docker-compose..."
-cd ai-agent
 
 
 docker compose down
-cd ..
 
 # Stop any process on port 8001
 echo "Stopping any process on port 8001..."

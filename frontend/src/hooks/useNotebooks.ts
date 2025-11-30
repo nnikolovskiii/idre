@@ -3,20 +3,23 @@ import {
     NotebookService,
     type NotebookCreate,
     type NotebookResponse,
-    type NotebookUpdate, type NotebooksListResponse
+    type NotebookUpdate,
+    type NotebooksListResponse,
+    type PaginationMeta
 } from '../services/notebooksService';
 
 
 interface UseNotebooksState {
     notebooks: NotebookResponse[];
     currentNotebook: NotebookResponse | null;
+    pagination: PaginationMeta | null; // Add pagination state
     loading: boolean;
     error: string | null;
 }
 
 interface UseNotebooksReturn extends UseNotebooksState {
     createNotebook: (data: NotebookCreate) => Promise<NotebookResponse | null>;
-    getAllNotebooks: () => Promise<void>;
+    getAllNotebooks: (page?: number, pageSize?: number) => Promise<void>;
     getNotebookById: (id: string) => Promise<NotebookResponse | null>;
     updateNotebook: (id: string, data: NotebookUpdate) => Promise<NotebookResponse | null>;
     deleteNotebook: (id: string) => Promise<boolean>;
@@ -28,6 +31,7 @@ export const useNotebooks = (): UseNotebooksReturn => {
     const [state, setState] = useState<UseNotebooksState>({
         notebooks: [],
         currentNotebook: null,
+        pagination: null,
         loading: false,
         error: null,
     });
@@ -52,10 +56,12 @@ export const useNotebooks = (): UseNotebooksReturn => {
         setLoading(true);
         setError(null);
         try {
-            const notebook = await NotebookService.createNotebook(data);
+            // Cast to any to handle potential wrapper response { data: ... }
+            const response: any = await NotebookService.createNotebook(data);
+            const notebook = response.data || response;
+
             setState(prev => ({
                 ...prev,
-                notebooks: [...prev.notebooks, notebook],
                 currentNotebook: notebook,
                 loading: false,
             }));
@@ -68,21 +74,16 @@ export const useNotebooks = (): UseNotebooksReturn => {
         }
     }, []);
 
-    const getAllNotebooks = useCallback(async (): Promise<void> => {
+    const getAllNotebooks = useCallback(async (page: number = 1, pageSize: number = 19): Promise<void> => {
         setLoading(true);
         setError(null);
         try {
-            const response: NotebooksListResponse = await NotebookService.getAllNotebooks();
-            // Sort notebooks by updated_at in descending order (latest first)
-            const sortedNotebooks = response.data.sort((a, b) => {
-                const dateA = new Date(a.updated_at || a.created_at || 0);
-                const dateB = new Date(b.updated_at || b.created_at || 0);
-                return dateB.getTime() - dateA.getTime(); // Descending order
-            });
+            const response: NotebooksListResponse = await NotebookService.getAllNotebooks(page, pageSize);
 
             setState(prev => ({
                 ...prev,
-                notebooks: sortedNotebooks,
+                notebooks: response.data,
+                pagination: response.meta || null,
                 loading: false,
             }));
         } catch (err) {
@@ -96,7 +97,10 @@ export const useNotebooks = (): UseNotebooksReturn => {
         setLoading(true);
         setError(null);
         try {
-            const notebook = await NotebookService.getNotebookById(id);
+            // Cast to any to handle potential wrapper response { data: ... }
+            const response: any = await NotebookService.getNotebookById(id);
+            const notebook = response.data || response;
+
             setState(prev => ({
                 ...prev,
                 currentNotebook: notebook,
@@ -104,8 +108,8 @@ export const useNotebooks = (): UseNotebooksReturn => {
             }));
             return notebook;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to fetch notebook';
-            setError(message);
+            console.error("Error fetching notebook:", err);
+            // Don't set global error to avoid blocking UI, just stop loading
             setLoading(false);
             return null;
         }
@@ -118,7 +122,10 @@ export const useNotebooks = (): UseNotebooksReturn => {
         setLoading(true);
         setError(null);
         try {
-            const updated = await NotebookService.updateNotebook(id, data);
+            // Cast to any to handle potential wrapper response { data: ... }
+            const response: any = await NotebookService.updateNotebook(id, data);
+            const updated = response.data || response;
+
             setState(prev => ({
                 ...prev,
                 notebooks: prev.notebooks.map(nb => nb.id === id ? updated : nb),

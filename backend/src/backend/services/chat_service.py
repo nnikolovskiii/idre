@@ -140,37 +140,50 @@ class ChatService:
         thread = await self.langgraph_client.threads.create()
         thread_id = thread['thread_id']
 
+        # Determine initial title
+        # If audio is present but no text, default to "Audio Chat" temporarily
+        initial_title = request.title
+        if not request.text and request.audio_path:
+            initial_title = "Audio Chat"
+
         new_chat = await self.chat_repo.create(
             user_id=user_id,
             thread_id=thread_id,
             notebook_id=request.notebook_id,
-            title=request.title,
+            title=initial_title,
             web_search=request.web_search
         )
 
         # 2. Update Notebook Timestamp
         if request.notebook_id:
-            # Explicitly update the updated_at field for the parent notebook
             await self.notebook_repo.update(
                 str(request.notebook_id),
                 {"updated_at": datetime.now(timezone.utc)}
             )
 
-        try:
-            await self.ai_service.generate_chat_name(
-                request.notebook_id,
-                user_id,
-                SendMessageRequest(first_message=request.text, chat_id=str(new_chat.chat_id), mode=request.mode, sub_mode=request.sub_mode)
-            )
-        except Exception as e:
-            print(f"Error generating chat name: {e}")
+        # 3. Generate Chat Name (Only if text is provided)
+        # If it's an audio start, we skip this to avoid errors with empty text inputs.
+        if request.text and request.text.strip():
+            try:
+                await self.ai_service.generate_chat_name(
+                    request.notebook_id,
+                    user_id,
+                    SendMessageRequest(
+                        first_message=request.text,
+                        chat_id=str(new_chat.chat_id),
+                        mode=request.mode,
+                        sub_mode=request.sub_mode
+                    )
+                )
+            except Exception as e:
+                print(f"Error generating chat name: {e}")
 
         await self.session.flush()
 
         # Track created models for potential later refresh
         created_models = []
 
-        # 3. Get notebook models if notebook_id is provided
+        # 4. Get notebook models if notebook_id is provided
         if request.notebook_id:
             notebook_light_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
                 notebook_id=request.notebook_id, model_type="light", user_id=user_id
@@ -179,27 +192,25 @@ class ChatService:
                 notebook_id=request.notebook_id, model_type="heavy", user_id=user_id
             )
 
-            # 4. Create chat models based on notebook models
+            # 5. Create chat models based on notebook models
             if notebook_light_model:
-                light_model = await self.chat_model_service.create_ai_model(
+                await self.chat_model_service.create_ai_model(
                     user_id=user_id,
                     chat_id=new_chat.chat_id,
                     generative_model_id=str(notebook_light_model.generative_model_id)
                 )
-                created_models.append(light_model)
 
             if notebook_heavy_model:
-                heavy_model = await self.chat_model_service.create_ai_model(
+                await self.chat_model_service.create_ai_model(
                     user_id=user_id,
                     chat_id=new_chat.chat_id,
                     generative_model_id=str(notebook_heavy_model.generative_model_id)
                 )
-                created_models.append(heavy_model)
 
-        # 5. Single commit for everything (Chat, Models, and Notebook update)
+        # 6. Single commit for everything
         await self.session.commit()
 
-        # 6. Refresh the main chat object
+        # 7. Refresh the main chat object
         await self.session.refresh(new_chat)
 
         return new_chat

@@ -21,9 +21,6 @@ class ChatGraphState(TypedDict):
     light_model: str
     heavy_model: str
 
-    # Inputs - at least one must be provided
-    text_input: Optional[str]
-    audio_path: Optional[str]
     files_contents: Optional[str]
     web_search: Optional[bool]
     mode: Optional[str]

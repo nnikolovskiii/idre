@@ -38,6 +38,7 @@ export interface MessageResponse {
 export interface CreateThreadRequest {
     title: string;
     text?: string;
+    audio_path?: string; // Added field
     notebook_id?: string;
     web_search?: boolean;
     mode?: string;

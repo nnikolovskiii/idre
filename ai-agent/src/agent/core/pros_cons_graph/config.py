@@ -6,9 +6,6 @@ load_dotenv()
 class ProsConsSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-    FILE_SERVICE_URL: str
-    FILE_SERVICE_URL_DOCKER: str
-    UPLOAD_PASSWORD: str
     OPENROUTER_API_KEY: str
 
     DEFAULT_HEAVY_MODEL: str = "google/gemini-2.5-pro"

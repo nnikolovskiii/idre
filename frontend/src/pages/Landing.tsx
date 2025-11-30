@@ -1,33 +1,13 @@
 // Path: /frontend/src/pages/Landing.tsx
-import React, { useRef } from "react";
+import React from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { MessageSquareText, BarChart3, Layers, Github, Wand2 } from "lucide-react";
 
-// --- 3D IMPORTS ---
-import { Canvas } from "@react-three/fiber";
-import { useGLTF, Environment, OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
-
 // --- ASSET IMPORTS ---
 import bgImage from "../assets/background-wave.png";
 import logoIcon from "../assets/idre-logo-icon.png";
-
-// --- 3D MODEL COMPONENT ---
-const LogoModel = () => {
-    // Ensure 'logo.glb' is in your /public folder
-    const { scene } = useGLTF("/logo.glb"); 
-    const modelRef = useRef<THREE.Group>(null);
-
-    return (
-        <primitive 
-            object={scene} 
-            ref={modelRef} 
-            scale={3.5} 
-            rotation={[0, 0, 0]} 
-        />
-    );
-};
+import heroLogo from "../assets/idre_logo_v2_black.png";
 
 const Landing: React.FC = () => {
     const { isAuthenticated, isLoading } = useAuth();
@@ -78,27 +58,13 @@ const Landing: React.FC = () => {
                 {/* HERO SECTION */}
                 <section className="w-full max-w-7xl px-6 md:px-12 pt-20 pb-32 md:pt-32 md:pb-48 flex flex-col justify-center items-start text-left">
 
-                    {/* 3D CANVAS AREA */}
-                    {/* UPDATED: Changed mb-2 to mb-12 to increase space between logo and title */}
-                    <div className="mb-12 h-40 w-full md:w-3/4 -ml-12 md:-ml-[280px] cursor-grab active:cursor-grabbing"> 
-                        <Canvas camera={{ position: [0, 0, 6], fov: 40 }}>
-                            <ambientLight intensity={0.5} />
-                            <directionalLight position={[10, 10, 5]} intensity={2} />
-                            <Environment preset="city" />
-                            
-                            <LogoModel />
-                            
-                            <OrbitControls 
-                                enableZoom={false} 
-                                enablePan={false}
-                                // Restrict horizontal rotation (Left/Right)
-                                minAzimuthAngle={-0.3} 
-                                maxAzimuthAngle={0.3}
-                                // Restrict vertical rotation (Up/Down) - keeps it almost flat
-                                minPolarAngle={Math.PI / 2 - 0.1}
-                                maxPolarAngle={Math.PI / 2 + 0.1}
-                            /> 
-                        </Canvas>
+                    {/* HERO LOGO IMAGE - SIZE REDUCED HERE */}
+                    <div className="mb-10 w-full max-w-[180px] md:max-w-[200px] relative z-10">
+                        <img
+                            src={heroLogo}
+                            alt="IDRE Logo"
+                            className="w-full h-auto object-contain object-left"
+                        />
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white leading-[1.1] mb-6 relative z-10">

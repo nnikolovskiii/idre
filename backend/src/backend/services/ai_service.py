@@ -1,3 +1,5 @@
+# backend/services/ai_service.py
+
 import base64
 import os
 from typing import List
@@ -10,9 +12,6 @@ from backend.models.dtos.chat import SendMessageRequest, MessageResponse
 from backend.services.assistant_service import AssistantService
 from backend.services.model_api_service import ModelApiService
 from backend.services.notebook_model_service import NotebookModelService
-from backend.services.chat_model_service import ChatModelService
-from backend.repositories.chat_repository import ChatRepository
-from backend.repositories.thread_repository import ThreadRepository
 
 load_dotenv()
 LANGGRAPH_URL = os.getenv("LANGGRAPH_URL")
@@ -22,10 +21,6 @@ LANGGRAPH_WEBHOOK_URL = os.getenv("LANGGRAPH_WEBHOOK_URL")
 class AIService:
     """
     Orchestrates chat-related business logic.
-
-    This service coordinates interactions between external APIs (LangGraph),
-    data access layers (repositories), and other business services.
-    It is responsible for managing the overall transaction for complex operations.
     """
 
     def __init__(
@@ -35,66 +30,31 @@ class AIService:
             notebook_model_service: NotebookModelService,
             assistant_service: AssistantService,
     ):
-        """
-        Initializes the ChatService with all its dependencies.
-
-        Args:
-            session (AsyncSession): The request-scoped SQLAlchemy session, used for transaction control.
-            chat_repository (ChatRepository): The repository for Chat data access.
-            thread_repository (ThreadRepository): The repository for Thread data access.
-            model_api_service (ModelApiService): Service for managing API keys.
-            notebook_model_service (NotebookModelService): Service for managing notebook models.
-            chat_model_service (ChatModelService): Service for managing chat models.
-            assistant_service (AssistantService): Service for managing assistants.
-        """
         self.session = session
         self.model_api_service = model_api_service
         self.notebook_model_service = notebook_model_service
         self.assistant_service = assistant_service
         self.langgraph_client = get_client(url=LANGGRAPH_URL)
-        # Remove _assistant_id; we'll handle this per-method now for flexibility
 
     async def _get_assistant_id(self, graph_id: str) -> str:
-        """Lazy loads the assistant ID for a given graph_id and returns it as a string."""
-        print(f"DEBUG: Fetching assistant for graph_id '{graph_id}'...")
+        """Lazy loads the assistant ID for a given graph_id."""
         assistant = await self.assistant_service.get_assistant_by_graph_id(graph_id)
-        print(f"DEBUG: Got assistant: {assistant}")
-
         if assistant is None:
             raise ValueError(f"Assistant with graph_id '{graph_id}' not found.")
-
-        print(f"DEBUG: Assistant ID: {assistant.assistant_id}")
-        assistant_id = str(assistant.assistant_id)
-        print(f"DEBUG: Returning assistant_id as string: {assistant_id}")
-
-        return assistant_id
+        return str(assistant.assistant_id)
 
     async def transcribe_file(
             self,
             notebook_id: str,
             user_id: str,
             file_id: str,
-            file_data: bytes,
+            file_url: str,    # <--- Changed from bytes/base64 to URL
             filename: str,
-            content_type: str,  # <-- It's good practice to pass this too
+            content_type: str,
             graph_id: str = "transcription_agent"
     ):
         """
-        Initiates a LangGraph run to transcribe an in-memory audio file.
-
-        This method encodes the raw audio data into Base64, then starts a
-        stateless LangGraph run. The graph is responsible for decoding the
-        data and calling the AI transcription service. A webhook is used
-        to receive the result asynchronously.
-
-        Args:
-            notebook_id (str): ID of the notebook.
-            user_id (str): ID of the user.
-            file_id (str): The ID of the file record to be updated upon completion.
-            file_data (bytes): The raw binary content of the audio file.
-            filename (str): The original filename, used by the AI service.
-            content_type (str): The MIME type of the audio file.
-            graph_id (str): The graph ID for the assistant (e.g., "transcription_agent").
+        Initiates a LangGraph run to transcribe a file hosted at the given URL.
         """
         notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
             notebook_id=notebook_id,
@@ -111,18 +71,16 @@ class AIService:
         if not model_api:
             raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
 
-        encoded_audio_data = base64.b64encode(file_data).decode('utf-8')
-
+        # Input to the Agent: It should download the file from the file_url
         run_input = {
             "light_model": notebook_model.model.name,
             "api_key": model_api.value,
-            "audio_data_base64": encoded_audio_data,
+            "file_url": file_url,         # <--- Passing S3 URL
             "filename": filename,
             "content_type": content_type
         }
 
         assistant_id = await self._get_assistant_id(graph_id)
-
         webhook_url = LANGGRAPH_WEBHOOK_URL + "/transcription-hook"
 
         background_run = await self.langgraph_client.runs.create(
@@ -136,8 +94,6 @@ class AIService:
 
         return {"status": "started"}
 
-
-    # Example: Add a new method for a different assistant (e.g., chat)
     async def generate_chat_name(
             self,
             notebook_id: str,
@@ -156,9 +112,8 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
-        # Require API key for all AI operations
         if not model_api:
-            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+            raise ValueError("API key is required.")
 
         run_input = {
             "light_model": notebook_model.model.name,
@@ -199,14 +154,13 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
-        # Require API key for all AI operations
         if not model_api:
-            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+            raise ValueError("API key is required.")
 
         run_input = {
             "light_model": notebook_model.model.name,
             "api_key": model_api.value,
-            "text_input": f"Based on this parent node content: '{parent_content}', please generate appropriate content for a child {node_type}. Make it relevant and expand on the parent idea.",
+            "text_input": parent_content,
             "mode": "brainstorm",
         }
 
@@ -246,9 +200,8 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
-        # Require API key for all AI operations
         if not model_api:
-            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+            raise ValueError("API key is required.")
 
         run_input = {
             "light_model": notebook_model.model.name,
@@ -288,9 +241,8 @@ class AIService:
 
         model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
 
-        # Require API key for all AI operations
         if not model_api:
-            raise ValueError("API key is required to use this application. Please set up your API key in the settings.")
+            raise ValueError("API key is required.")
 
         run_input = {
             "light_model": notebook_model.model.name,

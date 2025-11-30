@@ -1,7 +1,7 @@
-// File: frontend/src/components/layout/Layout.tsx
+// Path: frontend/src/components/layout/Layout.tsx
 
-import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useModals } from "../../hooks/useModals";
 import ChatSidebar from "../chat/ChatSidebar";
@@ -33,7 +33,7 @@ interface LayoutProps {
     switchToChat: (chatId: string) => void;
     handleDeleteChat: (chatId: string) => void;
     isThreadTyping?: (threadId: string) => boolean;
-    forceRegularLayout?: boolean; // <-- ADDED PROP
+    forceRegularLayout?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -55,10 +55,11 @@ const Layout: React.FC<LayoutProps> = ({
                                            switchToChat,
                                            handleDeleteChat,
                                            isThreadTyping,
-                                           forceRegularLayout = false, // <-- ADDED PROP WITH DEFAULT
+                                           forceRegularLayout = false,
                                        }) => {
     const { logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const {
         modals,
@@ -76,6 +77,15 @@ const Layout: React.FC<LayoutProps> = ({
     } = useModals();
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+
+    // --- LOGIC: Auto-collapse sidebar when in 'files' view to mimic IDE ---
+    useEffect(() => {
+        if (location.pathname.includes('/files/')) {
+            setIsSidebarOpen(false); // Collapsed (Activity Bar mode)
+        } else if (window.innerWidth > 768) {
+            setIsSidebarOpen(true); // Expanded (Normal Chat mode)
+        }
+    }, [location.pathname]);
 
     // Function to switch chat and navigate to chat route
     const handleSwitchChatWithNavigation = useCallback((chatId: string) => {
@@ -100,6 +110,7 @@ const Layout: React.FC<LayoutProps> = ({
             {/* Sidebar Container */}
             <div className="relative z-[1001] h-full flex-shrink-0 md:static">
                 <ChatSidebar
+                    notebookId={notebookId} // <--- Pass notebookId here
                     chatSessions={chatSessions}
                     currentChatId={currentChatId}
                     collapsed={!isSidebarOpen}
@@ -122,7 +133,7 @@ const Layout: React.FC<LayoutProps> = ({
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col h-full min-w-0 relative">
-                {/* Mobile Header */}
+                {/* Mobile Header - Hidden on desktop */}
                 <div className="md:hidden">
                     <ChatHeader
                         title={title}
@@ -132,37 +143,23 @@ const Layout: React.FC<LayoutProps> = ({
                     />
                 </div>
 
-                {/* 
-                  CHANGE: Updated condition to respect the new prop
-                */}
-                {isTemporaryChat && !forceRegularLayout ? (
-                    // LAYOUT 1: Temporary Chat (Logo + Input are centered together)
-                    // This container will grow to fill space and center its content.
+                {/* Content Logic */}
+                {isTemporaryChat && !forceRegularLayout && !location.pathname.includes('/files/') ? (
                     <div className="flex-1 flex flex-col justify-center items-center overflow-y-auto p-4">
                         <div className="flex flex-col items-center gap-8 w-full max-w-3xl">
-                            <img
-                                src={idreLogo}
-                                alt="Logo"
-                                className="w-60 h-auto dark:hidden"
-                            />
-                            <img
-                                src={idreWhiteLogo}
-                                alt="Logo"
-                                className="w-60 h-auto hidden dark:block"
-                            />
-                            {/* The input area is now INSIDE the centered block */}
+                            <img src={idreLogo} alt="Logo" className="w-60 h-auto dark:hidden" />
+                            <img src={idreWhiteLogo} alt="Logo" className="w-60 h-auto hidden dark:block" />
                             {inputArea}
                         </div>
                     </div>
                 ) : (
-                    // LAYOUT 2: Regular Chat (Messages scroll, Input is fixed at the bottom)
                     <>
-                        {/* This container holds the scrollable chat messages */}
-                        <div className="flex-1 w-full overflow-y-auto">
+                        {/* If we are in files view, children takes full height and handles its own layout */}
+                        <div className="flex-1 w-full overflow-hidden flex flex-col">
                             {children}
                         </div>
-                        {/* The input area is a sibling, anchoring it to the bottom */}
-                        {inputArea}
+                        {/* Only show bottom input area if provided and NOT in files view */}
+                        {!location.pathname.includes('/files/') && inputArea}
                         {modelInfo}
                     </>
                 )}
@@ -172,25 +169,15 @@ const Layout: React.FC<LayoutProps> = ({
             <ModelSettingsModal
                 chatId={currentChatId || undefined}
                 notebookId={notebookId}
-                isOpen={
-                    modals.isAIModelsSettingsOpen || modals.isDefaultModelsModalOpen
-                }
+                isOpen={modals.isAIModelsSettingsOpen || modals.isDefaultModelsModalOpen}
                 onClose={() => {
                     handleCloseAIModelsSettings();
                     handleCloseDefaultModelsModal();
                 }}
                 isTemporaryChat={isTemporaryChat}
             />
-            <LoginModal
-                isOpen={modals.isLoginModalOpen}
-                onClose={handleCloseLoginModal}
-                onSwitchToRegister={switchToRegister}
-            />
-            <RegisterModal
-                isOpen={modals.isRegisterModalOpen}
-                onClose={handleCloseRegisterModal}
-                onSwitchToLogin={switchToLogin}
-            />
+            <LoginModal isOpen={modals.isLoginModalOpen} onClose={handleCloseLoginModal} onSwitchToRegister={switchToRegister} />
+            <RegisterModal isOpen={modals.isRegisterModalOpen} onClose={handleCloseRegisterModal} onSwitchToLogin={switchToLogin} />
         </div>
     );
 };
