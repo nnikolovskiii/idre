@@ -52,7 +52,7 @@ jobs:
       - name: Checkout Kubernetes Repo
         uses: actions/checkout@v4
         with:
-          repository: nnikolovskii/kubernetes # <--- MAKE SURE THIS IS CORRECT
+          repository: nnikolovskiii/idre-kubernetes # <--- MAKE SURE THIS IS CORRECT
           token: ${{ secrets.K8S_REPO_TOKEN }}
           path: k8s-repo
 
