@@ -99,18 +99,11 @@ export interface TaskWithNotebook extends TaskResponse {
         id: string;
         title: string;
         emoji: string;
+        bg_color?: string; // <--- ADD THIS LINE
     };
 }
 
-/**
- * Alias for TaskResponse - the main Task interface used throughout the app
- */
-export interface Task extends TaskResponse {}
 
-/**
- * Task archive request interface
- */
-export interface TaskArchiveRequest {}
 
 /**
  * Task operation response interface

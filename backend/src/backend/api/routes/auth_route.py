@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 import uuid
+import requests
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Response
@@ -145,18 +146,28 @@ async def google_auth(
         user_service: UserService = Depends(get_user_service)
 ):
     try:
-        # Verify the Google ID token
-        idinfo = id_token.verify_oauth2_token(
-            auth_data.token, google_requests.Request(), google_client_id
+        # --- NEW LOGIC START ---
+        # Instead of verifying ID token, we fetch user info using the Access Token
+        user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+        user_info_response = requests.get(
+            user_info_url,
+            headers={"Authorization": f"Bearer {auth_data.token}"}
         )
 
-        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            raise ValueError('Wrong issuer.')
+        if not user_info_response.ok:
+            raise ValueError("Failed to validate token with Google")
 
-        google_id = idinfo['sub']
-        email = idinfo['email']
-        name = idinfo.get('given_name', '')
-        surname = idinfo.get('family_name', '')
+        google_data = user_info_response.json()
+
+        email = google_data.get('email')
+        if not email:
+            raise ValueError("Email not found in Google data")
+
+        # Map Google data to our variables
+        google_id = google_data.get('sub')
+        name = google_data.get('given_name', '')
+        surname = google_data.get('family_name', '')
+        # --- NEW LOGIC END ---
 
         # Check if user exists by email
         user = await user_service.get_user_by_email(email)
@@ -185,7 +196,7 @@ async def google_auth(
             user = await user_service.get_user_by_email(email)
 
         # Generate JWT token
-        expires = datetime.now(timezone.utc) + timedelta(days=365)  # 1 year for Google users
+        expires = datetime.now(timezone.utc) + timedelta(days=365)
         jwt_token = jwt.encode(
             {"sub": str(user.user_id), "exp": expires}, secret, algorithm=algorithm
         )
@@ -196,18 +207,15 @@ async def google_auth(
             samesite='none',
             secure=True,
             httponly=True,
-            max_age=365 * 24 * 60 * 60,  # 1 year in seconds
+            max_age=365 * 24 * 60 * 60,
             expires=expires
         )
 
         return {"status": "success", "message": "Google authentication successful",
                 "data": {"access_token": jwt_token, "token_type": "bearer"}}
 
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
-
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 @router.post("/logout")
 async def logout(request: Request, response: Response):

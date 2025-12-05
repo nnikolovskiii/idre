@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { PanelLeft, FolderOpen } from "lucide-react";
+import { PanelLeft, FolderOpen, FilePlus } from "lucide-react"; // Added FilePlus icon
 
 import { fileService, type FileData } from "../services/filesService";
 import Layout from "../components/layout/Layout";
@@ -27,6 +27,10 @@ const MyDriveView = () => {
 
     // --- MODAL STATE ---
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
+
+    // NEW: Create File Modal State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newFileName, setNewFileName] = useState("");
 
     // --- PERSISTENCE STATE ---
     const hasRestoredTabs = useRef(false);
@@ -245,15 +249,30 @@ const MyDriveView = () => {
         await fetchFiles();
     };
 
-    const handleCreateFile = async () => {
-        const name = prompt("Enter file name (e.g., notes.md):");
-        if (!name || !notebookId) return;
-        const emptyFile = new File([""], name, { type: "text/plain" });
-        await fileService.uploadFile(emptyFile, notebookId);
-        await fetchFiles();
+    // --- CREATE FILE LOGIC (Trigger) ---
+    const initiateCreateFile = () => {
+        setNewFileName("");
+        setIsCreateModalOpen(true);
     };
 
-    const startRecording = async () => { /* ...existing... */
+    // --- CREATE FILE LOGIC (Execute) ---
+    const confirmCreateFile = async (e?: React.FormEvent) => {
+        if(e) e.preventDefault();
+
+        if (!newFileName.trim() || !notebookId) return;
+
+        try {
+            const emptyFile = new File([""], newFileName.trim(), { type: "text/plain" });
+            await fileService.uploadFile(emptyFile, notebookId);
+            setIsCreateModalOpen(false);
+            setNewFileName("");
+            await fetchFiles();
+        } catch (err) {
+            alert("Failed to create file");
+        }
+    };
+
+    const startRecording = async () => {
         if (!notebookId) return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -360,7 +379,7 @@ const MyDriveView = () => {
                             onFileClick={handleOpenFile}
                             onFileDoubleClick={handleDoubleClickFile}
                             onUpload={handleFileUpload}
-                            onCreateFile={handleCreateFile}
+                            onCreateFile={initiateCreateFile}
                             onRefresh={fetchFiles}
                             onCloseSidebar={() => setIsSidebarVisible(false)}
                             isRecording={isRecording}
@@ -394,13 +413,59 @@ const MyDriveView = () => {
                         setViewMode={setViewMode}
                         onSave={handleSave}
                         onDownload={handleDownload}
-                        onDelete={initiateDelete} // CHANGED: Calls initiateDelete now
+                        onDelete={initiateDelete}
                     />
 
                     <div className="flex-1 overflow-hidden relative">
                         {renderWorkspace()}
                     </div>
                 </div>
+
+                {/* CREATE FILE MODAL */}
+                {isCreateModalOpen && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px] animate-in fade-in duration-200">
+                        <div className="bg-popover border border-border shadow-2xl rounded-lg w-full max-w-sm p-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                    <FilePlus size={20} />
+                                </div>
+                                <h3 className="text-lg font-semibold text-popover-foreground">Create New File</h3>
+                            </div>
+
+                            <form onSubmit={confirmCreateFile}>
+                                <div className="mb-6">
+                                    <label className="block text-sm text-muted-foreground mb-2">
+                                        Enter file name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newFileName}
+                                        onChange={(e) => setNewFileName(e.target.value)}
+                                        placeholder="e.g. notes.md"
+                                        className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreateModalOpen(false)}
+                                        className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!newFileName.trim()}
+                                        className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Create
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 {/* DELETE CONFIRMATION MODAL */}
                 {fileToDelete && (

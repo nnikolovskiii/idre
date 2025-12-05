@@ -14,6 +14,20 @@ import SettingsDropdown from "../chat/SettingsDropdown";
 import AuthDropdown from "../chat/AuthDropdown";
 import {ThemeToggle} from "../ThemeToggle";
 
+// Helper to add opacity to hex color for active state background
+const hexToRgba = (hex: string, alpha: number) => {
+    let c: any;
+    if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+        c= hex.substring(1).split('');
+        if(c.length== 3){
+            c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        c= '0x'+c.join('');
+        return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+    }
+    return hex; // fallback
+}
+
 interface GlobalSidebarProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
@@ -45,10 +59,20 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
 
     useEffect(() => {
         getAllNotebooks();
+
+        // ADDED: Listen for updates from Dashboard/Modals
+        const handleRefresh = () => getAllNotebooks();
+        window.addEventListener("notebook-updated", handleRefresh);
+        window.addEventListener("notebook-created", handleRefresh); // Ensure we catch creations too
+
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
+        return () => {
+            window.removeEventListener("resize", checkMobile);
+            window.removeEventListener("notebook-updated", handleRefresh);
+            window.removeEventListener("notebook-created", handleRefresh);
+        };
     }, []);
 
     const sidebarClasses = [
@@ -67,15 +91,18 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
         navigate(path);
     };
 
-    const handleNotebookNavigation = (e: React.MouseEvent, notebookId: string) => {
-        e.stopPropagation();
+    const getLastTabPath = (notebookId: string) => {
         const lastTab = localStorage.getItem(`notebook-last-tab-${notebookId}`) || 'chat';
         let path = `/${lastTab}/${notebookId}`;
-        // The path for 'idea' is '/idea-canvas/:notebookId' as per ChatSidebar.tsx
         if (lastTab === 'idea') {
             path = `/idea-canvas/${notebookId}`;
         }
-        navigate(path);
+        return path;
+    };
+
+    const handleNotebookNavigation = (e: React.MouseEvent, notebookId: string) => {
+        e.stopPropagation();
+        navigate(getLastTabPath(notebookId));
     };
 
     return (
@@ -155,18 +182,54 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                                     </button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto custom-scrollbar px-1">
-                                    {notebooks.map((nb) => (
-                                        <button
-                                            key={nb.id}
-                                            onClick={(e) => handleNotebookNavigation(e, nb.id)}
-                                            className="flex items-center gap-3 w-full p-2.5 rounded-md text-sm text-left transition-all text-sidebar-foreground hover:bg-sidebar-accent"
-                                            title={nb.title}
-                                        >
-                                            <Icon name={nb.emoji as IconName} className="w-4 h-4 flex-shrink-0"/>
-                                            <span className="truncate">{nb.title}</span>
-                                        </button>
-                                    ))}
+                                <div className="flex-1 overflow-y-auto custom-scrollbar px-1 space-y-1">
+                                    {notebooks.map((nb) => {
+                                        const notebookPath = getLastTabPath(nb.id);
+                                        const active = isActive(notebookPath);
+                                        const color = nb.bg_color || '#4d4dff';
+
+                                        return (
+                                            <button
+                                                key={nb.id}
+                                                onClick={(e) => handleNotebookNavigation(e, nb.id)}
+                                                className={`
+                                                    flex items-center gap-3 w-full p-2 rounded-md text-sm text-left transition-all
+                                                    group relative overflow-hidden
+                                                    ${active
+                                                    ? 'font-medium text-foreground'
+                                                    : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+                                                }
+                                                `}
+                                                // Only apply background opacity if active, otherwise transparent
+                                                style={{
+                                                    backgroundColor: active ? hexToRgba(color, 0.1) : 'transparent',
+                                                }}
+                                                title={nb.title}
+                                            >
+                                                {/* Left Accent Bar for active state */}
+                                                {active && (
+                                                    <div
+                                                        className="absolute left-0 top-0 bottom-0 w-1"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                )}
+
+                                                {/* Icon with color */}
+                                                <div
+                                                    className={`
+                                                        flex items-center justify-center w-6 h-6 rounded-md 
+                                                        transition-colors
+                                                        ${!active ? 'bg-transparent' : ''}
+                                                    `}
+                                                    style={{ color: color }}
+                                                >
+                                                    <Icon name={nb.emoji as IconName} className="w-4 h-4 flex-shrink-0"/>
+                                                </div>
+
+                                                <span className="truncate">{nb.title}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </>
@@ -184,7 +247,7 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                         <div
                             className={`flex items-center ${
                                 collapsed && !isMobile
-                                    ? "flex-col justify-center gap-4 py-2" // Vertical stack when collapsed
+                                    ? "flex-col justify-center gap-4 py-2"
                                     : "justify-between p-2"
                             }`}
                         >

@@ -17,10 +17,12 @@ class NotebookRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, user_id: str, emoji: str, title: str, date: str) -> Notebook:
+    async def create(self, user_id: str, emoji: str, title: str, date: str,
+                    bg_color: str = '#4d4dff', text_color: str = '#ffffff') -> Notebook:
         """Creates a new Notebook object and adds it to the session."""
         notebook = Notebook(
             user_id=user_id, emoji=emoji, title=title, date=date,
+            bg_color=bg_color, text_color=text_color
         )
         self.session.add(notebook)
         await self.session.flush()

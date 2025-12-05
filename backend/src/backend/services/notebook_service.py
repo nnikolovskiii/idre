@@ -26,10 +26,11 @@ class NotebookService:
         self.notebook_model_service = notebook_model_service
 
     async def create_notebook(self, user_id: str, emoji: str, title: str,
-                              date: str) -> Notebook:
+                              date: str, bg_color: str = '#4d4dff', text_color: str = '#ffffff') -> Notebook:
         """Creates a notebook and commits the transaction."""
         notebook = await self.repo.create(
-            user_id=user_id, emoji=emoji, title=title, date=date)
+            user_id=user_id, emoji=emoji, title=title, date=date,
+            bg_color=bg_color, text_color=text_color)
         await self.session.commit()
         await self.session.refresh(notebook)
         return notebook

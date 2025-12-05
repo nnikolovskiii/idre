@@ -50,7 +50,7 @@ const CreateNotebookPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title.trim()) {
+    if (!formData.title?.trim()) {
       setError("Title is required");
       return;
     }

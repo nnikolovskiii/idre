@@ -35,6 +35,8 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
     const [activeTask, setActiveTask] = useState<Task | null>(null);
     const [activeTaskOriginalColumn, setActiveTaskOriginalColumn] = useState<TaskStatus | null>(null);
 
+    const isAllTasksView = viewMode === 'all';
+
     // UI Preferences
     const [showPriorities, setShowPriorities] = useState<boolean>(() => {
         const saved = localStorage.getItem('kanban-show-priorities');
@@ -330,11 +332,23 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                                     isMobile={false}
                                     canCreate={canCreate}
                                     showPriorities={showPriorities}
+                                    isAllTasksView={isAllTasksView} // Pass logic here
                                 />
                             </div>
                         ))}
                     </div>
-                    {createPortal(<DragOverlay>{activeTask ? <TaskDragOverlay task={activeTask} showPriorities={showPriorities} /> : null}</DragOverlay>, document.body)}
+                    {createPortal(
+                        <DragOverlay>
+                            {activeTask ? (
+                                <TaskDragOverlay
+                                    task={activeTask}
+                                    showPriorities={showPriorities}
+                                    isAllTasksView={isAllTasksView} // Pass logic here
+                                />
+                            ) : null}
+                        </DragOverlay>,
+                        document.body
+                    )}
                 </DndContext>
             </div>
 

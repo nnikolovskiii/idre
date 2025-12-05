@@ -14,6 +14,7 @@ export interface Task {
         id: string;
         title: string;
         emoji: string;
+        bg_color?: string; // Added this field
     };
 }
 
@@ -21,7 +22,7 @@ export interface Column {
     id: TaskStatus;
     title: string;
     tasks: Task[];
-    accentColor: string; // Changed from 'color' (bg classes) to 'accentColor' (text/border classes)
+    accentColor: string;
 }
 
 export type NewTaskState = {
@@ -32,7 +33,7 @@ export type NewTaskState = {
     dueDate: string;
 };
 
-// Updated config: Removed background classes, added accent colors for indicators
+// ... keep COLUMN_CONFIG as is
 export const COLUMN_CONFIG: { id: TaskStatus; title: string; accentColor: string }[] = [
     {
         id: TaskStatus.TODO,

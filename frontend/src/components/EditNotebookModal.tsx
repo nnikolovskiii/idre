@@ -1,56 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Save, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import {NotebookService, type NotebookCreate} from "../services/notebooksService.ts";
+import { NotebookService, type NotebookUpdate, type NotebookResponse } from "../services/notebooksService.ts";
 import { useTheme } from "../context/ThemeContext.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
 import { NotebookColorPicker } from "./ColorPicker/NotebookColorPicker.tsx";
-import { getDefaultColor } from "../utils/notebookColors.ts";
+import {
+  assignColorToNotebook
+} from "../utils/notebookColors.ts";
 
-interface CreateNotebookModalProps {
+interface EditNotebookModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  notebook: NotebookResponse | null;
 }
 
-const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
+const EditNotebookModal: React.FC<EditNotebookModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  notebook,
 }) => {
-  const navigate = useNavigate();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const defaultColor = getDefaultColor();
-  const [selectedColorName, setSelectedColorName] = useState<string>("blue");
-  
-  const [formData, setFormData] = useState<Omit<NotebookCreate, 'bg_color' | 'text_color'> & { bg_color?: string; text_color?: string }>({
-    emoji: "book",
+  const [formData, setFormData] = useState<Omit<NotebookUpdate, 'bg_color' | 'text_color'> & { bg_color?: string; text_color?: string }>({
+    emoji: "",
     title: "",
-    date: new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }),
-    bg_color: defaultColor.bgLight,
-    text_color: defaultColor.text,
+    date: "",
+    bg_color: "#4d4dff",
+    text_color: "#ffffff",
   });
 
+  const [selectedColorName, setSelectedColorName] = useState<string>("blue");
+
   const iconOptions: IconName[] = [
-    "soccer-ball", 
-    "book", 
-    "rocket", 
-    "star", 
-    "fingerprint", 
-    "palette", 
-    "pet", 
+    "soccer-ball",
+    "book",
+    "rocket",
+    "star",
+    "fingerprint",
+    "palette",
+    "pet",
     "shop"
   ];
 
+  // Initialize form data when notebook changes
+  useEffect(() => {
+    if (notebook) {
+      setFormData({
+        emoji: notebook.emoji || "book",
+        title: notebook.title || "",
+        date: notebook.date || new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+        bg_color: notebook.bg_color || "#4d4dff",
+        text_color: notebook.text_color || "#ffffff",
+      });
+
+      // Map the background color to a color name for the color picker
+      const assignedColor = assignColorToNotebook(notebook.bg_color);
+      setSelectedColorName(assignedColor.name);
+    }
+  }, [notebook]);
+
   const handleInputChange = (
-      field: keyof NotebookCreate,
+      field: keyof NotebookUpdate,
       value: string
   ) => {
     setFormData((prev) => ({
@@ -70,6 +88,11 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!notebook) {
+      setError("No notebook selected");
+      return;
+    }
+
     if (!formData.title?.trim()) {
       setError("Title is required");
       return;
@@ -88,32 +111,16 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
           month: "short",
           day: "numeric",
         }),
-      } as NotebookCreate;
+      } as NotebookUpdate;
 
-      const createdNotebook = await NotebookService.createNotebook(notebookData);
-      
-      // Reset form
-      setFormData({
-        emoji: "book",
-        title: "",
-        date: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        bg_color: defaultColor.bgLight,
-        text_color: defaultColor.text,
-      });
-      setSelectedColorName("blue");
+      await NotebookService.updateNotebook(notebook.id, notebookData);
+      window.dispatchEvent(new Event("notebook-updated"));
 
       onSuccess();
       onClose();
-      
-      // Navigate to welcome page with the new notebook ID
-      navigate(`/welcome/${createdNotebook.id}`);
     } catch (err) {
       setError(
-          err instanceof Error ? err.message : "Failed to create notebook"
+          err instanceof Error ? err.message : "Failed to update notebook"
       );
     } finally {
       setLoading(false);
@@ -123,23 +130,11 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
   const handleClose = () => {
     if (!loading) {
       setError(null);
-      setFormData({
-        emoji: "book",
-        title: "",
-        date: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-        bg_color: defaultColor.bgLight,
-        text_color: defaultColor.text,
-      });
-      setSelectedColorName("blue");
       onClose();
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !notebook) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -148,13 +143,13 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
       }`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold">Create New Notebook</h2>
+          <h2 className="text-xl font-semibold">Edit Notebook</h2>
           <button
             onClick={handleClose}
             disabled={loading}
             className={`p-2 rounded-md transition-colors ${
-              theme === 'dark' 
-                ? 'hover:bg-gray-700 text-gray-400' 
+              theme === 'dark'
+                ? 'hover:bg-gray-700 text-gray-400'
                 : 'hover:bg-gray-100 text-gray-500'
             } disabled:opacity-50`}
           >
@@ -183,7 +178,7 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
             <input
                 type="text"
                 id="title"
-                value={formData.title}
+                value={formData.title || ""}
                 onChange={(e) => handleInputChange("title", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   theme === 'dark'
@@ -192,6 +187,31 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
                 }`}
                 placeholder="Enter notebook title..."
                 required
+                disabled={loading}
+            />
+          </div>
+
+          {/* Date */}
+          <div className="mb-6">
+            <label
+                htmlFor="date"
+                className={`block text-sm font-medium mb-2 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                }`}
+            >
+              Date
+            </label>
+            <input
+                type="text"
+                id="date"
+                value={formData.date || ""}
+                onChange={(e) => handleInputChange("date", e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="Enter date..."
                 disabled={loading}
             />
           </div>
@@ -220,8 +240,8 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
                                   : "border-gray-200 hover:bg-gray-50"
                       } disabled:opacity-50`}
                   >
-                    <Icon 
-                      name={iconName} 
+                    <Icon
+                      name={iconName}
                       className="w-8 h-8"
                     />
                   </button>
@@ -261,7 +281,7 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Save size={16} />
-              {loading ? "Creating..." : "Create Notebook"}
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -270,4 +290,4 @@ const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({
   );
 };
 
-export default CreateNotebookModal;
+export default EditNotebookModal;

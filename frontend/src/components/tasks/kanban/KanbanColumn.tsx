@@ -16,11 +16,12 @@ interface KanbanColumnProps {
     isMobile?: boolean;
     canCreate?: boolean;
     showPriorities?: boolean;
+    isAllTasksView?: boolean; // New prop
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
                                                        column, onAddTask, onViewTask, onEditTask, onArchiveTask, onUnarchiveTask,
-                                                       isMobile = false, canCreate = true, showPriorities = true
+                                                       isMobile = false, canCreate = true, showPriorities = true, isAllTasksView = false
                                                    }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
@@ -67,6 +68,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                             onArchive={onArchiveTask}
                             onUnarchive={onUnarchiveTask}
                             showPriorities={showPriorities}
+                            isAllTasksView={isAllTasksView} // Pass down
                         />
                     ))}
 

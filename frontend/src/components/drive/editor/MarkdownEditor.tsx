@@ -5,6 +5,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Heading, Bold, Italic, Code, Table as TableIcon, List, CheckSquare } from "lucide-react";
 
+// ... (getCaretCoordinates function remains the same, omitted for brevity) ...
+
 // Helper: Get Caret Coordinates
 const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {
     const div = document.createElement('div');
@@ -23,16 +25,15 @@ const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => 
     return { top: top - element.scrollTop, left: left - element.scrollLeft };
 };
 
-// Local definition of commands to include Icons properly
 const COMMANDS = [
-    { id: 'h1', label: 'Heading 1', icon: <Heading size={14} />, value: '# ', offset: 0 },
-    { id: 'h2', label: 'Heading 2', icon: <Heading size={12} />, value: '## ', offset: 0 },
-    { id: 'bold', label: 'Bold', icon: <Bold size={14} />, value: '**text**', offset: -2 },
-    { id: 'italic', label: 'Italic', icon: <Italic size={14} />, value: '*text*', offset: -1 },
-    { id: 'code', label: 'Code Block', icon: <Code size={14} />, value: '```javascript\nconsole.log("Hello");\n```', offset: -4 },
-    { id: 'table', label: 'Table', icon: <TableIcon size={14} />, value: '| Header | Header |\n|---|---|\n| Cell | Cell |', offset: 0 },
-    { id: 'list', label: 'Bullet List', icon: <List size={14} />, value: '- ', offset: 0 },
-    { id: 'check', label: 'Checklist', icon: <CheckSquare size={14} />, value: '- [ ] ', offset: 0 },
+    { id: 'h1', label: 'Heading 1', icon: <Heading size={16} />, value: '# ', offset: 0 },
+    { id: 'h2', label: 'Heading 2', icon: <Heading size={14} />, value: '## ', offset: 0 },
+    { id: 'bold', label: 'Bold', icon: <Bold size={16} />, value: '**text**', offset: -2 },
+    { id: 'italic', label: 'Italic', icon: <Italic size={16} />, value: '*text*', offset: -1 },
+    { id: 'code', label: 'Code Block', icon: <Code size={16} />, value: '```javascript\nconsole.log("Hello");\n```', offset: -4 },
+    { id: 'table', label: 'Table', icon: <TableIcon size={16} />, value: '| Header | Header |\n|---|---|\n| Cell | Cell |', offset: 0 },
+    { id: 'list', label: 'Bullet List', icon: <List size={16} />, value: '- ', offset: 0 },
+    { id: 'check', label: 'Checklist', icon: <CheckSquare size={16} />, value: '- [ ] ', offset: 0 },
 ];
 
 interface MarkdownEditorProps {
@@ -74,7 +75,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // Handle Ctrl+S for Save
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
             onSave();
@@ -118,7 +118,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
 
     const insertCommand = (cmd: typeof COMMANDS[0]) => {
         if (!textareaRef.current || !cmd) return;
-
         const textarea = textareaRef.current;
         const cursorPos = textarea.selectionStart;
         const textBefore = content.slice(0, cursorPos);
@@ -147,7 +146,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
             `}>
                 <textarea
                     ref={textareaRef}
-                    className="w-full h-full p-6 bg-background text-foreground font-mono text-sm resize-none focus:outline-none leading-relaxed"
+                    className="w-full h-full p-8 bg-background text-foreground font-mono text-base resize-none focus:outline-none leading-relaxed"
                     value={content}
                     onChange={handleEditorChange}
                     onKeyDown={handleKeyDown}
@@ -158,28 +157,28 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
                 {/* SLASH MENU */}
                 {showSlashMenu && (
                     <div
-                        className="absolute z-50 w-64 bg-popover border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                        className="absolute z-50 w-72 bg-popover border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
                         style={{ top: menuPosition.top, left: menuPosition.left }}
                     >
-                        <div className="bg-muted/50 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
+                        <div className="bg-muted/50 px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
                             Basic blocks
                         </div>
-                        <div className="max-h-60 overflow-y-auto p-1">
+                        <div className="max-h-60 overflow-y-auto p-2">
                             {filteredCommands.length > 0 ? (
                                 filteredCommands.map((cmd, idx) => (
                                     <button
                                         key={cmd.id}
                                         className={`
-                                            w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left
+                                            w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-md transition-colors text-left
                                             ${idx === slashIndex ? 'bg-accent text-accent-foreground' : 'text-popover-foreground hover:bg-muted'}
                                         `}
                                         onClick={() => insertCommand(cmd)}
                                         onMouseEnter={() => setSlashIndex(idx)}
                                     >
-                                        <div className="p-1 rounded bg-background border border-border shadow-sm">
+                                        <div className="p-1.5 rounded bg-background border border-border shadow-sm">
                                             {cmd.icon}
                                         </div>
-                                        <span className="font-medium">{cmd.label}</span>
+                                        <span className="font-medium text-base">{cmd.label}</span>
                                     </button>
                                 ))
                             ) : (
@@ -192,8 +191,8 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
 
             {/* PREVIEW PANE */}
             <div className={`
-                h-full bg-background overflow-y-auto p-8 
-                prose dark:prose-invert prose-sm max-w-none
+                h-full bg-background overflow-y-auto p-10 
+                prose dark:prose-invert prose-base max-w-none
                 prose-pre:bg-transparent prose-pre:p-0 text-left
                 ${viewMode === 'edit' ? 'hidden' : 'block'}
                 ${viewMode === 'split' ? 'w-1/2 bg-muted/5' : 'w-full max-w-5xl'}
@@ -205,14 +204,14 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
                             const match = /language-(\w+)/.exec(className || '')
                             return !inline && match ? (
                                 <div className="rounded-md overflow-hidden my-4 border border-border shadow-sm">
-                                    <div className="bg-muted/50 px-3 py-1 text-xs text-muted-foreground border-b border-border font-mono">
+                                    <div className="bg-muted/50 px-4 py-1.5 text-xs text-muted-foreground border-b border-border font-mono">
                                         {match[1]}
                                     </div>
                                     <SyntaxHighlighter
                                         style={vscDarkPlus}
                                         language={match[1]}
                                         PreTag="div"
-                                        customStyle={{ margin: 0, borderRadius: 0, fontSize: '0.875rem' }}
+                                        customStyle={{ margin: 0, borderRadius: 0, fontSize: '0.95rem' }}
                                         {...props}
                                     >
                                         {String(children).replace(/\n$/, '')}
@@ -225,16 +224,16 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
                             )
                         },
                         table({children}) {
-                            return <div className="overflow-x-auto my-4 border rounded-md"><table className="w-full text-sm text-left">{children}</table></div>
+                            return <div className="overflow-x-auto my-4 border rounded-md"><table className="w-full text-base text-left">{children}</table></div>
                         },
                         thead({children}) {
-                            return <thead className="bg-muted/50 border-b border-border uppercase text-xs font-semibold text-muted-foreground">{children}</thead>
+                            return <thead className="bg-muted/50 border-b border-border uppercase text-sm font-semibold text-muted-foreground">{children}</thead>
                         },
                         th({children}) {
-                            return <th className="px-4 py-3 whitespace-nowrap">{children}</th>
+                            return <th className="px-6 py-3 whitespace-nowrap">{children}</th>
                         },
                         td({children}) {
-                            return <td className="px-4 py-3 border-b border-border last:border-0">{children}</td>
+                            return <td className="px-6 py-3 border-b border-border last:border-0">{children}</td>
                         }
                     }}
                 >

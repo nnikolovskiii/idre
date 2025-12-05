@@ -1,9 +1,11 @@
 import {API_CONFIG} from "./api.ts";
 
 export interface NotebookCreate {
-    emoji: string;
-    title: string;
-    date: string;
+    emoji?: string;
+    title?: string;
+    date?: string;
+    bg_color?: string;
+    text_color?: string;
 }
 
 export interface NotebookUpdate {
@@ -16,13 +18,13 @@ export interface NotebookUpdate {
 
 export interface NotebookResponse {
     id: string;
-    emoji: string;
-    title: string;
-    date: string;
-    bg_color: string;
-    text_color: string;
-    created_at: string;
-    updated_at: string;
+    emoji?: string;
+    title?: string;
+    date?: string;
+    bg_color?: string;
+    text_color?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface PaginationMeta {

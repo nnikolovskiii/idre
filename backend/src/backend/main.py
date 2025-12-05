@@ -193,7 +193,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:5173",
         "https://gcf.nikolanikolovski.com",
-        "https://idre.live"
+        "https://idre.live",
+        "https://k8s.idre.live"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

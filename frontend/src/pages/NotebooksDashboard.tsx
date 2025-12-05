@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, MoreVertical, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, MoreVertical, Trash2, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useNotebooks } from "../hooks/useNotebooks";
 import { Icon, type IconName } from "../components/Icon.tsx";
 import CreateNotebookModal from "../components/CreateNotebookModal.tsx";
+import EditNotebookModal from "../components/EditNotebookModal.tsx";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal.tsx";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import blocks from "../assets/create_notebook.png";
@@ -15,7 +16,8 @@ const NotebookCard: React.FC<{
     notebook: NotebookResponse;
     theme: 'light' | 'dark';
     onDelete: (notebook: NotebookResponse) => void;
-}> = ({ notebook, theme, onDelete }) => {
+    onEdit: (notebook: NotebookResponse) => void;
+}> = ({ notebook, theme, onDelete, onEdit }) => {
     const [isDropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,46 +42,106 @@ const NotebookCard: React.FC<{
         onDelete(notebook);
     };
 
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setDropdownOpen(false);
+        onEdit(notebook);
+    };
+
+    const color = notebook.bg_color || '#4d4dff';
+
     return (
         <div
-            className="p-4 rounded-xl flex flex-col h-40 border-[2px] hover:shadow-md transition-shadow relative cursor-pointer select-none"
-            style={{ backgroundColor: notebook.bg_color }}
+            className={`
+                rounded-xl flex flex-col h-48 transition-all duration-300
+                relative cursor-pointer select-none overflow-hidden group
+                ${theme === 'dark'
+                ? 'bg-[#18181b] border border-gray-800 hover:border-gray-600 shadow-md'
+                : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg'
+            }
+            `}
         >
-            <div className="flex justify-between items-center mb-3">
-                <Icon name={notebook.emoji as IconName} className="w-5 h-5" />
-                <div className="relative" ref={dropdownRef}>
-                    <button
-                        onClick={toggleMenu}
-                        className={theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}
+            {/* Top Color Accent Line */}
+            <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: color }}></div>
+
+            <div className="p-5 flex flex-col flex-grow relative">
+
+                {/* Header Row: Icon and Menu on the Right */}
+                <div className="flex justify-end items-start gap-2 mb-2">
+
+                    {/* Icon Container */}
+                    <div
+                        className={`
+                            p-2 rounded-lg transition-transform group-hover:scale-105
+                        `}
+                        style={{
+                            backgroundColor: `${color}15`, // very subtle opacity
+                            color: color
+                        }}
                     >
-                        <MoreVertical size={18} />
-                    </button>
-                    {isDropdownOpen && (
-                        <div className={`absolute right-0 mt-2 w-40 rounded-lg shadow-lg border z-50 ${
-                            theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                        }`}>
-                            <button
-                                onClick={handleDelete}
-                                className={`w-full px-4 py-2 text-left flex items-center gap-2 text-sm ${
-                                    theme === 'dark'
-                                        ? 'text-red-400 hover:bg-gray-700'
-                                        : 'text-red-600 hover:bg-gray-50'
-                                }`}
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </div>
-                    )}
+                        <Icon name={notebook.emoji as IconName} className="w-5 h-5" />
+                    </div>
+
+                    {/* Menu Button */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={toggleMenu}
+                            className={`
+                                p-2 rounded-full transition-all duration-200
+                                ${theme === 'dark'
+                                ? 'hover:bg-gray-700 text-gray-500 hover:text-gray-300'
+                                : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                            }
+                                ${isDropdownOpen ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : ''}
+                            `}
+                        >
+                            <MoreVertical size={18} />
+                        </button>
+
+                        {isDropdownOpen && (
+                            <div className={`absolute right-0 mt-2 w-40 rounded-lg shadow-xl border z-50 overflow-hidden ${
+                                theme === 'dark' ? 'bg-[#1f1f23] border-gray-700' : 'bg-white border-gray-200'
+                            }`}>
+                                <button
+                                    onClick={handleEdit}
+                                    className={`w-full px-4 py-2.5 text-left flex items-center gap-3 text-sm transition-colors ${
+                                        theme === 'dark'
+                                            ? 'text-gray-200 hover:bg-gray-700'
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Edit size={16} className="text-blue-500" />
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className={`w-full px-4 py-2.5 text-left flex items-center gap-3 text-sm transition-colors ${
+                                        theme === 'dark'
+                                            ? 'text-gray-200 hover:bg-gray-700'
+                                            : 'text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Trash2 size={16} className="text-red-500" />
+                                    Delete
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <div className="mt-auto text-right">
-                <h3 className="text-base font-semibold leading-snug text-gray-900 dark:text-gray-100 line-clamp-2">
-                    {notebook.title}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {formatRelativeOrAbsolute(notebook.updated_at)}
-                </p>
+
+                {/* Content: Title and Date centered vertically in the remaining space, aligned left */}
+                <div className="flex-grow flex flex-col justify-end items-start mt-1">
+                    <h3 className={`text-lg font-bold leading-tight line-clamp-2 mb-2 text-left ${
+                        theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                    }`}>
+                        {notebook.title}
+                    </h3>
+                    <p className={`text-xs text-left ${
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                    }`}>
+                        Edited {formatRelativeOrAbsolute(notebook.updated_at)}
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -88,23 +150,35 @@ const NotebookCard: React.FC<{
 const CreateNewCard: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
     return (
         <div
-            className={`p-4 rounded-xl flex flex-col items-center justify-center h-40 border-2 border-dashed cursor-pointer transition-all hover:shadow-md hover:border-opacity-100 select-none ${
-                theme === 'dark'
-                    ? 'bg-gray-800/50 border-gray-600 text-gray-400 hover:bg-gray-750 hover:border-gray-500'
-                    : 'bg-gray-50 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400'
-            }`}
+            className={`
+                rounded-xl flex flex-col items-center justify-center h-48 
+                border-2 border-dashed cursor-pointer transition-all duration-300
+                hover:shadow-md hover:border-opacity-100 select-none group
+                ${theme === 'dark'
+                ? 'bg-gray-800/30 border-gray-700 text-gray-500 hover:bg-gray-800/50 hover:border-gray-500 hover:text-gray-300'
+                : 'bg-gray-50/50 border-gray-300 text-gray-400 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-600'
+            }
+            `}
         >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3 bg-gray-200 dark:bg-gray-700">
-                <Plus size={20} className="text-gray-600 dark:text-gray-300" />
+            <div className={`
+                w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors
+                ${theme === 'dark'
+                ? 'bg-gray-800 group-hover:bg-gray-700'
+                : 'bg-gray-100 group-hover:bg-white border border-gray-200'
+            }
+            `}>
+                <Plus size={24} />
             </div>
-            <span className="text-sm font-medium">Create new</span>
+            <span className="text-sm font-semibold">Create New Notebook</span>
         </div>
     );
 };
 
 const NotebooksDashboard: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [notebookToEdit, setNotebookToEdit] = useState<NotebookResponse | null>(null);
     const [notebookToDelete, setNotebookToDelete] = useState<NotebookResponse | null>(null);
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 19;
@@ -117,8 +191,14 @@ const NotebooksDashboard: React.FC = () => {
         getAllNotebooks(page, PAGE_SIZE);
 
         const handleRefresh = () => getAllNotebooks(page, PAGE_SIZE);
+        // Listen to both events for better reactivity
         window.addEventListener("notebook-created", handleRefresh);
-        return () => window.removeEventListener("notebook-created", handleRefresh);
+        window.addEventListener("notebook-updated", handleRefresh);
+
+        return () => {
+            window.removeEventListener("notebook-created", handleRefresh);
+            window.removeEventListener("notebook-updated", handleRefresh);
+        }
     }, [getAllNotebooks, page]);
 
     const handleCreateCardClick = () => {
@@ -132,6 +212,22 @@ const NotebooksDashboard: React.FC = () => {
     const handleNotebookCreated = () => {
         setPage(1);
         getAllNotebooks(1, PAGE_SIZE);
+    };
+
+    const handleEditClick = (notebook: NotebookResponse) => {
+        setNotebookToEdit(notebook);
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditClose = () => {
+        setIsEditModalOpen(false);
+        setNotebookToEdit(null);
+    };
+
+    const handleNotebookUpdated = () => {
+        setIsEditModalOpen(false);
+        setNotebookToEdit(null);
+        getAllNotebooks(page, PAGE_SIZE);
     };
 
     const handleDeleteClick = (notebook: NotebookResponse) => {
@@ -170,7 +266,6 @@ const NotebooksDashboard: React.FC = () => {
     const handleNotebookClick = (notebookId: string) => {
         const lastTab = localStorage.getItem(`notebook-last-tab-${notebookId}`) || 'chat';
         let path = `/${lastTab}/${notebookId}`;
-        // Special case for 'idea' tab which has a different path structure
         if (lastTab === 'idea') {
             path = `/idea-canvas/${notebookId}`;
         }
@@ -214,7 +309,6 @@ const NotebooksDashboard: React.FC = () => {
                     <h1 className="text-2xl font-bold text-left">My notebooks</h1>
                 </header>
 
-                {/* Added 'flex flex-col' here to organize grid and pagination vertically */}
                 <main className="flex-grow flex flex-col">
                     {notebooks.length === 0 && !loading && page === 1 ? (
                         <div className="text-center flex flex-col items-center justify-center flex-grow">
@@ -244,12 +338,11 @@ const NotebooksDashboard: React.FC = () => {
 
                                 {notebooks.map((notebook) => (
                                     <div key={notebook.id} onClick={() => handleNotebookClick(notebook.id)} className="cursor-pointer">
-                                        <NotebookCard notebook={notebook} theme={theme} onDelete={handleDeleteClick}/>
+                                        <NotebookCard notebook={notebook} theme={theme} onDelete={handleDeleteClick} onEdit={handleEditClick}/>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* 'mt-auto' pushes this div to the bottom of the flex container */}
                             {pagination && pagination.total_pages > 1 && (
                                 <div className="mt-auto pt-8 flex items-center justify-center gap-4 pb-0">
                                     <button
@@ -293,6 +386,12 @@ const NotebooksDashboard: React.FC = () => {
                     isOpen={isCreateModalOpen}
                     onClose={handleCloseModal}
                     onSuccess={handleNotebookCreated}
+                />
+                <EditNotebookModal
+                    isOpen={isEditModalOpen}
+                    onClose={handleEditClose}
+                    onSuccess={handleNotebookUpdated}
+                    notebook={notebookToEdit}
                 />
                 <DeleteConfirmationModal
                     isOpen={isDeleteModalOpen}

@@ -26,16 +26,16 @@ const FileTabs: React.FC<FileTabsProps> = ({
                                                activeFile, viewMode, setViewMode, onSave, onDownload, onDelete
                                            }) => {
 
-    // Treat everything as text unless it is strictly an image, so we can edit content/transcriptions
+    // Treat everything as text unless it is strictly an image
     const isText = activeFile && !activeFile.content_type.startsWith('image/');
 
     return (
-        <div className="flex h-9 bg-muted/20 border-b border-border shrink-0">
+        <div className="flex h-12 bg-muted/20 border-b border-border shrink-0">
             <div className="flex-1 flex overflow-x-auto no-scrollbar">
                 {openFiles.map(file => (
                     <div
                         key={file.file_id}
-                        className={`group flex items-center gap-2 px-3 min-w-[120px] max-w-[200px] h-full border-r border-border/50 text-xs cursor-pointer select-none border-t-2 
+                        className={`group flex items-center gap-2.5 px-4 min-w-[150px] max-w-[240px] h-full border-r border-border/50 text-sm cursor-pointer select-none border-t-2 
                         ${activeFileId === file.file_id ? 'bg-background border-t-primary text-foreground' : 'bg-transparent border-t-transparent text-muted-foreground hover:bg-muted/30'}
                         ${previewFileId === file.file_id ? 'italic' : ''}
                         `}
@@ -43,55 +43,55 @@ const FileTabs: React.FC<FileTabsProps> = ({
                         onDoubleClick={() => onPinTab(file.file_id)}
                         title={previewFileId === file.file_id ? "Preview (Double-click to pin)" : file.filename}
                     >
-                        <span className="opacity-80">{getFileIcon(file.filename)}</span>
+                        <span className="opacity-80 scale-110">{getFileIcon(file.filename)}</span>
                         <span className="truncate flex-1">{file.filename}</span>
-                        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                            {isFileDirty(file.file_id) ? <div className="group-hover:hidden w-2 h-2 rounded-full bg-foreground/70" /> : null}
-                            <button onClick={(e) => onCloseTab(e, file.file_id)} className={`p-0.5 rounded-sm hover:bg-muted-foreground/20 text-muted-foreground/70 hover:text-foreground ${isFileDirty(file.file_id) ? 'hidden group-hover:block' : 'opacity-0 group-hover:opacity-100'}`}><X size={12} /></button>
+                        <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                            {isFileDirty(file.file_id) ? <div className="group-hover:hidden w-2.5 h-2.5 rounded-full bg-foreground/70" /> : null}
+                            <button onClick={(e) => onCloseTab(e, file.file_id)} className={`p-1 rounded-sm hover:bg-muted-foreground/20 text-muted-foreground/70 hover:text-foreground ${isFileDirty(file.file_id) ? 'hidden group-hover:block' : 'opacity-0 group-hover:opacity-100'}`}><X size={16} /></button>
                         </div>
                     </div>
                 ))}
             </div>
 
             {activeFile && (
-                <div className="flex items-center gap-1 px-2 bg-muted/10 border-l border-border shrink-0">
+                <div className="flex items-center gap-1 px-3 bg-muted/10 border-l border-border shrink-0">
                     {isText && (
                         <>
-                            <div className="flex bg-muted/30 rounded-md p-0.5 mr-2">
+                            <div className="flex bg-muted/30 rounded-md p-1 mr-3">
                                 <button
                                     onClick={() => setViewMode('edit')}
-                                    className={`p-1.5 rounded-sm transition-all ${viewMode === 'edit' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`p-2 rounded-sm transition-all ${viewMode === 'edit' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                                     title="Edit Source"
                                 >
-                                    <FileCode size={14} />
+                                    <FileCode size={18} />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('split')}
-                                    className={`p-1.5 rounded-sm transition-all ${viewMode === 'split' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`p-2 rounded-sm transition-all ${viewMode === 'split' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                                     title="Split View"
                                 >
-                                    <Columns size={14} />
+                                    <Columns size={18} />
                                 </button>
                                 <button
                                     onClick={() => setViewMode('preview')}
-                                    className={`p-1.5 rounded-sm transition-all ${viewMode === 'preview' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`p-2 rounded-sm transition-all ${viewMode === 'preview' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                                     title="Preview Only"
                                 >
-                                    <Eye size={14} />
+                                    <Eye size={18} />
                                 </button>
                             </div>
 
                             <button
                                 onClick={onSave}
-                                className={`p-1.5 rounded transition-colors ${isFileDirty(activeFile.file_id) ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                className={`p-2 rounded transition-colors ${isFileDirty(activeFile.file_id) ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                                 title="Save (Ctrl+S)"
                             >
-                                <Save size={14} />
+                                <Save size={18} />
                             </button>
                         </>
                     )}
-                    <button onClick={onDownload} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded" title="Download"><Download size={14} /></button>
-                    <button onClick={onDelete} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded" title="Delete"><Trash2 size={14} /></button>
+                    <button onClick={onDownload} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded" title="Download"><Download size={18} /></button>
+                    <button onClick={onDelete} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded" title="Delete"><Trash2 size={18} /></button>
                 </div>
             )}
         </div>

@@ -444,6 +444,8 @@ class TaskService:
             "notebook": {
                 "id": notebook.id if notebook else task.notebook_id,
                 "title": notebook.title if notebook else "Unknown Notebook",
-                "emoji": notebook.emoji if notebook else "📓"
+                "emoji": notebook.emoji if notebook else "📓",
+                "bg_color": notebook.bg_color if notebook else "#4d4dff",
+                "text_color": notebook.text_color if notebook else "#ffffff"
             }
         }

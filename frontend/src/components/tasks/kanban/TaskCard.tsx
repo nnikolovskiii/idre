@@ -4,7 +4,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { AlertCircle, Calendar, Edit2, Archive, RotateCcw } from "lucide-react";
 import type { Task } from "./types.ts";
 
-// Updated Priority Component - Pill style
 export const PriorityIndicator: React.FC<{ priority: Task["priority"] }> = ({ priority }) => {
     const styles = {
         high: "bg-red-500/10 text-red-500 border-red-500/20",
@@ -27,9 +26,19 @@ interface SortableTaskProps {
     onArchive: (task: Task) => void;
     onUnarchive: (task: Task) => void;
     showPriorities?: boolean;
+    isAllTasksView?: boolean; // New prop
 }
 
-export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = false, onView, onEdit, onArchive, onUnarchive, showPriorities = true }) => {
+export const SortableTask: React.FC<SortableTaskProps> = ({
+                                                              task,
+                                                              isMobile = false,
+                                                              onView,
+                                                              onEdit,
+                                                              onArchive,
+                                                              onUnarchive,
+                                                              showPriorities = true,
+                                                              isAllTasksView = false
+                                                          }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
     const style = {
@@ -39,6 +48,7 @@ export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = fal
     };
 
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+    const notebookColor = task.notebook?.bg_color || '#4d4dff'; // Fallback color
 
     return (
         <div
@@ -54,23 +64,39 @@ export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = fal
                     bg-card hover:bg-accent/40
                     border border-border/60 hover:border-primary/40
                     rounded-lg shadow-sm transition-all duration-200
-                    cursor-default text-left
+                    cursor-default text-left overflow-hidden relative
                     ${task.archived ? 'opacity-60 grayscale border-dashed' : ''}
                     ${isMobile ? 'p-3' : 'p-3'}
                 `}
             >
-                {/* Header: Notebook & Options */}
-                <div className="flex justify-between items-center mb-2">
+                {/*
+                   Visual Color Strip for All Tasks View
+                   Positioned absolute on the left
+                */}
+                {isAllTasksView && (
+                    <div
+                        className="absolute left-0 top-0 bottom-0 w-1.5"
+                        style={{ backgroundColor: notebookColor }}
+                        title={task.notebook?.title || "Notebook"}
+                    />
+                )}
+
+                {/* Header: Options & Priority */}
+                {/* Added pl-2 if all tasks view to compensate for the colored strip */}
+                <div className={`flex justify-between items-center mb-2 ${isAllTasksView ? 'pl-1' : ''}`}>
                     <div className="flex items-center gap-2 flex-wrap max-w-[80%]">
-                        {task.notebook ? (
-                            // Removed bg-secondary, px-2, rounded-full to align flush left
+                        {/*
+                           Only show text details if NOT in All Tasks view
+                           (But in single view, we usually don't need to show the notebook name anyway)
+                        */}
+                        {!isAllTasksView && task.notebook && (
                             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium max-w-full">
                                 <span className="text-xs">{task.notebook.emoji}</span>
                                 <span className="truncate">{task.notebook.title}</span>
+                                <span className="text-[10px] text-muted-foreground/50">•</span>
                             </div>
-                        ) : null}
-                        {/* Dot separator if notebook exists */}
-                        {task.notebook && <span className="text-[10px] text-muted-foreground/50">•</span>}
+                        )}
+
                         {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
                     </div>
 
@@ -107,19 +133,19 @@ export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = fal
                 </div>
 
                 {/* Title */}
-                <h4 className="font-medium text-sm text-foreground mb-1.5 leading-snug break-words text-left">
+                <h4 className={`font-medium text-sm text-foreground mb-1.5 leading-snug break-words text-left ${isAllTasksView ? 'pl-1' : ''}`}>
                     {task.title}
                 </h4>
 
                 {/* Description Preview */}
                 {task.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 font-normal text-left">
+                    <p className={`text-xs text-muted-foreground line-clamp-2 mb-3 font-normal text-left ${isAllTasksView ? 'pl-1' : ''}`}>
                         {task.description}
                     </p>
                 )}
 
                 {/* Footer: Tags & Date */}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                <div className={`flex items-center justify-between mt-2 pt-2 border-t border-border/30 ${isAllTasksView ? 'pl-1' : ''}`}>
                     <div className="flex gap-1 overflow-hidden">
                         {task.tags?.slice(0, 3).map((tag) => (
                             <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded">
@@ -141,13 +167,25 @@ export const SortableTask: React.FC<SortableTaskProps> = ({ task, isMobile = fal
 };
 
 // The item being dragged (the ghost image)
-export const TaskDragOverlay: React.FC<{ task: Task; showPriorities?: boolean }> = ({ task, showPriorities = true }) => {
+export const TaskDragOverlay: React.FC<{ task: Task; showPriorities?: boolean; isAllTasksView?: boolean }> = ({
+                                                                                                                  task,
+                                                                                                                  showPriorities = true,
+                                                                                                                  isAllTasksView = false
+                                                                                                              }) => {
+    const notebookColor = task.notebook?.bg_color || '#4d4dff';
+
     return (
-        <div className="bg-card border border-primary/50 rounded-lg p-3 shadow-2xl cursor-grabbing w-[300px] rotate-2 opacity-90 ring-2 ring-primary/20 text-left">
-            <div className="flex items-center gap-2 mb-2">
+        <div className="bg-card border border-primary/50 rounded-lg p-3 shadow-2xl cursor-grabbing w-[300px] rotate-2 opacity-90 ring-2 ring-primary/20 text-left relative overflow-hidden">
+            {isAllTasksView && (
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={{ backgroundColor: notebookColor }}
+                />
+            )}
+            <div className={`flex items-center gap-2 mb-2 ${isAllTasksView ? 'pl-1' : ''}`}>
                 {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
             </div>
-            <h4 className="font-medium text-sm text-foreground text-left">{task.title}</h4>
+            <h4 className={`font-medium text-sm text-foreground text-left ${isAllTasksView ? 'pl-1' : ''}`}>{task.title}</h4>
         </div>
     );
 };

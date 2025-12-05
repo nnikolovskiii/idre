@@ -7,6 +7,13 @@ from enum import Enum
 from backend.models.task import TaskStatus, TaskPriority
 
 
+class NotebookSimpleResponse(BaseModel):
+    id: uuid.UUID
+    title: str
+    emoji: str
+    bg_color: str = Field('#4d4dff', description="Notebook background color")
+
+
 class TaskStatusEnum(str, Enum):
     TODO = "todo"
     IN_PROGRESS = "in-progress"
@@ -94,6 +101,8 @@ class TaskResponse(TaskBase):
     status_display: Optional[str] = Field(None, description="User-friendly status display")
     priority_display: Optional[str] = Field(None, description="User-friendly priority display")
     is_overdue: Optional[bool] = Field(None, description="Whether task is overdue")
+
+    notebook: Optional[NotebookSimpleResponse] = Field(None, description="Parent notebook details")
 
     class Config:
         orm_mode = True

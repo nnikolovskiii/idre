@@ -255,3 +255,6 @@
         fill: rgba(0, 0, 0, 0.4); /* Darker mask for dark mode */
     }
 }
+
+/* Import notebook color system */
+@import './styles/notebookColors.css';

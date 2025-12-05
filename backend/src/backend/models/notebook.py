@@ -35,6 +35,10 @@ class Notebook(Base):
     # Creation date (now nullable)
     date = Column(String(50), nullable=True)
 
+    # Color fields for notebook theming
+    bg_color = Column(String(20), nullable=False, default='#4d4dff')
+    text_color = Column(String(20), nullable=False, default='#ffffff')
+
     # --- Timestamps ---
 
     # Automatically set the creation time on the database side.
@@ -49,4 +53,4 @@ class Notebook(Base):
 
     def __repr__(self):
         """Provides a developer-friendly representation of the object."""
-        return f"<Notebook(id={self.id}, title='{self.title}', emoji='{self.emoji}')>"
+        return f"<Notebook(id={self.id}, title='{self.title}', emoji='{self.emoji}', bg_color='{self.bg_color}')>"
