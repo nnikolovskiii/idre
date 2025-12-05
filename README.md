@@ -1,24 +1,91 @@
-# IDRE - IDea REalisation
+<div align="center">
+  <img width="353" height="141" alt="IDRE Logo" src="https://github.com/user-attachments/assets/92da969a-29b4-4cdd-b5f9-70a8435e4343" />
+</div>
 
-<img width="1122" height="326" alt="idre_logo_v2_white" src="https://github.com/user-attachments/assets/a3da126e-babd-40db-a5a6-f542c02a38c5" />
+## Table of Contents
+- [Project Vision & Objective](#project-vision--objective)
+- [Screenshots](#screenshots)
+- [Self-hosting](#self-hosting)
+  - [Environment Setup](#self-hosting)
+  - [Keys Generation](#encryption_key--jwt_secret)
+  - [APIs](#the-other-apis)
+  - [Run Docker](#finally-run-docker-compose)
+- [License](#-license)
+- [Support](#-support)
 
 
+### Project Vision & Objective
+IDRE (IDea REalisation) is an AI-powered strategic platform designed to transition abstract ideas into validated execution plans by acting as a collaborative partner rather than a passive tool. The workflow centers on a generative whiteboard where users and AI expand concepts into interconnected nodes, creating a dynamic and visual context for the project. For deep validation, a "Board of Directors" feature utilizes multiple autonomous agents to perform isolated web research and synthesis, providing diverse, expert-level perspectives. Insights from these sessions are automatically converted into actionable items on a Kanban board, bridging the gap between brainstorming and doing. Finally, the system maintains momentum through periodic, non-judgmental progress analysis that identifies gaps and prompts the user for updates, ensuring the roadmap remains realistic and up-to-date.
 
-### 1. Project Vision & Objective
-The main objective of this project, named **IDRE** (from **ID**ea to **RE**alization), is to create a comprehensive platform that assists users in transitioning an idea into a tangible reality, whether for financial gain or to create a meaningful impact. The project leverages AI integrated into a web application to guide users through the entire development process, from initial concept to a validated, executable plan.
-### 2. Core Functionality & User Journey
-The user experience is designed as an iterative and collaborative cycle with AI as a partner.
-1.  **Idea Input & Initial Proposal:** Users begin by logging into the application and inputting their initial idea. The AI immediately analyzes this and generates a preliminary proposal, providing a structured starting point.
-2.  **Contextual Refinement:** Users enrich the concept by adding context through various means, including **chat**, transcribed **voice notes**, **images**, and uploaded **text files**. This multi-modal input allows for a rich and detailed exploration of the idea.
-3.  **AI-Powered Iterative Loop:** The AI analyzes the new context, offers constructive feedback, asks clarifying questions, and updates the project's details. This initiates a cycle of continuous improvement where the AI's suggestions, alternative paths, and generated opinions inform the user's adjustments. The goal is an active collaboration, not just passive information processing.
-4.  **Progress & Validation:** Through user interfaces and dashboards, users can track their progress, manage different versions of their idea, and validate key assumptions along the way.
-### 3. Technology & Key Features
-*   **Advanced AI Integration:** The system utilizes a diverse set of advanced AI models (accessed via platforms like OpenRouter) to generate varied insights. This allows the platform to address different facets of an idea, from market analysis and marketing strategy to technical implementation and financial modeling.
-*   **Multi-Modal Content Management:**
-    *   **Chat Interface:** An intuitive chat-based interface for direct interaction with the AI models.
-    *   **Files & Notepads:** A dedicated section for users to upload text files or record voice notes. Voice messages are transcribed, refined for clarity, and stored in editable notepads, which can then be attached to conversations as context.
-*   **Progress Tracking Dashboards:** Visual tools to help users see how their idea is evolving, track key metrics, and manage action items generated during brainstorming sessions.
-*   **Resource & Collaboration Hub:** The platform aims to bridge the gap between idea and execution by offering a curated hub of resources and tools for **consulting**, **funding opportunities**, and **team collaboration**.
+### Screenshots
+
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/6bbd4a18-62bf-43c5-8899-8126c4268bec" />
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/e92cd6bb-13fc-409f-b98c-d82f5b0a637b" />
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/649d760f-bf12-4bad-a24e-859f12d8bbfe" />
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/cf07a291-e0d0-4748-893e-38c16c02ad37" />
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/b8c589ac-da29-4be6-9d4b-2b6033d0d2bf" />
+<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/3ae832d2-f249-414b-9aec-a75348669168" />
+
+## Self-hosting
+- Copy the content of .env.example into .env files in /ai-agent, /backend and /frontend:
+```bash
+cd ai-agent
+cp .env.example .env
+cd ..
+
+cd backend
+cp .env.example .env
+cd ..
+
+cd frontend
+cp .env.example .env
+cd ..
+```
+
+- Only these three keys don't have values:
+```
+JWT_SECRET=
+ENCRYPTION_KEY=
+
+FIREWORKS_API=
+LANGSMITH_API_KEY=
+OPENROUTER_API_KEY=
+```
+#### ENCRYPTION_KEY & JWT_SECRET
+- create ENCRYPTION_KEY:
+```bash
+openssl rand -base64 64
+```
+
+- create JWT_SECRET:
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+or
+
+```bash
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+*Paste the same values in /ai-agent and /backend. Don't make two seperate values!
+
+#### The other APIS
+- OpenRouter: https://openrouter.ai/
+- Fireworks: https://fireworks.ai/ 
+- LangSmith: https://smith.langchain.com/
+
+*Fireworks is optional. It is used only for trancription of voice recordings. If that doesn't concern you leave it out.
+
+#### Finally run docker compose
+- Run the docker compose in /idre (root directory)
+  ```bash
+  docker compose up -d
+  ```
+
+- That's it your application is running. You can access it locally on localhost:5173.
+
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
