@@ -51,6 +51,8 @@ class File(Base):
 
     processing_result = Column(JSONB, nullable=True)
 
+    folder_id = Column(UUID(as_uuid=True), ForeignKey('folders.id', ondelete="CASCADE"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -11,7 +11,8 @@ from sqlalchemy import text, select
 from backend.container import container
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+# --- ADD StreamingResponse HERE ---
+from fastapi.responses import JSONResponse, StreamingResponse
 
 # --- Router Imports ---
 from backend.api.routes.auth_route import router as auth_router
@@ -24,6 +25,7 @@ from backend.api.routes.generative_model_route import router as generative_model
 from backend.api.routes.notebook_models_route import router as notebook_models_router
 from backend.api.routes.chat_models_route import router as chat_models_router
 from backend.api.routes.notebooks_route import router as notebooks_router
+from backend.api.routes.folders_route import router as folders_router
 from backend.api.routes import propositions_route
 from backend.api.routes import tasks_route
 from backend.api.routes import whiteboards_route
@@ -213,6 +215,49 @@ async def manual_sync_models():
     return {"status": "success", "message": "Model sync triggered"}
 
 
+@app.get("/sse/{channel_id}")
+async def sse_endpoint(channel_id: str, request: Request):
+    """
+    Generic Server-Sent Events endpoint that subscribes to a Redis channel.
+    This enables real-time updates for Chats, Whiteboards, and File Processing.
+    """
+
+    async def event_generator():
+        redis = container.redis_client()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel_id)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                # Check for new messages in Redis
+                message = await pubsub.get_message(ignore_subscribe_messages=True)
+
+                if message:
+                    # FIX: Handle both bytes and str types safely
+                    raw_data = message['data']
+
+                    if isinstance(raw_data, bytes):
+                        data = raw_data.decode('utf-8')
+                    else:
+                        # It is already a string (or int/other), just cast to str
+                        data = str(raw_data)
+
+                    # Send as SSE format
+                    yield f"data: {data}\n\n"
+
+                # Small sleep to prevent tight loop CPU usage
+                await asyncio.sleep(0.05)
+        except Exception as e:
+            print(f"SSE Error on channel {channel_id}: {e}", flush=True)
+        finally:
+            await pubsub.unsubscribe(channel_id)
+            await pubsub.close()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(files_router, prefix="/files", tags=["Files"])
@@ -231,6 +276,8 @@ app.include_router(notebooks_router, prefix="/notebooks", tags=["Notebooks"])
 app.include_router(propositions_route.router, prefix="/propositions", tags=["Propositions"])
 app.include_router(tasks_route.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(whiteboards_route.router, prefix="/whiteboards", tags=["Whiteboards"])
+app.include_router(folders_router, prefix="/folders", tags=["Folders"])
+
 
 
 @app.get("/")

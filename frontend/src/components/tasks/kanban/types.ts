@@ -10,6 +10,7 @@ export interface Task {
     position?: number;
     status: TaskStatus;
     archived?: boolean;
+    created_at?: string; // Added created_at for Gantt chart
     notebook?: {
         id: string;
         title: string;

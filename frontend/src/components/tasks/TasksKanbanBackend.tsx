@@ -6,7 +6,7 @@ import {
     closestCenter, type DragStartEvent, type DragOverEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { Plus, Archive, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Archive, AlertCircle, Loader2, Eye, EyeOff, BarChart3, LayoutGrid } from "lucide-react";
 
 // Services
 import {
@@ -23,6 +23,7 @@ import KanbanColumn from "./kanban/KanbanColumn";
 import { TaskDragOverlay } from "./kanban/TaskCard";
 import { TaskCreationModal, TaskDetailModal, TaskEditModal, ConfirmationModal } from "./kanban/TaskModals";
 import ArchivedTasksPanel from "./kanban/ArchivedTasksPanel";
+import GanttChartView from "./gantt/GanttChartView";
 
 interface TasksKanbanProps {
     notebookId: string;
@@ -41,6 +42,11 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
     const [showPriorities, setShowPriorities] = useState<boolean>(() => {
         const saved = localStorage.getItem('kanban-show-priorities');
         return saved !== null ? JSON.parse(saved) : true;
+    });
+
+    const [viewDisplay, setViewDisplay] = useState<'kanban' | 'gantt'>(() => {
+        const saved = localStorage.getItem('tasks-view-display');
+        return saved !== null ? JSON.parse(saved) : 'kanban';
     });
 
     // UI State
@@ -133,10 +139,14 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
 
     useEffect(() => { if (isArchivedPanelOpen) fetchArchivedTasks(); }, [isArchivedPanelOpen, fetchArchivedTasks]);
 
-    // Persist priority visibility preference
+    // Persist UI preferences
     useEffect(() => {
         localStorage.setItem('kanban-show-priorities', JSON.stringify(showPriorities));
     }, [showPriorities]);
+
+    useEffect(() => {
+        localStorage.setItem('tasks-view-display', JSON.stringify(viewDisplay));
+    }, [viewDisplay]);
 
     // --- Handlers ---
     const resetForm = () => setNewTask({ title: "", description: "", priority: "medium", tags: "", dueDate: "" });
@@ -278,13 +288,26 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
 
     const selectedColumn = columns.find(col => col.id === selectedColumnId);
 
+    // Get all tasks for Gantt view
+    const allTasks = columns.flatMap(col => col.tasks);
+
+    // Handle task click for Gantt view
+    const handleTaskClick = (task: Task) => {
+        setViewingTask(task);
+    };
+
     return (
         <div className="h-full flex flex-col bg-background">
             <div className="border-b border-border bg-background flex-shrink-0 hidden md:block px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="text-left">
-                        <h1 className="text-2xl font-bold tracking-tight">{viewMode === 'all' ? 'All Tasks' : 'Tasks'}</h1>
-                        <p className="text-sm text-muted-foreground">Manage your workflow</p>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            {viewMode === 'all' ? 'All Tasks' : 'Tasks'}
+                            {viewDisplay === 'gantt' && ' - Timeline'}
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            {viewDisplay === 'gantt' ? 'Timeline view of tasks with due dates' : 'Manage your workflow'}
+                        </p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -305,6 +328,16 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                             {showPriorities ? <EyeOff size={16} /> : <Eye size={16} />}
                             Priorities
                         </button>
+                        <button
+                            onClick={() => setViewDisplay(viewDisplay === 'kanban' ? 'gantt' : 'kanban')}
+                            className={`px-3 py-2 text-sm hover:bg-secondary rounded-md flex items-center gap-2 transition-colors ${
+                                viewDisplay === 'gantt' ? 'text-foreground' : 'text-muted-foreground'
+                            }`}
+                            title={viewDisplay === 'kanban' ? "Show Gantt chart" : "Show Kanban board"}
+                        >
+                            {viewDisplay === 'kanban' ? <BarChart3 size={16} /> : <LayoutGrid size={16} />}
+                            {viewDisplay === 'kanban' ? 'Gantt' : 'Kanban'}
+                        </button>
                         {canCreate && (
                             <button
                                 onClick={() => { setSelectedColumnId(TaskStatus.TODO); setShowTaskModal(true); resetForm(); }}
@@ -317,40 +350,48 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                 </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-                    <div className="flex h-full gap-6 min-w-full">
-                        {columns.map((column) => (
-                            <div key={column.id} className="w-[320px] flex-shrink-0 h-full">
-                                <KanbanColumn
-                                    column={column}
-                                    onAddTask={(id) => { setSelectedColumnId(id); setShowTaskModal(true); resetForm(); }}
-                                    onViewTask={setViewingTask}
-                                    onEditTask={setEditingTask}
-                                    onArchiveTask={handleArchiveTaskRequest}
-                                    onUnarchiveTask={handleUnarchiveTask}
-                                    isMobile={false}
-                                    canCreate={canCreate}
-                                    showPriorities={showPriorities}
-                                    isAllTasksView={isAllTasksView} // Pass logic here
-                                />
-                            </div>
-                        ))}
-                    </div>
-                    {createPortal(
-                        <DragOverlay>
-                            {activeTask ? (
-                                <TaskDragOverlay
-                                    task={activeTask}
-                                    showPriorities={showPriorities}
-                                    isAllTasksView={isAllTasksView} // Pass logic here
-                                />
-                            ) : null}
-                        </DragOverlay>,
-                        document.body
-                    )}
-                </DndContext>
-            </div>
+            {/* Conditional rendering: Kanban or Gantt view */}
+            {viewDisplay === 'kanban' ? (
+                <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
+                    <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+                        <div className="flex h-full gap-6 min-w-full">
+                            {columns.map((column) => (
+                                <div key={column.id} className="w-[320px] flex-shrink-0 h-full">
+                                    <KanbanColumn
+                                        column={column}
+                                        onAddTask={(id) => { setSelectedColumnId(id); setShowTaskModal(true); resetForm(); }}
+                                        onViewTask={setViewingTask}
+                                        onEditTask={setEditingTask}
+                                        onArchiveTask={handleArchiveTaskRequest}
+                                        onUnarchiveTask={handleUnarchiveTask}
+                                        isMobile={false}
+                                        canCreate={canCreate}
+                                        showPriorities={showPriorities}
+                                        isAllTasksView={isAllTasksView} // Pass logic here
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        {createPortal(
+                            <DragOverlay>
+                                {activeTask ? (
+                                    <TaskDragOverlay
+                                        task={activeTask}
+                                        showPriorities={showPriorities}
+                                        isAllTasksView={isAllTasksView} // Pass logic here
+                                    />
+                                ) : null}
+                            </DragOverlay>,
+                            document.body
+                        )}
+                    </DndContext>
+                </div>
+            ) : (
+                <GanttChartView
+                    tasks={allTasks}
+                    onTaskClick={handleTaskClick}
+                />
+            )}
 
             {/* Modals */}
             <TaskCreationModal

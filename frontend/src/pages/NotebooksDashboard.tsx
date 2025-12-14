@@ -53,33 +53,35 @@ const NotebookCard: React.FC<{
     return (
         <div
             className={`
-                rounded-xl flex flex-col h-48 transition-all duration-300
-                relative cursor-pointer select-none overflow-hidden group
+                rounded-xl flex flex-col h-44 transition-all duration-300
+                relative cursor-pointer select-none overflow-visible group
                 ${theme === 'dark'
-                ? 'bg-[#18181b] border border-gray-800 hover:border-gray-600 shadow-md'
-                : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg'
+                ? 'bg-[#18181b] border border-gray-800 hover:border-gray-600 shadow-sm hover:shadow-md'
+                : 'bg-white border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
             }
             `}
         >
-            {/* Top Color Accent Line */}
-            <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: color }}></div>
+            {/*
+               REMOVED: The top color accent line div.
+               Result: A clean card that relies on the icon for color identity.
+            */}
 
             <div className="p-5 flex flex-col flex-grow relative">
 
-                {/* Header Row: Icon and Menu on the Right */}
-                <div className="flex justify-end items-start gap-2 mb-2">
+                {/* Header Row: Icon and Menu */}
+                <div className="flex justify-between items-start mb-4">
 
-                    {/* Icon Container */}
+                    {/* Icon Container - Kept the colored tint here */}
                     <div
                         className={`
-                            p-2 rounded-lg transition-transform group-hover:scale-105
+                            p-2.5 rounded-xl transition-transform group-hover:scale-105 flex items-center justify-center
                         `}
                         style={{
                             backgroundColor: `${color}15`, // very subtle opacity
                             color: color
                         }}
                     >
-                        <Icon name={notebook.emoji as IconName} className="w-5 h-5" />
+                        <Icon name={notebook.emoji as IconName} className="w-6 h-6" />
                     </div>
 
                     {/* Menu Button */}
@@ -87,15 +89,15 @@ const NotebookCard: React.FC<{
                         <button
                             onClick={toggleMenu}
                             className={`
-                                p-2 rounded-full transition-all duration-200
+                                p-1.5 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100
                                 ${theme === 'dark'
                                 ? 'hover:bg-gray-700 text-gray-500 hover:text-gray-300'
                                 : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
                             }
-                                ${isDropdownOpen ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' : ''}
+                                ${isDropdownOpen ? 'opacity-100 bg-gray-100 dark:bg-gray-700' : ''}
                             `}
                         >
-                            <MoreVertical size={18} />
+                            <MoreVertical size={16} />
                         </button>
 
                         {isDropdownOpen && (
@@ -129,24 +131,23 @@ const NotebookCard: React.FC<{
                     </div>
                 </div>
 
-                {/* Content: Title and Date centered vertically in the remaining space, aligned left */}
-                <div className="flex-grow flex flex-col justify-end items-start mt-1">
-                    <h3 className={`text-lg font-bold leading-tight line-clamp-2 mb-2 text-left ${
+                {/* Content */}
+                <div className="flex-grow flex flex-col justify-end items-start">
+                    <h3 className={`text-lg font-bold leading-tight line-clamp-2 mb-1 text-left ${
                         theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
                     }`}>
                         {notebook.title}
                     </h3>
-                    <p className={`text-xs text-left ${
+                    <p className={`text-xs text-left font-medium ${
                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     }`}>
-                        Edited {formatRelativeOrAbsolute(notebook.updated_at)}
+                        {formatRelativeOrAbsolute(notebook.updated_at)}
                     </p>
                 </div>
             </div>
         </div>
     );
 };
-
 const CreateNewCard: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
     return (
         <div

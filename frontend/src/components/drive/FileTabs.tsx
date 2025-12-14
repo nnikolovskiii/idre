@@ -1,8 +1,7 @@
 import React from "react";
-import { X, Save, Download, Trash2, FileCode, Columns, Eye } from "lucide-react";
+import { X, Save, Download, Trash2, FileCode, Columns, Eye, Mic, Square, Loader2 } from "lucide-react";
 import { type FileData } from "../../services/filesService";
 import { getFileIcon } from "../../utils/fileUtils";
-
 interface FileTabsProps {
     openFiles: FileData[];
     activeFileId: string | null;
@@ -11,7 +10,6 @@ interface FileTabsProps {
     onCloseTab: (e: React.MouseEvent, id: string) => void;
     onPinTab: (id: string) => void;
     isFileDirty: (id: string) => boolean;
-
     // Toolbar Props
     activeFile: FileData | null;
     viewMode: 'edit' | 'preview' | 'split';
@@ -19,16 +17,18 @@ interface FileTabsProps {
     onSave: () => void;
     onDownload: () => void;
     onDelete: () => void;
+    // Recording Props
+    isRecording: boolean;
+    onToggleRecording: () => void;
+    isTranscribingForFile?: boolean;
 }
-
 const FileTabs: React.FC<FileTabsProps> = ({
                                                openFiles, activeFileId, previewFileId, setActiveFileId, onCloseTab, onPinTab, isFileDirty,
-                                               activeFile, viewMode, setViewMode, onSave, onDownload, onDelete
+                                               activeFile, viewMode, setViewMode, onSave, onDownload, onDelete,
+                                               isRecording, onToggleRecording, isTranscribingForFile
                                            }) => {
-
-    // Treat everything as text unless it is strictly an image
-    const isText = activeFile && !activeFile.content_type.startsWith('image/');
-
+    // Only show recording for text files
+    const isTextFile = activeFile && !activeFile.content_type.startsWith('image/');
     return (
         <div className="flex h-12 bg-muted/20 border-b border-border shrink-0">
             <div className="flex-1 flex overflow-x-auto no-scrollbar">
@@ -52,11 +52,31 @@ const FileTabs: React.FC<FileTabsProps> = ({
                     </div>
                 ))}
             </div>
-
             {activeFile && (
                 <div className="flex items-center gap-1 px-3 bg-muted/10 border-l border-border shrink-0">
-                    {isText && (
+                    {isTextFile && (
                         <>
+                            {/* Add Voice Note Button - Only visible when a text file is open */}
+                            <button
+                                onClick={onToggleRecording}
+                                className={`p-2 rounded mr-2 flex items-center gap-2 transition-colors ${isRecording ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                title={isRecording ? "Stop Recording" : "Add Voice Note to Document"}
+                                disabled={isTranscribingForFile}
+                            >
+                                {isTranscribingForFile ? (
+                                    <Loader2 size={18} className="animate-spin text-primary" />
+                                ) : isRecording ? (
+                                    <Square size={18} fill="currentColor" />
+                                ) : (
+                                    <Mic size={18} />
+                                )}
+                                {(isRecording || isTranscribingForFile) && (
+                                    <span className="text-xs font-medium">
+                                        {isRecording ? "Recording..." : "Transcribing..."}
+                                    </span>
+                                )}
+                            </button>
+                            <div className="w-px h-6 bg-border mx-1"></div>
                             <div className="flex bg-muted/30 rounded-md p-1 mr-3">
                                 <button
                                     onClick={() => setViewMode('edit')}
@@ -80,7 +100,6 @@ const FileTabs: React.FC<FileTabsProps> = ({
                                     <Eye size={18} />
                                 </button>
                             </div>
-
                             <button
                                 onClick={onSave}
                                 className={`p-2 rounded transition-colors ${isFileDirty(activeFile.file_id) ? 'text-primary hover:bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
@@ -97,5 +116,4 @@ const FileTabs: React.FC<FileTabsProps> = ({
         </div>
     );
 };
-
 export default FileTabs;

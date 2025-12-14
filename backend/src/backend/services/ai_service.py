@@ -48,10 +48,11 @@ class AIService:
             notebook_id: str,
             user_id: str,
             file_id: str,
-            file_url: str,    # <--- Changed from bytes/base64 to URL
+            file_url: str,  # <--- Changed from bytes/base64 to URL
             filename: str,
             content_type: str,
-            graph_id: str = "transcription_agent"
+            graph_id: str = "transcription_agent",
+            target_file_id: str = None,  # <--- 1. Add this parameter
     ):
         """
         Initiates a LangGraph run to transcribe a file hosted at the given URL.
@@ -75,7 +76,7 @@ class AIService:
         run_input = {
             "light_model": notebook_model.model.name,
             "api_key": model_api.value,
-            "file_url": file_url,         # <--- Passing S3 URL
+            "file_url": file_url,  # <--- Passing S3 URL
             "filename": filename,
             "content_type": content_type
         }
@@ -88,7 +89,13 @@ class AIService:
             assistant_id=assistant_id,
             input=run_input,
             webhook=webhook_url,
-            metadata={"file_id": file_id, "temp_thread": True, "user_id": user_id},
+            metadata={
+                "file_id": file_id,
+                "temp_thread": True,
+                "user_id": user_id,
+                "notebook_id": notebook_id,
+                "target_file_id": target_file_id
+            },
             on_completion="keep",
         )
 

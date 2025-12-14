@@ -30,8 +30,10 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies AND ffmpeg
+# ffmpeg is crucial for audio format conversion (webm -> wav)
 RUN apt-get update && apt-get install -y \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder stage

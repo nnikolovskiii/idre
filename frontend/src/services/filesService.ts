@@ -1,11 +1,18 @@
-// src/services/file.ts
+// src/services/filesService.ts
 
 import {API_CONFIG} from "./api.ts";
+
+export interface FolderData {
+    id: string;
+    name: string;
+    parent_id: string | null;
+}
 
 export interface ProcessingResult {
     transcription?: string;
     language?: string;
     duration?: number;
+
     [key: string]: any; // Allow additional fields
 }
 
@@ -31,6 +38,7 @@ export interface FileData {
     created_at: string | null;
     updated_at: string | null;
     processing_result: ProcessingResult | null;
+    folder_id: string | null;
 }
 
 export interface FileListResponse {
@@ -43,6 +51,8 @@ export interface UpdateFilePayload {
     filename?: string;
     notebook_id?: string;
     content?: string;
+    content_type?: string;
+    folder_id?: string | null;
 }
 
 export interface UpdatedFileData {
@@ -55,6 +65,7 @@ export interface UpdatedFileData {
     processing_status: string;
     created_at: string | null;
     updated_at: string | null;
+    folder_id: string | null;
 }
 
 export interface UpdateFileApiResponse {
@@ -69,10 +80,46 @@ const FILE_BACKEND_SERVICE_URL = API_CONFIG.getApiUrl() + '/files'
 // Upload service
 export const fileService = {
     /**
-     * Upload a file
-     * Endpoint: POST /files/upload
+     * Get Folders
      */
-    uploadFile: async (file: File, notebook_id?: string | undefined, transcribe: boolean = true): Promise<FileUploadResponse> => {
+    getFolders: async (notebook_id: string): Promise<FolderData[]> => {
+        const response = await fetch(`${API_CONFIG.getApiUrl()}/folders/${notebook_id}`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error("Failed to fetch folders");
+        const res = await response.json();
+        return res.data;
+    },
+
+    createFolder: async (notebook_id: string, name: string, parent_id: string | null = null): Promise<FolderData> => {
+        const response = await fetch(`${API_CONFIG.getApiUrl()}/folders/`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({notebook_id, name, parent_id})
+        });
+        if (!response.ok) throw new Error("Failed to create folder");
+        const res = await response.json();
+        return res.data;
+    },
+
+    moveFile: async (file_id: string, folder_id: string | null): Promise<void> => {
+        // We reuse the update endpoint
+        await fileService.updateFile(file_id, {folder_id});
+    },
+
+    /**
+     * Upload a file
+     * Updated to accept targetFileId
+     */
+    uploadFile: async (
+        file: File,
+        notebook_id?: string,
+        transcribe: boolean = true,
+        voice_recording: boolean = false,
+        folder_id: string | null = null,
+        targetFileId: string | null = null // <--- ADDED PARAMETER
+    ): Promise<FileUploadResponse> => {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -82,6 +129,17 @@ export const fileService = {
             params.append('notebook_id', notebook_id);
         }
         params.append('transcribe', transcribe.toString());
+        params.append('voice_recording', voice_recording.toString());
+
+        if (folder_id) {
+            params.append('folder_id', folder_id);
+        }
+
+        // <--- ADDED QUERY PARAM LOGIC
+        if (targetFileId) {
+            params.append('target_file_id', targetFileId);
+        }
+
         if (params.toString()) {
             uploadUrl += `?${params.toString()}`;
         }
@@ -109,7 +167,6 @@ export const fileService = {
 
     /**
      * Get user files for a notebook
-     * Endpoint: GET /files/{notebook_id}
      */
     getUserFiles: async (notebook_id: string): Promise<FileListResponse> => {
         const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${notebook_id}`, {
@@ -127,7 +184,6 @@ export const fileService = {
 
     /**
      * Transcribe an audio file
-     * Endpoint: POST /files/transcribe/{notebook_id}
      */
     transcribeFile: async (notebook_id: string, audio_path: string, file_id: string): Promise<void> => {
         const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/transcribe/${notebook_id}`, {
@@ -150,7 +206,6 @@ export const fileService = {
 
     /**
      * Update a file's details.
-     * Endpoint: PATCH /files/{file_id}
      */
     updateFile: async (file_id: string, updates: UpdateFilePayload): Promise<UpdateFileApiResponse> => {
         const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${file_id}`, {
@@ -172,8 +227,6 @@ export const fileService = {
 
     /**
      * Download a file by file_id
-     * Endpoint: GET /files/download/{file_id}
-     * Returns the file content as a Blob
      */
     downloadFile: async (file_id: string): Promise<Blob> => {
         const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/download/${file_id}`, {
@@ -191,7 +244,6 @@ export const fileService = {
 
     /**
      * Delete a file
-     * Endpoint: DELETE /files/{file_id}
      */
     deleteFile: async (file_id: string): Promise<void> => {
         const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/${file_id}`, {

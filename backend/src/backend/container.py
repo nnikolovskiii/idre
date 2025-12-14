@@ -14,6 +14,7 @@ from backend.repositories.assistant_repository import AssistantRepository
 from backend.repositories.chat_model_repository import ChatModelRepository
 from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
+from backend.repositories.folder_repository import FolderRepository
 from backend.repositories.generative_model_repository import GenerativeModelRepository
 from backend.repositories.model_api_repository import ModelApiRepository
 from backend.repositories.notebook_model_repository import NotebookModelRepository
@@ -29,6 +30,7 @@ from backend.services.chat_model_service import ChatModelService
 from backend.services.chat_service import ChatService
 from backend.services.app_settings_service import AppSettingsService
 from backend.services.file_service import FileService
+from backend.services.folder_service import FolderService
 from backend.services.generative_model_service import GenerativeModelService
 from backend.services.model_api_service import ModelApiService
 from backend.services.fernet_service import FernetService
@@ -106,6 +108,13 @@ class Container(containers.DeclarativeContainer):
         FileService,
         file_repository=file_repository,
         s3_client=s3_client,
+    )
+
+    folder_repository = providers.Factory(FolderRepository)
+
+    folder_service = providers.Factory(
+        FolderService,
+        folder_repository=folder_repository
     )
 
     generative_model_repository = providers.Factory(GenerativeModelRepository)

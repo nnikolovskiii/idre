@@ -32,7 +32,11 @@ async def handle_transcription_webhook(
     Receives the POST request that LangGraph sends when a run completes.
     Fetches final state if successful and updates the file.
     """
+    # 1. Initialize Redis and Client
+    redis_client = container.redis_client()
     langgraph_client = get_client(url=LANGGRAPH_URL)
+
+    # 2. Parse Payload
     payload = await request.json()
     run_id = payload.get("run_id")
     status = payload.get("status")
@@ -43,49 +47,125 @@ async def handle_transcription_webhook(
         raise HTTPException(status_code=400, detail="Missing run_id or thread_id")
 
     try:
+        # ==============================================================================
+        # SUCCESS HANDLER
+        # ==============================================================================
         if status == "success":
-            # Fetch state (now safe with "keep")
+            # Fetch state from LangGraph
             thread_state = await langgraph_client.threads.get_state(thread_id=thread_id)
             values = thread_state.get("values", {})
 
+            # Extract Metadata
             file_id = metadata.get("file_id")
             user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+            target_file_id = metadata.get("target_file_id")
 
-            if not file_id:
-                raise HTTPException(status_code=400, detail="Missing file_id in metadata")
-
+            # Extract Results
             transcription = values.get("enhanced_transcript")
+            file_name = values.get("file_name")
+
             if not transcription:
                 raise HTTPException(status_code=500, detail="No transcription in final state")
 
-            file_name = values.get("file_name")
-            if not file_name:
-                raise HTTPException(status_code=500, detail="No file_name in final state")
+            # -------------------------------------------------------
+            # SCENARIO A: Appending Voice Note to EXISTING File
+            # -------------------------------------------------------
+            if target_file_id:
+                target_file = await file_service.repo.get_by_id_and_user(target_file_id, user_id)
 
-            await file_service.update_file(
-                file_id=file_id,
-                user_id=user_id,
-                updates={
-                    "processing_result": {"transcription": transcription},
-                    "processing_status": ProcessingStatus.COMPLETED,
-                    "content": transcription,
-                    "filename": file_name,
-                },
-                merge_processing_result=True,
-            )
+                if target_file:
+                    # 1. Prepare new content
+                    current_content = target_file.content or ""
+                    separator = "\n\n" if current_content.strip() else ""
+                    new_content = f"{current_content}{separator}### Voice Note\n{transcription}"
 
-            # Cleanup thread
-            background_tasks.add_task(
-                lambda tid=thread_id: langgraph_client.threads.delete(tid)
-            )
+                    # 2. Update DB
+                    await file_service.update_file(
+                        file_id=target_file_id,
+                        user_id=user_id,
+                        updates={
+                            "content": new_content,
+                            # We keep the content_type as is (likely text/markdown)
+                        }
+                    )
+                    print(f"INFO: Appended transcription to target file {target_file_id}")
 
+                    # 3. Publish SSE (Target File)
+                    if notebook_id:
+                        event_data = {
+                            "event": "file_update",
+                            "data": {
+                                "file_id": target_file_id,
+                                "status": "COMPLETED",
+                                "filename": target_file.filename,
+                                "content": new_content,
+                                "content_type": target_file.content_type,
+                                "notebook_id": str(notebook_id)
+                            }
+                        }
+                        channel = f"sse:notebook_files:{notebook_id}"
+                        await redis_client.publish(channel, json.dumps(event_data))
+
+            # -------------------------------------------------------
+            # SCENARIO B: Regular File OR Standalone Voice Note
+            # -------------------------------------------------------
+            else:
+                # Only proceed if we have a file_id to update
+                if file_id:
+                    # 1. Update DB
+                    # We update the file record with the text content and mark it complete
+                    await file_service.update_file(
+                        file_id=file_id,
+                        user_id=user_id,
+                        updates={
+                            "processing_result": {"transcription": transcription},
+                            "processing_status": ProcessingStatus.COMPLETED,
+                            "content": transcription,
+                            "filename": file_name,
+                            "content_type": "text/plain"
+                        },
+                        merge_processing_result=True,
+                    )
+                    print(f"INFO: Updated regular file {file_id}")
+
+                    # 2. Publish SSE (Self)
+                    if notebook_id:
+                        event_data = {
+                            "event": "file_update",
+                            "data": {
+                                "file_id": file_id,
+                                "status": "COMPLETED",
+                                "filename": file_name,
+                                "content": transcription,
+                                "content_type": "text/plain",
+                                "notebook_id": str(notebook_id)
+                            }
+                        }
+                        channel = f"sse:notebook_files:{notebook_id}"
+                        await redis_client.publish(channel, json.dumps(event_data))
+                    else:
+                        print(f"Warning: notebook_id missing for file {file_id}. Cannot publish SSE.")
+
+            # Always clean up successful threads
+            background_tasks.add_task(langgraph_client.threads.delete, thread_id)
+
+        # ==============================================================================
+        # ERROR HANDLER
+        # ==============================================================================
         elif status == "error":
             error_details = payload.get("error", "Unknown error")
-            print(f"Run {run_id} error: {error_details}")
+            print(f"ERROR: Run {run_id} failed: {error_details}")
+
             file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+
+            # If it was a regular file upload (not a target append), mark it as FAILED
             if file_id:
                 await file_service.update_file(
                     file_id=file_id,
+                    user_id=user_id,
                     updates={
                         "processing_status": ProcessingStatus.FAILED,
                         "processing_result": {"error": error_details},
@@ -93,21 +173,34 @@ async def handle_transcription_webhook(
                     },
                     merge_processing_result=True
                 )
-                # Still clean up thread
-                background_tasks.add_task(
-                    lambda tid=thread_id: langgraph_client.threads.delete(tid)
-                )
+
+                # Optional: Send FAILED SSE so the UI loading spinner stops
+                if notebook_id:
+                    event_data = {
+                        "event": "file_update",
+                        "data": {
+                            "file_id": file_id,
+                            "status": "FAILED",
+                            "filename": "Error",
+                            "notebook_id": str(notebook_id)
+                        }
+                    }
+                    channel = f"sse:notebook_files:{notebook_id}"
+                    await redis_client.publish(channel, json.dumps(event_data))
+
+            # Clean up failed threads to avoid clutter
+            background_tasks.add_task(langgraph_client.threads.delete, thread_id)
 
         else:
-            print(f"Run {run_id} incomplete: {status}")
-            background_tasks.add_task(
-                lambda tid=thread_id: langgraph_client.threads.delete(tid)
-            )
+            print(f"Run {run_id} incomplete or unknown status: {status}")
+            background_tasks.add_task(langgraph_client.threads.delete, thread_id)
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Failed to fetch state for {run_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        print(f"CRITICAL: Failed to process webhook for {run_id}: {e}")
 
     return {"received": "ok", "run_id": run_id}
 

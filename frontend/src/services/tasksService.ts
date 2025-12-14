@@ -431,7 +431,7 @@ export const convertTaskResponse = (taskResponse: TaskResponse) => {
         tags: taskResponse.tags || [],
         dueDate: taskResponse.due_date,
         position: taskResponse.position || 0,
-        createdAt: taskResponse.created_at,
+        created_at: taskResponse.created_at,
         updatedAt: taskResponse.updated_at,
         statusDisplay: taskResponse.status_display,
         priorityDisplay: taskResponse.priority_display,

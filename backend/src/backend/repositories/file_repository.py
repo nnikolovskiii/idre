@@ -22,7 +22,8 @@ class FileRepository:
             file_size_bytes: Optional[int] = None,
             notebook_id: Optional[str] = None,
             processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING,
-            content: Optional[str] = None
+            content: Optional[str] = None,
+            folder_id: Optional[str] = None
     ) -> File:
         """
         Creates a new File object and adds it to the session.
@@ -37,7 +38,8 @@ class FileRepository:
             file_size_bytes=file_size_bytes,
             notebook_id=notebook_id,
             processing_status=processing_status,
-            content=content
+            content=content,
+            folder_id=folder_id
         )
         self.session.add(file_record)
         await self.session.flush()  # Send data to DB to get defaults/IDs

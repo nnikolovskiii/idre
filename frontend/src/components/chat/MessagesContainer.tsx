@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState, createRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Options } from "react-markdown";
+import remarkGfm from "remark-gfm"; // 1. Import remark-gfm
 import type { Message } from "../../types/chat";
 import AudioPlayer from "../ui/AudioPlayer";
-import { Copy, Trash2, Volume2 } from "lucide-react";
+import { Copy, Trash2, Volume2, Check } from "lucide-react";
+
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface AudioPlayerHandle {
     play: () => void;
@@ -16,30 +20,107 @@ interface MessagesContainerProps {
     onDeleteMessage: (messageId: string) => void;
 }
 
-// Markdown components are now styled using the semantic color variables from your theme.
+// --- CodeBlock Component ---
+const CodeBlock: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const preRef = useRef<HTMLPreElement>(null);
+
+    const handleCopy = async () => {
+        if (!preRef.current) return;
+        const codeText = preRef.current.textContent || "";
+
+        try {
+            await navigator.clipboard.writeText(codeText);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } catch (error) {
+            console.error("Failed to copy code:", error);
+        }
+    };
+
+    return (
+        <div className="relative group my-4 rounded-md overflow-hidden border border-border">
+            <pre
+                ref={preRef}
+                className="bg-[#1e1e1e] p-4 overflow-x-auto text-sm"
+                {...props}
+            >
+                {children}
+            </pre>
+            <div className="absolute right-2 inset-y-0 pointer-events-none">
+                <button
+                    onClick={handleCopy}
+                    className="sticky top-2 mt-2 p-1.5 rounded-md bg-zinc-700/50 backdrop-blur-sm border border-zinc-600 text-zinc-200 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-zinc-600 hover:text-white pointer-events-auto shadow-sm"
+                    title="Copy code"
+                    aria-label="Copy code"
+                >
+                    {isCopied ? (
+                        <Check size={14} className="text-green-400" />
+                    ) : (
+                        <Copy size={14} />
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// --- Markdown Components ---
 const markdownComponents: Options["components"] = {
     h1: ({ ...props }) => <p className="text-lg font-bold mt-6 mb-3 border-b-2 border-border" {...props} />,
-    h2: ({ ...props }) => <p className="  mt-5 mb-2" {...props} />,
-    h3: ({ ...props }) => <p className="  mt-4 mb-2" {...props} />,
+    h2: ({ ...props }) => <p className="mt-5 mb-2 font-semibold text-lg" {...props} />,
+    h3: ({ ...props }) => <p className="mt-4 mb-2 font-semibold" {...props} />,
     p: ({ ...props }) => <p className="leading-7 my-2" {...props} />,
     ul: ({ ...props }) => <ul className="list-disc pl-6 my-3" {...props} />,
     ol: ({ ...props }) => <ol className="list-decimal pl-6 my-3" {...props} />,
     li: ({ ...props }) => <li className="mb-1" {...props} />,
     a: ({ ...props }) => <a className="text-primary hover:underline font-medium" {...props} />,
     blockquote: ({ ...props }) => <blockquote className="border-l-4 border-border bg-muted/50 p-3 my-4 italic rounded-r-md" {...props} />,
-    table: ({ ...props }) => <table className="w-full border-collapse border border-border my-4" {...props} />,
-    th: ({ ...props }) => <th className="bg-muted p-3 text-left font-semibold border-b border-border" {...props} />,
-    td: ({ ...props }) => <td className="p-3 border-b border-border" {...props} />,
-    pre: ({ ...props }) => <pre className="bg-muted/50 border border-border p-4 rounded-md my-4 overflow-x-auto text-sm" {...props} />,
-    code: ({ inline, ...props }: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
-        inline ? (
-            <code className="bg-muted text-foreground px-1.5 py-1 rounded-md text-[0.9rem] border border-border" {...props} />
-        ) : (
-            <code className="font-mono" {...props} />
-        )
+
+    // Updated Table styling to handle overflow and borders better
+    table: ({ ...props }) => (
+        <div className="my-4 w-full overflow-x-auto rounded-lg border border-border">
+            <table className="w-full border-collapse text-sm" {...props} />
+        </div>
     ),
+    th: ({ ...props }) => <th className="bg-muted p-3 text-left font-semibold border-b border-border last:border-0" {...props} />,
+    td: ({ ...props }) => <td className="p-3 border-b border-border last:border-0" {...props} />,
+
     hr: ({ ...props }) => <hr className="border-t border-border my-6" {...props} />,
     img: ({ ...props }) => <img className="max-w-full h-auto rounded-md my-3 shadow-md border border-border" {...props} />,
+
+    pre: CodeBlock,
+    code: ({ inline, className, children, ...props }: any) => {
+        const match = /language-(\w+)/.exec(className || '');
+        const language = match ? match[1] : null;
+
+        return !inline && language ? (
+            <SyntaxHighlighter
+                style={vscDarkPlus}
+                language={language}
+                PreTag="div"
+                customStyle={{
+                    margin: 0,
+                    padding: 0,
+                    background: 'transparent',
+                    fontSize: '0.875rem',
+                }}
+                {...props}
+            >
+                {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>
+        ) : (
+            <code
+                className={inline
+                    ? "bg-muted text-foreground px-1.5 py-0.5 rounded-md text-[0.9rem] border border-border font-mono"
+                    : "font-mono"
+                }
+                {...props}
+            >
+                {children}
+            </code>
+        );
+    }
 };
 
 const MessagesContainer: React.FC<MessagesContainerProps> = ({
@@ -118,8 +199,6 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
     const MessageBody: React.FC<{ message: Message }> = ({ message }) => {
         const isUser = message.type === 'human';
-        // AI messages use Tailwind's Typography plugin (`prose`) for beautiful markdown rendering.
-        // `dark:prose-invert` handles all dark mode text/link color adjustments automatically.
         const messageClass = isUser
             ? 'text-primary-foreground'
             : 'prose dark:prose-invert max-w-none text-foreground';
@@ -128,7 +207,10 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
             <div className={`break-words text-left leading-relaxed ${messageClass}`}>
                 {message.content && (
                     <div className="text-content">
-                        <ReactMarkdown components={markdownComponents}>
+                        <ReactMarkdown
+                            components={markdownComponents}
+                            remarkPlugins={[remarkGfm]} // 2. Add the plugin here
+                        >
                             {message.content}
                         </ReactMarkdown>
                     </div>
@@ -157,67 +239,62 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                     messages.map((message) => {
                         const isUser = message.type === 'human';
                         return (
-                        <div
-                            key={message.id}
-                            className={`group flex max-w-[95%] flex-col md:max-w-[100%] ${
-                                isUser ? "self-end items-end" : "self-start items-start"
-                            }`}
-                        >
-                            {/* Message Bubble Styling */}
-                            {/* User messages use `bg-primary`, AI messages use `bg-card` */}
                             <div
-                                className={`w-full rounded-xl px-4 py-1 ${
-                                    isUser
-                                        ? "bg-muted text-primary-foreground rounded-br-none"
-                                        : "bg-background text-card-foreground rounded-bl-none"
+                                key={message.id}
+                                className={`group flex max-w-[95%] flex-col md:max-w-[100%] ${
+                                    isUser ? "self-end items-end" : "self-start items-start"
                                 }`}
                             >
-                                <MessageBody message={message} />
-                            </div>
-
-                            {/* Action Buttons: appear on hover */}
-                            <div
-                                className={`mt-1.5 flex items-center justify-start px-1 opacity-0 transition-opacity duration-200 ease-in-out group-hover:opacity-100 ${
-                                    isUser && "justify-end"
-                                }`}
-                            >
-                                {message.content && (
-                                    <MessageActionButton
-                                        onClick={() => handleCopy(message.id, message.content || "")}
-                                        title="Copy message"
-                                    >
-                                        <Copy size={14} />
-                                        {copiedMessages.has(message.id) && (
-                                            // "Copied!" tooltip is styled with inverted colors for high visibility
-                                            <span className="absolute -top-7 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-lg">
-                        Copied!
-                      </span>
-                                        )}
-                                    </MessageActionButton>
-                                )}
-                                {message.audioUrl && (
-                                    <MessageActionButton
-                                        onClick={() => audioRefs.current[message.id]?.current?.play()}
-                                        title="Play audio"
-                                        className="ml-1"
-                                    >
-                                        <Volume2 size={14} />
-                                    </MessageActionButton>
-                                )}
-                                <MessageActionButton
-                                    onClick={() => onDeleteMessage(message.id)}
-                                    title="Delete message"
-                                    className="ml-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                                <div
+                                    className={`w-full rounded-xl px-4 py-1 ${
+                                        isUser
+                                            ? "bg-muted text-primary-foreground rounded-br-none"
+                                            : "bg-background text-card-foreground rounded-bl-none"
+                                    }`}
                                 >
-                                    <Trash2 size={14} />
-                                </MessageActionButton>
+                                    <MessageBody message={message} />
+                                </div>
+
+                                <div
+                                    className={`mt-1.5 flex items-center justify-start px-1 opacity-0 transition-opacity duration-200 ease-in-out group-hover:opacity-100 ${
+                                        isUser && "justify-end"
+                                    }`}
+                                >
+                                    {message.content && (
+                                        <MessageActionButton
+                                            onClick={() => handleCopy(message.id, message.content || "")}
+                                            title="Copy message"
+                                        >
+                                            <Copy size={14} />
+                                            {copiedMessages.has(message.id) && (
+                                                <span className="absolute -top-7 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-lg">
+                                                Copied!
+                                            </span>
+                                            )}
+                                        </MessageActionButton>
+                                    )}
+                                    {message.audioUrl && (
+                                        <MessageActionButton
+                                            onClick={() => audioRefs.current[message.id]?.current?.play()}
+                                            title="Play audio"
+                                            className="ml-1"
+                                        >
+                                            <Volume2 size={14} />
+                                        </MessageActionButton>
+                                    )}
+                                    <MessageActionButton
+                                        onClick={() => onDeleteMessage(message.id)}
+                                        title="Delete message"
+                                        className="ml-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                                    >
+                                        <Trash2 size={14} />
+                                    </MessageActionButton>
+                                </div>
                             </div>
-                        </div>
                         );
                     })
                 )}
 
-                {/* "AI is typing" indicator, styled with muted colors */}
                 {isTyping && (
                     <div className="flex items-center gap-3 self-start text-muted-foreground p-2">
                         <div className="dots flex gap-1.5">
@@ -229,7 +306,6 @@ const MessagesContainer: React.FC<MessagesContainerProps> = ({
                     </div>
                 )}
 
-                {/* Copy Chat Button - always at bottom, below generation animation */}
                 {messages && messages.length > 0 && (
                     <div className="flex justify-center mt-4">
                         <button

@@ -4,7 +4,10 @@ import os
 import uuid
 import time
 import asyncio
-from typing import List, Optional, Dict, Any, BinaryIO
+import shutil
+import tempfile
+import subprocess
+from typing import List, Optional, Dict, Any, BinaryIO, Tuple
 
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,6 +60,65 @@ class FileService:
         unique_id = f"{int(time.time())}_{uuid.uuid4().hex}"
         return f"{unique_id}.{extension}" if extension else unique_id
 
+    async def convert_to_wav(self, file_obj: BinaryIO, original_filename: str) -> Tuple[str, str, str]:
+        """
+        Converts input audio stream to a standard WAV format (16kHz, Mono, PCM).
+        Returns: (path_to_converted_file, new_filename, content_type)
+        """
+        # Create a temporary directory for processing
+        temp_dir = tempfile.mkdtemp()
+
+        try:
+            # 1. Save original stream to disk
+            original_ext = os.path.splitext(original_filename)[1] or ".tmp"
+            input_path = os.path.join(temp_dir, f"input{original_ext}")
+
+            with open(input_path, "wb") as f:
+                # Reset file pointer if needed (UploadFile.file is usually a SpooledTemporaryFile)
+                if hasattr(file_obj, 'seek'):
+                    file_obj.seek(0)
+                shutil.copyfileobj(file_obj, f)
+
+            # 2. Define output path
+            output_filename = os.path.splitext(original_filename)[0] + ".wav"
+            output_path = os.path.join(temp_dir, output_filename)
+
+            # 3. Run FFmpeg conversion
+            # -y: overwrite output files
+            # -i: input file url
+            # -ar 16000: set audio sampling rate to 16kHz (Ideal for Whisper)
+            # -ac 1: set number of audio channels to 1 (Mono)
+            # -c:a pcm_s16le: set audio codec to PCM signed 16-bit little-endian
+            command = [
+                "ffmpeg", "-y", "-i", input_path,
+                "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
+                output_path
+            ]
+
+            # Run in executor to avoid blocking async event loop
+            loop = asyncio.get_running_loop()
+            try:
+                await loop.run_in_executor(
+                    None,
+                    lambda: subprocess.run(
+                        command,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                        check=True
+                    )
+                )
+                print(f"   > Converted audio to WAV: {output_path}")
+                return output_path, output_filename, "audio/wav"
+            except subprocess.CalledProcessError as e:
+                print(f"   > FFmpeg conversion failed: {e}")
+                # If conversion fails, return the input path as a fallback
+                return input_path, original_filename, "application/octet-stream"
+
+        except Exception as e:
+            print(f"   > Error in audio conversion: {e}")
+            # Ensure cleanup happens later by caller or OS, but return input as fallback
+            return input_path if 'input_path' in locals() else "", original_filename, "application/octet-stream"
+
     async def upload_to_s3(self, file_obj: BinaryIO, object_name: str, content_type: str) -> str:
         """
         Uploads a file object to S3 (SeaweedFS).
@@ -77,6 +139,9 @@ class FileService:
 
             # 2. Upload file
             # Note: upload_fileobj automatically handles multipart uploads for large files
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
+
             self.s3_client.upload_fileobj(
                 file_obj,
                 BUCKET_NAME,
@@ -136,7 +201,8 @@ class FileService:
             file_size_bytes: Optional[int] = None,
             notebook_id: Optional[str] = None,
             processing_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING,
-            content: Optional[str] = None
+            content: Optional[str] = None,
+            folder_id: Optional[str] = None,
     ) -> File:
         """Create a file record in the database."""
         file_record = await self.repo.create(
@@ -148,7 +214,8 @@ class FileService:
             file_size_bytes=file_size_bytes,
             notebook_id=notebook_id,
             processing_status=processing_status,
-            content=content
+            content=content,
+            folder_id=folder_id
         )
         await self.session.commit()
         await self.session.refresh(file_record)

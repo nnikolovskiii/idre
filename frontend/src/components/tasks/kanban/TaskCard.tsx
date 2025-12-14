@@ -26,12 +26,11 @@ interface SortableTaskProps {
     onArchive: (task: Task) => void;
     onUnarchive: (task: Task) => void;
     showPriorities?: boolean;
-    isAllTasksView?: boolean; // New prop
+    isAllTasksView?: boolean;
 }
 
 export const SortableTask: React.FC<SortableTaskProps> = ({
                                                               task,
-                                                              isMobile = false,
                                                               onView,
                                                               onEdit,
                                                               onArchive,
@@ -48,7 +47,7 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
     };
 
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
-    const notebookColor = task.notebook?.bg_color || '#4d4dff'; // Fallback color
+    const notebookColor = task.notebook?.bg_color || '#4d4dff';
 
     return (
         <div
@@ -66,34 +65,37 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
                     rounded-lg shadow-sm transition-all duration-200
                     cursor-default text-left overflow-hidden relative
                     ${task.archived ? 'opacity-60 grayscale border-dashed' : ''}
-                    ${isMobile ? 'p-3' : 'p-3'}
+                    p-3
                 `}
             >
                 {/*
-                   Visual Color Strip for All Tasks View
-                   Positioned absolute on the left
+                   REMOVED: The absolute colored strip div
+                   REMOVED: The conditional padding (pl-1)
                 */}
-                {isAllTasksView && (
-                    <div
-                        className="absolute left-0 top-0 bottom-0 w-1.5"
-                        style={{ backgroundColor: notebookColor }}
-                        title={task.notebook?.title || "Notebook"}
-                    />
-                )}
 
                 {/* Header: Options & Priority */}
-                {/* Added pl-2 if all tasks view to compensate for the colored strip */}
-                <div className={`flex justify-between items-center mb-2 ${isAllTasksView ? 'pl-1' : ''}`}>
+                <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2 flex-wrap max-w-[80%]">
+
                         {/*
-                           Only show text details if NOT in All Tasks view
-                           (But in single view, we usually don't need to show the notebook name anyway)
+                            MODIFIED: Show Notebook info for All Tasks View
+                            Added the colored dot here instead of the sidebar
                         */}
+                        {isAllTasksView && task.notebook && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium max-w-full mr-1 bg-secondary/50 px-1.5 py-0.5 rounded-md border border-border/30">
+                                {/* The Dot */}
+                                <span
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: notebookColor }}
+                                />
+                                <span className="truncate max-w-[80px]">{task.notebook.title}</span>
+                            </div>
+                        )}
+
+                        {/* Normal Notebook info (Single view) - usually hidden or just emoji */}
                         {!isAllTasksView && task.notebook && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium max-w-full">
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
                                 <span className="text-xs">{task.notebook.emoji}</span>
-                                <span className="truncate">{task.notebook.title}</span>
-                                <span className="text-[10px] text-muted-foreground/50">•</span>
                             </div>
                         )}
 
@@ -133,19 +135,19 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
                 </div>
 
                 {/* Title */}
-                <h4 className={`font-medium text-sm text-foreground mb-1.5 leading-snug break-words text-left ${isAllTasksView ? 'pl-1' : ''}`}>
+                <h4 className="font-medium text-sm text-foreground mb-1.5 leading-snug break-words text-left">
                     {task.title}
                 </h4>
 
                 {/* Description Preview */}
                 {task.description && (
-                    <p className={`text-xs text-muted-foreground line-clamp-2 mb-3 font-normal text-left ${isAllTasksView ? 'pl-1' : ''}`}>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 font-normal text-left">
                         {task.description}
                     </p>
                 )}
 
                 {/* Footer: Tags & Date */}
-                <div className={`flex items-center justify-between mt-2 pt-2 border-t border-border/30 ${isAllTasksView ? 'pl-1' : ''}`}>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
                     <div className="flex gap-1 overflow-hidden">
                         {task.tags?.slice(0, 3).map((tag) => (
                             <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded">
@@ -166,7 +168,7 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
     );
 };
 
-// The item being dragged (the ghost image)
+// Update DragOverlay to match
 export const TaskDragOverlay: React.FC<{ task: Task; showPriorities?: boolean; isAllTasksView?: boolean }> = ({
                                                                                                                   task,
                                                                                                                   showPriorities = true,
@@ -176,16 +178,16 @@ export const TaskDragOverlay: React.FC<{ task: Task; showPriorities?: boolean; i
 
     return (
         <div className="bg-card border border-primary/50 rounded-lg p-3 shadow-2xl cursor-grabbing w-[300px] rotate-2 opacity-90 ring-2 ring-primary/20 text-left relative overflow-hidden">
-            {isAllTasksView && (
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ backgroundColor: notebookColor }}
-                />
-            )}
-            <div className={`flex items-center gap-2 mb-2 ${isAllTasksView ? 'pl-1' : ''}`}>
+            <div className="flex items-center gap-2 mb-2">
+                {isAllTasksView && task.notebook && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium bg-secondary/50 px-1.5 py-0.5 rounded-md">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: notebookColor }} />
+                        <span className="truncate max-w-[80px]">{task.notebook.title}</span>
+                    </div>
+                )}
                 {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
             </div>
-            <h4 className={`font-medium text-sm text-foreground text-left ${isAllTasksView ? 'pl-1' : ''}`}>{task.title}</h4>
+            <h4 className="font-medium text-sm text-foreground text-left">{task.title}</h4>
         </div>
     );
 };

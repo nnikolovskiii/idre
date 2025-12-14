@@ -7,29 +7,21 @@ authors = [
 ]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "langgraph>=0.2.6",
     "python-dotenv>=1.0.1",
-    "langgraph-cli[inmem] (>=0.3.3,<0.4.0)",
     "langgraph-sdk>=0.2.0",
-    "pytest (>=8.4.0,<9.0.0)",
     "langchain-openai (>=0.3.23,<0.4.0)",
-    "langchain-cohere (>=0.4.4,<0.5.0)",
-    "langchain (>=0.3.25,<0.4.0)",
-    "langchain-google-genai (>=2.1.5,<3.0.0)",
     "pypdf (>=5.6.0,<6.0.0)",
-    "google-genai (>=1.21.1,<2.0.0)",
-    "pillow (>=11.2.1,<12.0.0)",
-    "langchain-groq (>=0.3.6,<0.4.0)",
-    "langchain-together (>=0.3.0,<0.4.0)",
-    "playwright-stealth (>=2.0.0,<3.0.0)",
-    "elevenlabs (>=2.9.2,<3.0.0)",
     "markdown (>=3.8.2,<4.0.0)",
     "beautifulsoup4 (>=4.13.5,<5.0.0)",
     "dependency-injector (>=4.48.1,<5.0.0)",
     "redis (>=6.4.0,<7.0.0)",
     "boto3 (>=1.41.5,<2.0.0)",
+    "deptry (>=0.24.0,<0.25.0)",
+    "langgraph-cli (>=0.4.9,<0.5.0)",
+    "pydantic-settings (>=2.12.0,<3.0.0)",
 ]
 
 
@@ -63,9 +55,7 @@ lint.select = [
 lint.ignore = [
     "UP006",
     "UP007",
-    # We actually do want to import from typing_extensions
     "UP035",
-    # Relax the convention by _not_ requiring documentation for every function parameter.
     "D417",
     "E501",
 ]

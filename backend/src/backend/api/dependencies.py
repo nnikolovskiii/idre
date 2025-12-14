@@ -5,6 +5,7 @@ from backend.container import container, get_db_session
 from backend.repositories.assistant_repository import AssistantRepository
 from backend.repositories.chat_repository import ChatRepository
 from backend.repositories.file_repository import FileRepository
+from backend.repositories.folder_repository import FolderRepository # <--- Added
 from backend.repositories.model_api_repository import ModelApiRepository
 from backend.repositories.notebook_repository import NotebookRepository
 from backend.repositories.proposition_repository import PropositionRepository
@@ -20,6 +21,7 @@ from backend.services.ai_service import AIService
 from backend.services.assistant_service import AssistantService
 from backend.services.fernet_service import FernetService
 from backend.services.file_service import FileService
+from backend.services.folder_service import FolderService # <--- Added
 from backend.services.task_service import TaskService
 from backend.services.whiteboard_service import WhiteboardService
 from backend.services.model_api_service import ModelApiService
@@ -47,13 +49,6 @@ def get_chat_repository(
 
 
 def get_fernet_service() -> FernetService:
-    """
-    Dependency provider for the FernetService.
-
-    This is a simple provider because FernetService does not depend on any
-    request-scoped resources like a database session. It simply asks the
-    container for an instance.
-    """
     return container.fernet_service()
 
 def get_assistant_repository(
@@ -72,14 +67,12 @@ def get_assistant_service(
     )
 
 
-
 def get_file_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> FileRepository:
     return container.file_repository(session=session)
 
 
-# --- Provider for FileService ---
 def get_file_service(
         session: AsyncSession = Depends(get_db_session),
         file_repo: FileRepository = Depends(get_file_repository)
@@ -89,8 +82,22 @@ def get_file_service(
         file_repository=file_repo
     )
 
+# --- Providers for FolderService (NEW) ---
+def get_folder_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> FolderRepository:
+    return container.folder_repository(session=session)
 
-# --- Provider for ModelApiService ---
+def get_folder_service(
+        session: AsyncSession = Depends(get_db_session),
+        folder_repo: FolderRepository = Depends(get_folder_repository)
+) -> FolderService:
+    return container.folder_service(
+        session=session,
+        folder_repository=folder_repo
+    )
+
+
 def get_model_api_service(
         session: AsyncSession = Depends(get_db_session),
         model_api_repo: ModelApiRepository = Depends(get_model_api_repository),
@@ -109,7 +116,6 @@ def get_notebook_repository(
     return container.notebook_repository(session=session)
 
 
-# --- Provider for ThreadRepository (if not already defined) ---
 def get_thread_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> ThreadRepository:
@@ -133,7 +139,7 @@ def get_user_service(
         fernet=fernet_service
     )
 
-# --- Providers for NotebookModel ---
+
 def get_notebook_model_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> NotebookModelRepository:
@@ -171,12 +177,12 @@ def get_proposition_repository(
 ) -> PropositionRepository:
     return container.proposition_repository(session=session)
 
+
 def get_proposition_service(
         session: AsyncSession = Depends(get_db_session),
         repo: PropositionRepository = Depends(get_proposition_repository)
 ) -> PropositionService:
     return container.proposition_service(session=session, proposition_repository=repo)
-
 
 
 def get_notebook_model_service(
@@ -193,7 +199,6 @@ def get_notebook_model_service(
     )
 
 
-# --- Providers for ChatModel ---
 def get_chat_model_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> ChatModelRepository:
@@ -206,7 +211,6 @@ def get_chat_model_service(
         generative_model_service: GenerativeModelService = Depends(get_generative_model_service)
 ) -> ChatModelService:
     return container.chat_model_service(session=session, chat_model_repository=chat_model_repo, generative_model_service=generative_model_service)
-
 
 
 def get_ai_service(
@@ -235,7 +239,6 @@ def get_chat_service(
         file_service: FileService = Depends(get_file_service),
         ai_service: AIService = Depends(get_ai_service)
 ) -> ChatService:
-    """Dependency provider for the ChatService."""
     return container.chat_service(
         session=session,
         chat_repository=chat_repo,
@@ -250,8 +253,6 @@ def get_chat_service(
     )
 
 
-
-# --- Provider for PasswordService ---
 def get_password_service() -> PasswordService:
     return container.password_service()
 
@@ -269,11 +270,9 @@ def get_notebook_service(
     )
 
 
-# --- Task Dependencies ---
 def get_task_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> TaskRepository:
-    """Dependency provider for the TaskRepository."""
     return container.task_repository(session=session)
 
 
@@ -281,18 +280,15 @@ def get_task_service(
         session: AsyncSession = Depends(get_db_session),
         task_repo: TaskRepository = Depends(get_task_repository)
 ) -> TaskService:
-    """Dependency provider for the TaskService."""
     return container.task_service(
         session=session,
         task_repository=task_repo
     )
 
 
-# --- Whiteboard Dependencies ---
 def get_whiteboard_repository(
         session: AsyncSession = Depends(get_db_session)
 ) -> WhiteboardRepository:
-    """Dependency provider for the WhiteboardRepository."""
     return container.whiteboard_repository(session=session)
 
 
@@ -300,7 +296,6 @@ def get_whiteboard_service(
         session: AsyncSession = Depends(get_db_session),
         whiteboard_repo: WhiteboardRepository = Depends(get_whiteboard_repository)
 ) -> WhiteboardService:
-    """Dependency provider for the WhiteboardService."""
     return container.whiteboard_service(
         session=session,
         whiteboard_repository=whiteboard_repo
@@ -311,23 +306,6 @@ async def require_api_key(
         request: Request,
         session: AsyncSession = Depends(get_db_session)
 ) -> None:
-    """
-    FastAPI dependency that requires an API key for the current user.
-
-    This function checks if the authenticated user has an API key set up.
-    If not, it raises an HTTPException with a 403 status code.
-
-    Usage:
-    ```python
-    @router.get("/protected-endpoint")
-    async def protected_endpoint(
-        _: None = Depends(require_api_key)
-    ):
-        # Your endpoint logic here
-        pass
-    ```
-    """
-    # Get user ID from request state (set by auth middleware)
     user_id = getattr(request.state, 'user_id', None)
 
     if not user_id:
@@ -336,12 +314,10 @@ async def require_api_key(
             detail="User authentication required"
         )
 
-    # Create services to check API key
     model_api_repo = ModelApiRepository(session)
     fernet_service = FernetService()
     model_api_service = ModelApiService(session, model_api_repo, fernet_service)
 
-    # Check if user has API key
     has_api_key = await model_api_service.has_api_key(user_id)
 
     if not has_api_key:
