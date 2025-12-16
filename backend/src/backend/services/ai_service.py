@@ -269,3 +269,51 @@ class AIService:
         )
 
         return {"status": "started"}
+    
+    async def rewrite_content(
+            self,
+            notebook_id: str,
+            user_id: str,
+            original_content: str,
+            file_id: str,
+            graph_id: str = "content_rewriter_graph"
+    ):
+        """
+        Initiates a LangGraph run to rewrite content for clarity and precision.
+        """
+        notebook_model = await self.notebook_model_service.get_notebook_model_by_id_and_type(
+            notebook_id=notebook_id,
+            model_type="light",
+            user_id=user_id
+        )
+
+        if not notebook_model:
+            raise ValueError(f"No notebook model found for: {notebook_id}")
+
+        model_api = await self.model_api_service.get_api_key_by_user_id(user_id)
+
+        if not model_api:
+            raise ValueError("API key is required.")
+
+        run_input = {
+            "light_model": notebook_model.model.name,
+            "api_key": model_api.value,
+            "original_content": original_content,
+        }
+
+        assistant_id = await self._get_assistant_id(graph_id)
+
+        background_run = await self.langgraph_client.runs.create(
+            thread_id=None,
+            assistant_id=assistant_id,
+            input=run_input,
+            webhook=LANGGRAPH_WEBHOOK_URL + "/content-rewriter-hook",
+            metadata={
+                "notebook_id": str(notebook_id),
+                "user_id": user_id,
+                "file_id": file_id
+            },
+            on_completion="keep",
+        )
+
+        return {"status": "started"}

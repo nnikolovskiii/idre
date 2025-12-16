@@ -618,3 +618,109 @@ async def handle_file_name_webhook(
         return {"status": "received"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+    
+
+@router.post("/content-rewriter-hook")
+async def handle_content_rewriter_webhook(
+        request: Request,
+        background_tasks: BackgroundTasks,
+        file_service: FileService = Depends(get_file_service),
+        langgraph_client = Depends(lambda: get_client(url=LANGGRAPH_URL))
+) -> Dict[str, str]:
+    """
+    Webhook for Content Rewriter Graph.
+    Updates the file with rewritten content and sends SSE notification.
+    """
+    redis_client = container.redis_client()
+
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        status = validated_payload.status
+        metadata = payload.get("metadata", {})
+
+        if status == "success":
+            # Extract metadata
+            file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+            rewritten_content = validated_payload.values.get("rewritten_content", "")
+
+            # Only proceed if we have a file_id to update
+            if file_id and rewritten_content:
+                # Get the current file
+                file_record = await file_service.repo.get_by_id_and_user(file_id, user_id)
+
+                if file_record:
+                    # Prepare new content - concatenate original with rewritten
+                    current_content = file_record.content or ""
+                    separator = "\n\n" if current_content.strip() else ""
+                    new_content = f"{current_content}{separator}### Rewritten Content\n{rewritten_content}"
+
+                    # Update the file
+                    await file_service.update_file(
+                        file_id=file_id,
+                        user_id=user_id,
+                        updates={
+                            "content": new_content,
+                        }
+                    )
+
+                    print(f"INFO: Updated file {file_id} with rewritten content")
+
+                    # Send SSE notification
+                    if notebook_id:
+                        event_data = {
+                            "event": "file_update",
+                            "data": {
+                                "file_id": file_id,
+                                "status": "COMPLETED",
+                                "filename": file_record.filename,
+                                "content": new_content,
+                                "content_type": file_record.content_type,
+                                "notebook_id": str(notebook_id)
+                            }
+                        }
+                        channel = f"sse:notebook_files:{notebook_id}"
+                        await redis_client.publish(channel, json.dumps(event_data))
+                else:
+                    print(f"Warning: File {file_id} not found for user {user_id}")
+            else:
+                print(f"Warning: Missing file_id or rewritten_content in webhook")
+
+            # Clean up thread
+            background_tasks.add_task(langgraph_client.threads.delete, payload.get("thread_id"))
+
+        elif status == "error":
+            error_msg = validated_payload.values.get("error", "Unknown error")
+            file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+
+            print(f"ERROR: Content Rewrite Failed for Run {run_id}: {error_msg}")
+
+            # Send error SSE notification if we have file info
+            if file_id and notebook_id:
+                file_record = await file_service.repo.get_by_id_and_user(file_id, user_id)
+                if file_record:
+                    event_data = {
+                        "event": "file_update",
+                        "data": {
+                            "file_id": file_id,
+                            "status": "FAILED",
+                            "filename": file_record.filename,
+                            "notebook_id": str(notebook_id)
+                        }
+                    }
+                    channel = f"sse:notebook_files:{notebook_id}"
+                    await redis_client.publish(channel, json.dumps(event_data))
+
+            # Clean up thread
+            background_tasks.add_task(langgraph_client.threads.delete, payload.get("thread_id"))
+
+        return {"status": "received"}
+    except Exception as e:
+        print(f"CRITICAL: Content Rewriter Webhook failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")

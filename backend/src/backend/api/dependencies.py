@@ -34,6 +34,23 @@ from backend.services.app_settings_service import AppSettingsService
 from backend.services.proposition_service import PropositionService
 from backend.services.user_service import UserService
 from backend.services.password import PasswordService
+from backend.repositories.model_group_repository import ModelGroupRepository
+from backend.services.model_group_service import ModelGroupService
+
+
+def get_model_group_repository(
+        session: AsyncSession = Depends(get_db_session)
+) -> ModelGroupRepository:
+    return container.model_group_repository(session=session)
+
+def get_model_group_service(
+        session: AsyncSession = Depends(get_db_session),
+        model_group_repo: ModelGroupRepository = Depends(get_model_group_repository)
+) -> ModelGroupService:
+    return container.model_group_service(
+        session=session,
+        model_group_repository=model_group_repo
+    )
 
 
 def get_model_api_repository(

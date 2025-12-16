@@ -55,6 +55,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                                  }) => {
     const [isMobile, setIsMobile] = useState(false);
     const [activeTab, setActiveTab] = useState<"chat" | "files" | "whiteboard" | "idea" | "tasks">("chat");
+    const [isFetchingNotebook, setIsFetchingNotebook] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const {currentNotebook, getNotebookById} = useNotebooks();
@@ -85,18 +86,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
     const getNotebookIdFromPath = useCallback(() => {
         const parts = location.pathname.split('/').filter(Boolean);
-        if (parts.length >= 2 && (parts[0] === 'chat' || parts[0] === 'files' || parts[0] === 'whiteboard' || parts[0] === 'idea' || parts[0] === 'idea-canvas' || parts[0] === 'tasks')) {
+        // Supports paths like /chat/:notebookId, /files/:notebookId, etc.
+        if (parts.length >= 2 && ['chat', 'files', 'whiteboard', 'idea', 'idea-canvas', 'tasks'].includes(parts[0])) {
             return parts[1];
         }
         return null;
     }, [location.pathname]);
 
-    // Fetch notebook data if ID is present but data is missing or mismatched
+    // Fetch notebook data
     useEffect(() => {
         const targetId = propNotebookId || getNotebookIdFromPath();
 
-        if (targetId && (!currentNotebook || currentNotebook.id !== targetId)) {
-            getNotebookById(targetId);
+        if (targetId) {
+            // Only fetch if we don't have it, or if the ID doesn't match
+            if (!currentNotebook || currentNotebook.id !== targetId) {
+                setIsFetchingNotebook(true);
+                getNotebookById(targetId).finally(() => {
+                    setIsFetchingNotebook(false);
+                });
+            }
         }
     }, [propNotebookId, getNotebookIdFromPath, currentNotebook, getNotebookById]);
 
@@ -140,6 +148,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         isMobile && collapsed ? "-translate-x-full" : "",
         !isMobile ? "translate-x-0" : ""
     ].join(" ");
+
+    const activeNotebookId = propNotebookId || getNotebookIdFromPath();
 
     return (
         <aside
@@ -198,22 +208,59 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
                 <div className="flex-grow flex flex-col gap-3 bg-background min-h-0 items-start">
 
-                    {/* Notebook Title Banner: Visible in both states */}
-                    {currentNotebook && (
-                        <div className={`flex items-center gap-2 p-2 rounded-md bg-background flex-shrink-0 transition-all duration-200 ${
-                            collapsed && !isMobile ? "justify-center w-full" : "px-3 w-full"
-                        }`}>
-                            <div className="flex-shrink-0" title={collapsed ? currentNotebook.title : undefined}>
-                                <Icon
-                                    name={currentNotebook.emoji as IconName}
-                                    className="w-[20px] h-[20px]"
-                                />
-                            </div>
+                    {/* Notebook Info Banner */}
+                    {/* Show if we have a notebook OR if we are fetching one (show skeleton) */}
+                    {activeNotebookId && (
+                        <div className={`
+                            flex items-center gap-3 transition-all duration-200 flex-shrink-0
+                            ${collapsed && !isMobile 
+                                ? "w-full justify-center px-0 mb-4" 
+                                : "w-full px-3 py-3 mb-2 mx-0 bg-sidebar-accent/40 border border-sidebar-border/60 rounded-lg"
+                            }
+                        `}>
+                            {currentNotebook ? (
+                                <>
+                                    <div className={`
+                                        flex items-center justify-center flex-shrink-0
+                                        ${collapsed && !isMobile 
+                                            ? "w-8 h-8 rounded-md bg-sidebar-accent text-sidebar-foreground" 
+                                            : "p-1.5 rounded-md bg-background border border-sidebar-border shadow-sm text-sidebar-primary"
+                                        }
+                                    `} title={collapsed ? currentNotebook.title : undefined}>
+                                        <Icon
+                                            name={(currentNotebook.emoji as IconName) || 'book'}
+                                            className={collapsed && !isMobile ? "w-5 h-5" : "w-4 h-4"}
+                                        />
+                                    </div>
 
-                            {!collapsed && (
-                                <span className="text-l font-bold text-sidebar-foreground whitespace-nowrap overflow-hidden text-ellipsis flex-1">
-                                    {currentNotebook.title}
-                                </span>
+                                    {!collapsed && (
+                                        <div className="flex flex-col overflow-hidden min-w-0">
+                                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">
+                                                Notebook
+                                            </span>
+                                            <span className="text-sm font-bold text-sidebar-foreground truncate leading-tight">
+                                                {currentNotebook.title}
+                                            </span>
+                                        </div>
+                                    )}
+                                </>
+                            ) : isFetchingNotebook ? (
+                                // Loading Skeleton
+                                <>
+                                    <div className={`
+                                        flex-shrink-0 animate-pulse bg-sidebar-border rounded-md
+                                        ${collapsed && !isMobile ? "w-8 h-8" : "w-8 h-8"}
+                                    `}/>
+                                    {!collapsed && (
+                                        <div className="flex flex-col gap-1 w-full animate-pulse">
+                                            <div className="h-2 w-12 bg-sidebar-border rounded"/>
+                                            <div className="h-4 w-24 bg-sidebar-border rounded"/>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // Fallback if ID exists but fetch failed/returned null (optional)
+                                <div className="text-xs text-muted-foreground">Notebook not found</div>
                             )}
                         </div>
                     )}

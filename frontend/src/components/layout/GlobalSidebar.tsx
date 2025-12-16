@@ -1,7 +1,7 @@
 import React, {useState, useEffect, memo} from "react";
 import {
     ChevronLeft, X,
-    LayoutGrid, CheckSquare, Plus
+    LayoutGrid, CheckSquare, Plus, Layers
 } from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {useTheme} from "../../context/ThemeContext";
@@ -162,6 +162,19 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                         >
                             <CheckSquare size={18}/>
                             {!collapsed && <span>All Tasks</span>}
+                        </button>
+
+                        <button
+                            onClick={(e) => handleNavigation(e, "/model-groups")}
+                            className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
+                                isActive("/model-groups")
+                                    ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
+                                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                            title="Model Groups"
+                        >
+                            <Layers size={18}/>
+                            {!collapsed && <span>Model Groups</span>}
                         </button>
                     </section>
 

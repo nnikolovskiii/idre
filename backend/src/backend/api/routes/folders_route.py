@@ -40,3 +40,34 @@ async def create_folder(
         "status": "success",
         "data": {"id": str(folder.id), "name": folder.name, "parent_id": str(folder.parent_id) if folder.parent_id else None}
     }
+
+class UpdateFolderRequest(BaseModel):
+    name: str
+
+@router.delete("/{folder_id}")
+async def delete_folder(
+    folder_id: str,
+    current_user: User = Depends(get_current_user),
+    folder_service: FolderService = Depends(get_folder_service) # <--- Injected
+):
+    success = await folder_service.delete_folder(str(current_user.user_id), folder_id)
+    if success:
+        return {"status": "success", "message": "Folder deleted successfully"}
+    else:
+        return {"status": "error", "message": "Failed to delete folder"}
+
+@router.patch("/{folder_id}")
+async def update_folder(
+    folder_id: str,
+    req: UpdateFolderRequest,
+    current_user: User = Depends(get_current_user),
+    folder_service: FolderService = Depends(get_folder_service) # <--- Injected
+):
+    folder = await folder_service.update_folder_name(str(current_user.user_id), folder_id, req.name)
+    if folder:
+        return {
+            "status": "success",
+            "data": {"id": str(folder.id), "name": folder.name, "parent_id": str(folder.parent_id) if folder.parent_id else None}
+        }
+    else:
+        return {"status": "error", "message": "Failed to update folder"}

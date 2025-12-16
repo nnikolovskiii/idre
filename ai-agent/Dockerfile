@@ -7,7 +7,7 @@ COPY . /deps/ai-agent
 # -- Installing all local dependencies --
 RUN PYTHONDONTWRITEBYTECODE=1 uv pip install --system --no-cache-dir -c /api/constraints.txt -e /deps/*
 # -- End of local dependencies install --
-ENV LANGSERVE_GRAPHS='{"chat_agent": "/deps/ai-agent/src/agent/core/configs.py:chat_graph", "transcription_agent": "/deps/ai-agent/src/agent/core/configs.py:transcription_graph", "chat_name_agent": "/deps/ai-agent/src/agent/core/configs.py:chat_name_graph_compiled", "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph", "questioner_graph": "./src/agent/core/configs.py:questioner_compiled_graph", "idea_proposition_graph": "./src/agent/core/configs.py:idea_proposition_compiled_graph", "file_name_graph": "./src/agent/core/configs.py:file_name_compiled_graph", "pros_cons_graph": "./src/agent/core/configs.py:pros_cons_compiled_graph"}'
+ENV LANGSERVE_GRAPHS='{"chat_agent": "/deps/ai-agent/src/agent/core/configs.py:chat_graph", "transcription_agent": "/deps/ai-agent/src/agent/core/configs.py:transcription_graph", "chat_name_agent": "/deps/ai-agent/src/agent/core/configs.py:chat_name_graph_compiled", "brainstorm_graph": "./src/agent/core/configs.py:brainstorm_compiled_graph", "questioner_graph": "./src/agent/core/configs.py:questioner_compiled_graph", "idea_proposition_graph": "./src/agent/core/configs.py:idea_proposition_compiled_graph", "file_name_graph": "./src/agent/core/configs.py:file_name_compiled_graph", "pros_cons_graph": "./src/agent/core/configs.py:pros_cons_compiled_graph", "content_rewriter_graph": "/deps/ai-agent/src/agent/core/configs.py:content_rewriter_compiled_graph"}'
 
 
 

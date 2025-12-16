@@ -28,11 +28,25 @@ export const useDriveLogic = (notebookId: string | undefined) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newFileName, setNewFileName] = useState("");
 
+    // --- CONFIRMATION DIALOG STATE ---
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        type: 'file' | 'folder';
+        id: string | null;
+        name: string | null;
+    }>({
+        isOpen: false,
+        type: 'file',
+        id: null,
+        name: null
+    });
+
     // --- UI STATE ---
     const [viewMode, setViewMode] = useState<'edit' | 'preview' | 'split'>('edit');
     const [sidebarWidth, setSidebarWidth] = useState(260);
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
+    const [fontSize, setFontSize] = useState(16); // Base font size in pixels
 
     // --- RECORDING STATE ---
     const [isRecording, setIsRecording] = useState(false);
@@ -40,6 +54,9 @@ export const useDriveLogic = (notebookId: string | undefined) => {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     // REMOVED: const transcriptionQueue = useRef<Record<string, string>>({});
+
+    // --- REWRITING STATE ---
+    const [rewritingFileId, setRewritingFileId] = useState<string | null>(null);
 
     // --- PERSISTENCE REF ---
     const hasRestoredTabs = useRef(false);
@@ -93,6 +110,211 @@ export const useDriveLogic = (notebookId: string | undefined) => {
             alert("Failed to move file.");
         }
     }, [notebookId, fetchFiles]);
+
+    // --- CONFIRMATION DIALOG OPERATIONS ---
+    const confirmDelete = async () => {
+        if (!confirmDialog.id || !confirmDialog.name) return;
+
+        if (confirmDialog.type === 'file') {
+            try {
+                await fileService.deleteFile(confirmDialog.id);
+                setFiles(prev => prev.filter(f => f.file_id !== confirmDialog.id));
+                setOpenFiles(prev => prev.filter(f => f.file_id !== confirmDialog.id));
+                if (previewFileId === confirmDialog.id) setPreviewFileId(null);
+                if (activeFileId === confirmDialog.id) setActiveFileId(null);
+                // Remove from fileContents
+                setFileContents(prev => {
+                    const newContents = { ...prev };
+                    delete newContents[confirmDialog.id!];
+                    return newContents;
+                });
+            } catch (err) {
+                alert("Failed to delete file");
+            }
+        } else if (confirmDialog.type === 'folder') {
+            try {
+                await fileService.deleteFolder(confirmDialog.id);
+                setFolders(prev => prev.filter(f => f.id !== confirmDialog.id));
+                // Move files from this folder to root
+                setFiles(prev => prev.map(f =>
+                    f.folder_id === confirmDialog.id ? { ...f, folder_id: null } : f
+                ));
+            } catch (err) {
+                alert("Failed to delete folder");
+                fetchFiles();
+            }
+        }
+
+        // Close dialog
+        setConfirmDialog({ isOpen: false, type: 'file', id: null, name: null });
+    };
+
+    // --- CONTEXT MENU OPERATIONS ---
+    const deleteFile = (fileId: string, fileName: string) => {
+        if (!notebookId) return;
+        setConfirmDialog({
+            isOpen: true,
+            type: 'file',
+            id: fileId,
+            name: fileName
+        });
+    };
+
+    const renameFile = async (fileId: string, newName: string) => {
+        if (!notebookId) return;
+
+        try {
+            const response = await fileService.updateFile(fileId, { filename: newName });
+            setFiles(prev => prev.map(f =>
+                f.file_id === fileId ? { ...f, filename: response.data.filename } : f
+            ));
+            setOpenFiles(prev => prev.map(f =>
+                f.file_id === fileId ? { ...f, filename: response.data.filename } : f
+            ));
+        } catch (err) {
+            alert("Failed to rename file");
+            // Refresh files to revert changes
+            fetchFiles();
+        }
+    };
+
+    const downloadFile = async (fileId: string, filename: string) => {
+        if (!notebookId) return;
+
+        try {
+            const blob = await fileService.downloadFile(fileId);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("Failed to download file");
+        }
+    };
+
+    const deleteFolder = (folderId: string, folderName: string) => {
+        if (!notebookId) return;
+        setConfirmDialog({
+            isOpen: true,
+            type: 'folder',
+            id: folderId,
+            name: folderName
+        });
+    };
+
+    const renameFolder = async (folderId: string, newName: string) => {
+        if (!notebookId) return;
+
+        try {
+            const updatedFolder = await fileService.updateFolder(folderId, { name: newName });
+            setFolders(prev => prev.map(f =>
+                f.id === folderId ? updatedFolder : f
+            ));
+        } catch (err) {
+            alert("Failed to rename folder");
+            fetchFiles();
+        }
+    };
+
+    // --- BULK OPERATIONS ---
+    const bulkDelete = async (items: { type: 'file' | 'folder', id: string, name: string }[]) => {
+        if (!notebookId) return;
+
+        const fileCount = items.filter(i => i.type === 'file').length;
+        const folderCount = items.filter(i => i.type === 'folder').length;
+
+        const message = `Are you sure you want to delete ${fileCount > 0 ? `${fileCount} file(s)` : ''} ${folderCount > 0 ? `${fileCount > 0 ? 'and ' : ''}${folderCount} folder(s)` : ''}? This action cannot be undone.`;
+
+        if (!window.confirm(message)) return;
+
+        try {
+            // Separate files and folders
+            const fileIds = items.filter(i => i.type === 'file').map(i => i.id);
+            const folderIds = items.filter(i => i.type === 'folder').map(i => i.id);
+
+            // Execute deletions in parallel
+            await Promise.all([
+                ...fileIds.map(id => fileService.deleteFile(id)),
+                ...folderIds.map(id => fileService.deleteFolder(id))
+            ]);
+
+            // Update State
+            setFiles(prev => prev.filter(f => !fileIds.includes(f.file_id)));
+
+            // Remove deleted folders and handle children of deleted folders
+            setFolders(prev => prev.filter(f => !folderIds.includes(f.id)));
+
+            // Files that were inside deleted folders should be moved to Root (visually) or removed?
+            // Usually deleting a folder deletes its content.
+            // Assuming backend deletes content, we should remove files locally that belong to those folders:
+            setFiles(prev => prev.filter(f => {
+                // Remove if it's in the explicit delete list
+                if (fileIds.includes(f.file_id)) return false;
+                // Remove if it lives inside a deleted folder
+                if (f.folder_id && folderIds.includes(f.folder_id)) return false;
+                return true;
+            }));
+
+            // Clean up Tabs
+            setOpenFiles(prev => prev.filter(f => {
+                if (fileIds.includes(f.file_id)) return false;
+                if (f.folder_id && folderIds.includes(f.folder_id)) return false;
+                return true;
+            }));
+
+            // Reset active/preview if they were deleted
+            if (activeFileId && (fileIds.includes(activeFileId) || files.find(f => f.file_id === activeFileId && folderIds.includes(f.folder_id || '')))) {
+                setActiveFileId(null);
+            }
+            if (previewFileId && (fileIds.includes(previewFileId) || files.find(f => f.file_id === previewFileId && folderIds.includes(f.folder_id || '')))) {
+                setPreviewFileId(null);
+            }
+
+            // Cleanup contents memory
+            setFileContents(prev => {
+                const newContents = { ...prev };
+                fileIds.forEach(id => delete newContents[id]);
+                // We should also calculate IDs of files within deleted folders, but that requires iterating files state before update.
+                // For now, this is sufficient for immediate UI response.
+                return newContents;
+            });
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete some items. Refreshing...");
+            fetchFiles();
+        }
+    };
+
+
+    const bulkDownload = async (files: { id: string, name: string }[]) => {
+        if (!notebookId) return;
+
+        // Download files one by one
+        for (const file of files) {
+            try {
+                const blob = await fileService.downloadFile(file.id);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                // Small delay between downloads to avoid browser blocking
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (err) {
+                console.error(`Failed to download ${file.name}:`, err);
+                alert(`Failed to download ${file.name}`);
+            }
+        }
+    };
 
     // Initial fetch
     useEffect(() => { fetchFiles(); }, [fetchFiles]);
@@ -296,7 +518,7 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         if (activeFile) setFileToDelete(activeFile);
     };
 
-    const confirmDelete = async () => {
+    const confirmDeleteFile = async () => {
         if (!fileToDelete) return;
         try {
             await fileService.deleteFile(fileToDelete.file_id);
@@ -452,6 +674,15 @@ export const useDriveLogic = (notebookId: string | undefined) => {
                         setTranscribingFileId(null);
                         alert("Transcription failed.");
                     }
+
+                    // 4. Clear loading spinner for rewriting
+                    if (updateData.file_id === rewritingFileId && updateData.status === 'COMPLETED') {
+                        setRewritingFileId(null);
+                    }
+                    else if (updateData.status === 'FAILED' && updateData.file_id === rewritingFileId) {
+                        setRewritingFileId(null);
+                        alert("Content rewriting failed.");
+                    }
                 }
             } catch (e) {
                 console.error("Error parsing SSE event", e);
@@ -459,7 +690,43 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         };
         // Removed fileContents from dependency array to prevent reconnection loops
         return () => eventSource.close();
-    }, [notebookId, transcribingFileId]);
+    }, [notebookId, transcribingFileId, rewritingFileId]);
+
+    // --- REWRITE CONTENT FUNCTION ---
+    const handleRewriteContent = useCallback(async () => {
+        if (!activeFileId || !activeFile || !notebookId) {
+            alert('No active file to rewrite');
+            return;
+        }
+
+        const content = fileContents[activeFileId] || activeFile.content || '';
+        if (!content.trim()) {
+            alert('File has no content to rewrite');
+            return;
+        }
+
+        try {
+            setRewritingFileId(activeFileId);
+            await fileService.rewriteContent(notebookId, activeFileId);
+        } catch (error) {
+            console.error('Failed to rewrite content:', error);
+            alert('Failed to rewrite content. Please try again.');
+            setRewritingFileId(null);
+        }
+    }, [activeFileId, activeFile, notebookId, fileContents]);
+
+    // --- ZOOM CONTROLS ---
+    const handleZoomIn = useCallback(() => {
+        setFontSize(prev => Math.min(prev + 2, 32)); // Max 32px
+    }, []);
+
+    const handleZoomOut = useCallback(() => {
+        setFontSize(prev => Math.max(prev - 2, 10)); // Min 10px
+    }, []);
+
+    const handleZoomReset = useCallback(() => {
+        setFontSize(16); // Reset to default 16px
+    }, []);
 
     // --- SIDEBAR RESIZING ---
     const startResizing = useCallback(() => setIsDragging(true), []);
@@ -479,6 +746,32 @@ export const useDriveLogic = (notebookId: string | undefined) => {
             window.removeEventListener("mouseup", stopResizing);
         };
     }, [resize, stopResizing]);
+
+    // --- KEYBOARD SHORTCUTS FOR ZOOM ---
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                e.preventDefault();
+                handleZoomReset();
+                return;
+            }
+
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+                e.preventDefault();
+                handleZoomIn();
+                return;
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                e.preventDefault();
+                handleZoomOut();
+                return;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleZoomIn, handleZoomOut, handleZoomReset]);
 
     return {
         // Data
@@ -500,6 +793,10 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         isSidebarVisible,
         setIsSidebarVisible,
         startResizing,
+        fontSize,
+        handleZoomIn,
+        handleZoomOut,
+        handleZoomReset,
         // Modals
         isCreateModalOpen,
         setIsCreateModalOpen,
@@ -507,9 +804,15 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         setNewFileName,
         fileToDelete,
         setFileToDelete,
+        // Confirmation Dialog
+        confirmDialog,
+        setConfirmDialog,
+        confirmDelete,
         // Recording
         isRecording,
         transcribingFileId,
+        // Rewriting
+        rewritingFileId,
         // Actions
         handleOpenFile,
         handlePinFile,
@@ -520,16 +823,26 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         handleDownload,
         onUploadInputChange,
         initiateDelete,
-        confirmDelete,
+        confirmDeleteFile,
         initiateCreateFile,
         confirmCreateFile,
         startRecording,
         stopRecording,
+        handleRewriteContent,
         // Folders
         folders,
         currentFolderId,
         setCurrentFolderId,
         createFolder,
-        moveFile
+        moveFile,
+        // Context Menu Operations
+        onFileDelete: deleteFile,
+        onFileRename: renameFile,
+        onFileDownload: downloadFile,
+        onFolderDelete: deleteFolder,
+        onFolderRename: renameFolder,
+        // Bulk Operations
+        onBulkDelete: bulkDelete,
+        onBulkDownload: bulkDownload
     };
 };

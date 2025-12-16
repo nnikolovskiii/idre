@@ -29,6 +29,8 @@ from backend.api.routes.folders_route import router as folders_router
 from backend.api.routes import propositions_route
 from backend.api.routes import tasks_route
 from backend.api.routes import whiteboards_route
+from backend.api.routes.model_groups_route import router as model_groups_router
+
 
 # --- Model Imports ---
 from backend.models.app_settings import AppSettings
@@ -277,6 +279,8 @@ app.include_router(propositions_route.router, prefix="/propositions", tags=["Pro
 app.include_router(tasks_route.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(whiteboards_route.router, prefix="/whiteboards", tags=["Whiteboards"])
 app.include_router(folders_router, prefix="/folders", tags=["Folders"])
+app.include_router(folders_router, prefix="/folders", tags=["Folders"])
+app.include_router(model_groups_router, prefix="/model-groups", tags=["Model Groups"])
 
 
 

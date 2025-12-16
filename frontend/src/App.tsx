@@ -26,6 +26,7 @@ import IdeaCanvasPage from "./pages/IdeaCanvasPage";
 import TasksPage from "./pages/TasksPage";
 import TasksKanbanAllView from "./components/tasks/TasksKanbanAllView";
 import SetupApiKeyPage from "./pages/SetupApiKeyPage";
+import ModelGroupsView from "./pages/ModelGroupsView"; // Import the new page
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
@@ -82,6 +83,7 @@ function App() {
                                         </ProtectedRoute>
                                     }
                                 >
+                                    <Route path="/model-groups" element={<ModelGroupsView />} />
                                     <Route path="/chat/:notebookId" element={<Chat />} />
                                     <Route path="/files/:notebookId" element={<MyDriveView />} />
                                     <Route path="/whiteboard/:notebookId" element={<WhiteboardView />} />

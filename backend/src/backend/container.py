@@ -41,6 +41,8 @@ from backend.services.user_service import UserService
 from backend.services.password import PasswordService
 from backend.services.notebook_service import NotebookService
 from backend.services.whiteboard_service import WhiteboardService
+from backend.repositories.model_group_repository import ModelGroupRepository
+from backend.services.model_group_service import ModelGroupService
 import boto3  # <--- Add this
 from botocore.client import Config  # <--- Add this
 
@@ -115,6 +117,13 @@ class Container(containers.DeclarativeContainer):
     folder_service = providers.Factory(
         FolderService,
         folder_repository=folder_repository
+    )
+
+    model_group_repository = providers.Factory(ModelGroupRepository)
+
+    model_group_service = providers.Factory(
+        ModelGroupService,
+        model_group_repository=model_group_repository
     )
 
     generative_model_repository = providers.Factory(GenerativeModelRepository)

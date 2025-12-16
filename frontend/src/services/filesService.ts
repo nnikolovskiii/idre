@@ -256,4 +256,62 @@ export const fileService = {
             throw new Error(`File deletion failed: ${response.statusText} (${errorText})`);
         }
     },
+
+    /**
+     * Delete a folder
+     */
+    deleteFolder: async (folder_id: string): Promise<void> => {
+        const response = await fetch(`${API_CONFIG.getApiUrl()}/folders/${folder_id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Folder deletion failed: ${response.statusText} (${errorText})`);
+        }
+    },
+
+    /**
+     * Update a folder's details
+     */
+    updateFolder: async (folder_id: string, updates: { name?: string }): Promise<FolderData> => {
+        const response = await fetch(`${API_CONFIG.getApiUrl()}/folders/${folder_id}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update folder: ${response.statusText} (${errorText})`);
+        }
+
+        const res = await response.json();
+        return res.data;
+    },
+
+    /**
+     * Rewrite content of a file
+     */
+    rewriteContent: async (notebook_id: string, file_id: string): Promise<void> => {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/rewrite/${notebook_id}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file_id: file_id,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Content rewriting failed: ${response.statusText} (${errorText})`);
+        }
+    },
 };

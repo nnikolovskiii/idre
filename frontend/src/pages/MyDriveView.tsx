@@ -5,7 +5,9 @@ import { PanelLeft, FolderOpen, FilePlus } from "lucide-react";
 import Layout from "../components/layout/Layout";
 import SidebarExplorer from "../components/drive/SidebarExplorer";
 import FileTabs from "../components/drive/FileTabs";
+import AISidebar from "../components/drive/AISidebar";
 import MarkdownEditor from "../components/drive/editor/MarkdownEditor";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 // Hooks & Context
 import { useChats } from "../hooks/useChats";
@@ -53,6 +55,10 @@ const MyDriveView = () => {
         isSidebarVisible,
         setIsSidebarVisible,
         startResizing,
+        fontSize,
+        handleZoomIn,
+        handleZoomOut,
+        handleZoomReset,
         // Modals
         isCreateModalOpen,
         setIsCreateModalOpen,
@@ -63,6 +69,8 @@ const MyDriveView = () => {
         // Recording
         isRecording,
         transcribingFileId,
+        // Rewriting
+        rewritingFileId,
         // Actions
         handleOpenFile,
         handlePinFile,
@@ -73,16 +81,30 @@ const MyDriveView = () => {
         handleDownload,
         onUploadInputChange,
         initiateDelete,
-        confirmDelete,
+        confirmDeleteFile,
         initiateCreateFile,
         confirmCreateFile,
         startRecording,
         stopRecording,
+        handleRewriteContent,
         folders, // <--- New
         currentFolderId, // <--- New
         setCurrentFolderId, // <--- New
         createFolder,
-        moveFile
+        moveFile,
+        // Context Menu Operations
+        onFileDelete,
+        onFileRename,
+        onFileDownload,
+        onFolderDelete,
+        onFolderRename,
+        // Bulk Operations
+        onBulkDelete,
+        onBulkDownload,
+        // Confirmation Dialog
+        confirmDialog,
+        setConfirmDialog,
+        confirmDelete
     } = useDriveLogic(notebookId);
 
     // --- RENDER HELPERS ---
@@ -113,6 +135,10 @@ const MyDriveView = () => {
                     onChange={handleEditorChange}
                     onSave={handleSave}
                     viewMode={viewMode}
+                    fontSize={fontSize}
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                    onZoomReset={handleZoomReset}
                 />
             );
         }
@@ -154,6 +180,15 @@ const MyDriveView = () => {
                             onCloseSidebar={() => setIsSidebarVisible(false)}
                             isFileDirty={isFileDirty}
                             onMoveFile={moveFile} // <--- Pass it here
+                            // Context Menu handlers
+                            onFileDelete={onFileDelete}
+                            onFileRename={onFileRename}
+                            onFileDownload={onFileDownload}
+                            onFolderDelete={onFolderDelete}
+                            onFolderRename={onFolderRename}
+                            // Bulk operations
+                            onBulkDelete={onBulkDelete}
+                            onBulkDownload={onBulkDownload}
                         />
                     </div>
                 )}
@@ -192,14 +227,27 @@ const MyDriveView = () => {
                         onSave={handleSave}
                         onDownload={handleDownload}
                         onDelete={initiateDelete}
-                        isRecording={isRecording}
-                        onToggleRecording={isRecording ? stopRecording : startRecording}
-                        isTranscribingForFile={activeFileId === transcribingFileId}
+                        fontSize={fontSize}
+                        onZoomIn={handleZoomIn}
+                        onZoomOut={handleZoomOut}
+                        onZoomReset={handleZoomReset}
                     />
-                    <div className="flex-1 overflow-hidden relative">
-                        {renderWorkspace()}
+                    <div className="flex-1 overflow-hidden relative flex justify-center">
+                        <div className="w-full max-w-[1800px] h-full relative">
+                            {renderWorkspace()}
+                        </div>
                     </div>
                 </div>
+
+                {/* RIGHT AI SIDEBAR */}
+                <AISidebar
+                    isRecording={isRecording}
+                    onToggleRecording={isRecording ? stopRecording : startRecording}
+                    isTranscribingForFile={activeFileId === transcribingFileId}
+                    isRewritingForFile={activeFileId === rewritingFileId}
+                    activeFile={activeFile}
+                    onRewriteContent={handleRewriteContent}
+                />
 
                 {/* --- MODALS --- */}
 
@@ -255,12 +303,28 @@ const MyDriveView = () => {
                             <p className="text-sm text-muted-foreground mb-6">Are you sure you want to delete <span className="font-medium text-foreground">{fileToDelete.filename}</span>? This action cannot be undone.</p>
                             <div className="flex justify-end gap-3">
                                 <button onClick={() => setFileToDelete(null)} className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Cancel</button>
-                                <button onClick={confirmDelete} className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-sm">Delete</button>
+                                <button onClick={confirmDeleteFile} className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-sm">Delete</button>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Confirmation Dialog */}
+            <ConfirmDialog
+                open={confirmDialog.isOpen}
+                title={confirmDialog.type === 'file' ? 'Delete File' : 'Delete Folder'}
+                message={
+                    confirmDialog.type === 'file'
+                        ? `Are you sure you want to delete "${confirmDialog.name}"? This action cannot be undone.`
+                        : `Are you sure you want to delete the folder "${confirmDialog.name}" and all its contents? This action cannot be undone.`
+                }
+                confirmText="Delete"
+                cancelText="Cancel"
+                type="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => setConfirmDialog({ isOpen: false, type: 'file', id: null, name: null })}
+            />
         </Layout>
     );
 };

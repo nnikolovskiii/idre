@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.folder import Folder
 
@@ -31,7 +31,16 @@ class FolderRepository:
         result = await self.session.execute(query)
         return result.scalars().first()
 
-    async def delete(self, folder_id: str) -> bool:
-        stmt = delete(Folder).where(Folder.id == folder_id)
+    async def delete(self, folder_id: str, user_id: str) -> bool:
+        stmt = delete(Folder).where(Folder.id == folder_id, Folder.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.rowcount > 0
+
+    async def update_name(self, folder_id: str, user_id: str, name: str) -> Optional[Folder]:
+        stmt = update(Folder).where(Folder.id == folder_id, Folder.user_id == user_id).values(name=name)
+        await self.session.execute(stmt)
+
+        # Return the updated folder
+        query = select(Folder).where(Folder.id == folder_id, Folder.user_id == user_id)
+        result = await self.session.execute(query)
+        return result.scalars().first()

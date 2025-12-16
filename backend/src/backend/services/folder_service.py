@@ -19,7 +19,14 @@ class FolderService:
         return await self.repo.list_by_notebook(user_id, notebook_id)
 
     async def delete_folder(self, user_id: str, folder_id: str) -> bool:
-        success = await self.repo.delete(folder_id)
+        success = await self.repo.delete(folder_id, user_id)
         if success:
             await self.session.commit()
         return success
+
+    async def update_folder_name(self, user_id: str, folder_id: str, name: str) -> Optional[Folder]:
+        folder = await self.repo.update_name(folder_id, user_id, name)
+        if folder:
+            await self.session.commit()
+            await self.session.refresh(folder)
+        return folder

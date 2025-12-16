@@ -40,6 +40,10 @@ from agent.core.pros_cons_graph.nodes import (
     pros_cons_combine_responses
 )
 
+# Content Rewriter Graph Imports
+from agent.core.content_rewriter_graph.data_models import ContentRewriterGraphState
+from agent.core.content_rewriter_graph.nodes import rewrite_content_node
+
 
 def simple_graph():
     workflow = StateGraph(ChatGraphState)
@@ -118,6 +122,14 @@ def pros_cons_graph():
     return workflow
 
 
+def content_rewriter_graph():
+    workflow = StateGraph(ContentRewriterGraphState)
+    workflow.add_node("rewrite_content", rewrite_content_node)
+    workflow.set_entry_point("rewrite_content")
+    workflow.add_edge("rewrite_content", END)
+    return workflow
+
+
 # Compilation
 chat_graph = simple_graph().compile()
 brainstorm_compiled_graph = brainstorm_graph().compile()
@@ -127,3 +139,4 @@ chat_name_graph_compiled = chat_name_graph().compile()
 idea_proposition_compiled_graph = idea_proposition_graph().compile()
 file_name_compiled_graph = file_name_graph().compile()
 pros_cons_compiled_graph = pros_cons_graph().compile()
+content_rewriter_compiled_graph = content_rewriter_graph().compile()

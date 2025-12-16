@@ -54,7 +54,7 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({ isOpen, on
                             <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
                             <select
                                 value={taskData.priority}
-                                onChange={(e) => onTaskDataChange({ ...taskData, priority: e.target.value as any })}
+                                onChange={(e) => onTaskDataChange({ ...taskData, priority: e.target.value as TaskPriority })}
                                 className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                             >
                                 <option value="low">Low</option>
@@ -202,13 +202,37 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
 
     const handleSubmit = () => {
         if (!formData.title.trim()) return;
-        onUpdate(task.id, {
-            title: formData.title.trim(),
-            description: formData.description.trim() || undefined,
-            priority: formData.priority as TaskPriority,
-            tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : undefined,
-            due_date: formData.dueDate || undefined,
-        });
+
+        // Always include the current status to preserve it during updates
+        const updateData: TaskUpdateRequest = {
+            status: task.status
+        };
+
+        if (formData.title.trim() !== task.title) {
+            updateData.title = formData.title.trim();
+        }
+
+        if ((formData.description.trim() || "") !== (task.description || "")) {
+            updateData.description = formData.description.trim() || undefined;
+        }
+
+        if (formData.priority !== task.priority) {
+            updateData.priority = formData.priority as TaskPriority;
+        }
+
+        // Handle tags comparison
+        const currentTags = formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+        const originalTags = task.tags || [];
+        if (JSON.stringify(currentTags.sort()) !== JSON.stringify(originalTags.sort())) {
+            updateData.tags = currentTags;
+        }
+
+        if ((formData.dueDate || "") !== (task.dueDate || "")) {
+            updateData.due_date = formData.dueDate || undefined;
+        }
+
+        // Call update since we always have at least the status field
+        onUpdate(task.id, updateData);
     };
 
     return (
@@ -233,7 +257,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, isOpen, onCl
                             <label className="block text-sm font-medium text-foreground mb-2">Priority</label>
                             <select
                                 value={formData.priority}
-                                onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
+                                onChange={(e) => setFormData({...formData, priority: e.target.value as TaskPriority})}
                                 className="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 disabled={isUpdating}
                             >

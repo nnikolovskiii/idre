@@ -4,6 +4,7 @@ export type ModelName = string;
 
 // Enhanced model interface with recommendation data
 export interface EnhancedModel {
+    id: string;
     name: string;
     type: string;
     is_recommended: boolean;

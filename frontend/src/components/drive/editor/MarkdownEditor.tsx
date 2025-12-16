@@ -41,9 +41,13 @@ interface MarkdownEditorProps {
     onChange: (val: string) => void;
     onSave: () => void;
     viewMode: 'edit' | 'preview' | 'split';
+    fontSize?: number;
+    onZoomIn?: () => void;
+    onZoomOut?: () => void;
+    onZoomReset?: () => void;
 }
 
-const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSave, viewMode }) => {
+const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSave, viewMode, fontSize = 16, onZoomIn, onZoomOut, onZoomReset }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [showSlashMenu, setShowSlashMenu] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
@@ -78,6 +82,25 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
             onSave();
+            return;
+        }
+
+        // Zoom shortcuts
+        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+            e.preventDefault();
+            onZoomReset?.();
+            return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+            e.preventDefault();
+            onZoomIn?.();
+            return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+            e.preventDefault();
+            onZoomOut?.();
             return;
         }
 
@@ -137,22 +160,29 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
     };
 
     return (
-        <div className="flex h-full w-full relative group/editor">
+        <div className="flex h-full w-full relative group/editor justify-center">
             {/* EDIT PANE */}
             <div className={`
-                flex-1 h-full relative transition-all
+                h-full relative transition-all
                 ${viewMode === 'preview' ? 'hidden' : 'block'}
-                ${viewMode === 'split' ? 'w-1/2 border-r border-border' : 'w-full'}
+                ${viewMode === 'split' ? 'w-1/2 border-r border-border max-w-4xl' : 'w-full max-w-5xl'}
             `}>
-                <textarea
-                    ref={textareaRef}
-                    className="w-full h-full p-8 bg-background text-foreground font-mono text-base resize-none focus:outline-none leading-relaxed"
-                    value={content}
-                    onChange={handleEditorChange}
-                    onKeyDown={handleKeyDown}
-                    spellCheck={false}
-                    placeholder="Start typing... Use '/' for commands"
-                />
+                <div className="w-full h-full flex justify-center">
+                    <textarea
+                        ref={textareaRef}
+                        className="w-full h-full p-8 bg-background text-foreground font-mono resize-none focus:outline-none leading-relaxed"
+                        style={{
+                            maxWidth: '1200px',
+                            fontSize: `${fontSize}px`,
+                            lineHeight: fontSize > 20 ? '1.6' : fontSize > 16 ? '1.5' : '1.4'
+                        }}
+                        value={content}
+                        onChange={handleEditorChange}
+                        onKeyDown={handleKeyDown}
+                        spellCheck={false}
+                        placeholder="Start typing... Use '/' for commands"
+                    />
+                </div>
 
                 {/* SLASH MENU */}
                 {showSlashMenu && (
@@ -191,13 +221,21 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
 
             {/* PREVIEW PANE */}
             <div className={`
-                h-full bg-background overflow-y-auto p-10 
-                prose dark:prose-invert prose-base max-w-none
-                prose-pre:bg-transparent prose-pre:p-0 text-left
+                h-full bg-background overflow-y-auto flex justify-center
                 ${viewMode === 'edit' ? 'hidden' : 'block'}
-                ${viewMode === 'split' ? 'w-1/2 bg-muted/5' : 'w-full max-w-5xl'}
+                ${viewMode === 'split' ? 'w-1/2 bg-muted/5' : 'w-full'}
             `}>
-                <ReactMarkdown
+                <div className={`
+                    w-full h-full overflow-y-auto p-10
+                    prose dark:prose-invert prose-base
+                    prose-pre:bg-transparent prose-pre:p-0 text-left
+                    ${viewMode === 'split' ? 'max-w-4xl' : 'max-w-5xl'}
+                `}
+                style={{
+                    fontSize: `${fontSize}px`,
+                    lineHeight: fontSize > 20 ? '1.6' : fontSize > 16 ? '1.5' : '1.4'
+                }}>
+                    <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                         code({inline, className, children, ...props}: any) {
@@ -239,6 +277,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
                 >
                     {content}
                 </ReactMarkdown>
+                </div>
             </div>
         </div>
     );
