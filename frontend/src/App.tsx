@@ -19,14 +19,14 @@ import CreateNotebookPage from "./pages/CreateNotebookPage";
 import WelcomePage from "./pages/WelcomePage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Landing from "./pages/Landing";
+// import Landing from "./pages/Landing"; // <--- REMOVED
 import WhiteboardView from "./pages/WhiteboardView";
 import IdeaCanvas from "./pages/IdeaCanvas";
 import IdeaCanvasPage from "./pages/IdeaCanvasPage";
 import TasksPage from "./pages/TasksPage";
 import TasksKanbanAllView from "./components/tasks/TasksKanbanAllView";
 import SetupApiKeyPage from "./pages/SetupApiKeyPage";
-import ModelGroupsView from "./pages/ModelGroupsView"; // Import the new page
+import ModelGroupsView from "./pages/ModelGroupsView";
 
 // Utility components
 import ProtectedRoute from "./components/ui/ProtectedRoute";
@@ -45,8 +45,21 @@ function App() {
                     <SseProvider>
                         <ApiKeyProvider>
                             <Routes>
+                                {/* --- ROOT ROUTE (Redirect Logic) --- */}
+                                <Route 
+                                    path="/" 
+                                    element={
+                                        /* 
+                                           If Logged In: ProtectedRoute renders children -> Navigates to /notebooks
+                                           If Not Logged In: ProtectedRoute redirects to /login 
+                                        */
+                                        <ProtectedRoute>
+                                            <Navigate to="/notebooks" replace />
+                                        </ProtectedRoute>
+                                    } 
+                                />
+
                                 {/* --- PUBLIC ROUTES --- */}
-                                <Route path="/" element={<Landing />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
 

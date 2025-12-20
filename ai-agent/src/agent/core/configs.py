@@ -44,6 +44,9 @@ from agent.core.pros_cons_graph.nodes import (
 from agent.core.content_rewriter_graph.data_models import ContentRewriterGraphState
 from agent.core.content_rewriter_graph.nodes import rewrite_content_node
 
+# Task Generation Graph Imports
+from agent.core.task_generation_graph.graph import create_task_generation_graph
+
 
 def simple_graph():
     workflow = StateGraph(ChatGraphState)
@@ -130,6 +133,11 @@ def content_rewriter_graph():
     return workflow
 
 
+def task_generation_graph():
+    """Create and return the task generation graph"""
+    return create_task_generation_graph()
+
+
 # Compilation
 chat_graph = simple_graph().compile()
 brainstorm_compiled_graph = brainstorm_graph().compile()
@@ -140,3 +148,4 @@ idea_proposition_compiled_graph = idea_proposition_graph().compile()
 file_name_compiled_graph = file_name_graph().compile()
 pros_cons_compiled_graph = pros_cons_graph().compile()
 content_rewriter_compiled_graph = content_rewriter_graph().compile()
+task_generation_compiled_graph = task_generation_graph().compile()

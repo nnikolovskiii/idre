@@ -441,6 +441,49 @@ async def rewrite_file_content(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+@router.post("/generate-tasks/{notebook_id}")
+async def generate_file_tasks(
+        notebook_id: str,
+        request: SendMessageRequest,
+        current_user: User = Depends(get_current_user),
+        ai_service: AIService = Depends(get_ai_service),
+        file_service: FileService = Depends(get_file_service)
+):
+    """
+    Generate tasks from file content using AI.
+    """
+    try:
+        # Get the file record
+        if not request.file_id:
+            raise HTTPException(status_code=400, detail="file_id is required")
+
+        file_record = await file_service.repo.get_by_id_and_user(
+            file_id=request.file_id,
+            user_id=str(current_user.user_id)
+        )
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Get the content from the file
+        file_content = file_record.content or ""
+        if not file_content.strip():
+            raise HTTPException(status_code=400, detail="File content is empty")
+
+        # Initiate task generation
+        await ai_service.generate_tasks(
+            user_id=str(current_user.user_id),
+            notebook_id=notebook_id,
+            file_content=file_content,
+            file_id=request.file_id
+        )
+
+        return {"status": "success", "message": "Task generation initiated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
 @router.delete("/{file_id}")
 async def delete_file(
         file_id: str,

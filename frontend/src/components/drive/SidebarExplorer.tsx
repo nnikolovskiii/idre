@@ -2,10 +2,9 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
     Search, Plus, Upload, RefreshCw, PanelLeftClose, Loader2,
     Folder, FolderOpen, FolderPlus,
-    Edit3, Trash2, Download, X, ChevronRight, ChevronDown
+    Edit3, Trash2, Download, X, ChevronRight, ChevronDown, FileText
 } from "lucide-react";
 import { type FileData, type FolderData } from "../../services/filesService";
-import { getFileIcon } from "../../utils/fileUtils";
 import ContextMenu, { type ContextMenuItem } from "../ui/ContextMenu";
 
 interface SidebarExplorerProps {
@@ -477,11 +476,11 @@ const SidebarExplorer: React.FC<SidebarExplorerProps> = ({
                         key={item.id}
                         draggable={!isProcessing && !isRenaming}
                         onDragStart={(e) => handleDragStart(e, file.file_id)}
-                        className={`flex items-center gap-1.5 py-[3px] pr-2 cursor-pointer text-sm border-l-2
+                        className={`flex items-center gap-1.5 py-[3px] pr-2 cursor-pointer text-sm rounded-md
                             ${isSelected
-                            ? 'bg-primary/20 border-primary text-foreground'
+                            ? 'bg-[#29292b] border-primary text-blue-500   '
                             : isActive
-                                ? 'bg-muted/40 border-transparent text-primary'
+                                ? 'bg-[#29292b] border-primary text-blue-500'
                                 : 'border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                         }
                             ${isProcessing ? 'cursor-not-allowed opacity-70' : ''}
@@ -504,8 +503,8 @@ const SidebarExplorer: React.FC<SidebarExplorerProps> = ({
                         }}
                         onContextMenu={(e) => !isProcessing && handleContextMenu(e, 'file', file.file_id)}
                     >
-                        <span className="shrink-0 opacity-80">
-                            {isProcessing ? <Loader2 className="animate-spin text-primary" size={14} /> : getFileIcon(file.filename)}
+                        <span className={`shrink-0 ${isSelected ? 'text-blue-500' : ''}`}>
+                            {isProcessing ? <Loader2 className="animate-spin text-primary" size={14} /> : <FileText size={16} className={`${isSelected ? 'text-blue-500' : ''}`} />}
                         </span>
 
                         {isRenaming ? (

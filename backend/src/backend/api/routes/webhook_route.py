@@ -724,3 +724,141 @@ async def handle_content_rewriter_webhook(
     except Exception as e:
         print(f"CRITICAL: Content Rewriter Webhook failed: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")
+
+
+@router.post("/task-generation-hook")
+async def handle_task_generation_webhook(
+        request: Request,
+        background_tasks: BackgroundTasks,
+        file_service: FileService = Depends(get_file_service),
+        langgraph_client = Depends(lambda: get_client(url=LANGGRAPH_URL))
+) -> Dict[str, str]:
+    """
+    Webhook for Task Generation Graph.
+    Updates the file with generated tasks and sends SSE notification.
+    """
+    redis_client = container.redis_client()
+
+    try:
+        payload = await request.json()
+        validated_payload = WebhookPayload(**payload)
+
+        run_id = validated_payload.run_id
+        status = validated_payload.status
+        metadata = payload.get("metadata", {})
+
+        if status == "success":
+            # Extract metadata
+            file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+
+            # Extract generated tasks from values
+            values = validated_payload.values
+            generated_tasks = values.get("generated_tasks", [])
+            formatted_output = values.get("formatted_output", {})
+
+            # Only proceed if we have a file_id and tasks
+            if file_id and (generated_tasks or formatted_output):
+                # Get the current file
+                file_record = await file_service.repo.get_by_id_and_user(file_id, user_id)
+
+                if file_record:
+                    # Format tasks as markdown
+                    tasks_markdown = ""
+                    if formatted_output and formatted_output.get("success"):
+                        tasks = formatted_output.get("data", {}).get("tasks", [])
+                    else:
+                        tasks = generated_tasks
+
+                    if tasks:
+                        tasks_markdown = "\n\n### Generated Tasks\n\n"
+                        for i, task in enumerate(tasks, 1):
+                            title = task.get("title", f"Task {i}")
+                            description = task.get("description", "")
+                            priority = task.get("priority", "medium")
+
+                            # Priority emoji mapping
+                            priority_emoji = {
+                                "high": "🔴",
+                                "medium": "🟡",
+                                "low": "🟢"
+                            }.get(priority, "🟡")
+
+                            tasks_markdown += f"{i}. {priority_emoji} **{title}**\n"
+                            if description:
+                                tasks_markdown += f"   - {description}\n"
+                            tasks_markdown += "\n"
+
+                        # Prepare new content - concatenate original with tasks
+                        current_content = file_record.content or ""
+                        separator = "\n\n" if current_content.strip() else ""
+                        new_content = f"{current_content}{separator}{tasks_markdown}"
+
+                        # Update the file
+                        await file_service.update_file(
+                            file_id=file_id,
+                            user_id=user_id,
+                            updates={
+                                "content": new_content,
+                            }
+                        )
+
+                        print(f"INFO: Updated file {file_id} with {len(tasks)} generated tasks")
+
+                        # Send SSE notification
+                        if notebook_id:
+                            event_data = {
+                                "event": "file_update",
+                                "data": {
+                                    "file_id": file_id,
+                                    "status": "COMPLETED",
+                                    "filename": file_record.filename,
+                                    "content": new_content,
+                                    "content_type": file_record.content_type,
+                                    "notebook_id": str(notebook_id)
+                                }
+                            }
+                            channel = f"sse:notebook_files:{notebook_id}"
+                            await redis_client.publish(channel, json.dumps(event_data))
+                    else:
+                        print(f"Warning: No tasks generated in response")
+                else:
+                    print(f"Warning: File {file_id} not found for user {user_id}")
+            else:
+                print(f"Warning: Missing file_id or tasks in webhook")
+
+            # Clean up thread
+            background_tasks.add_task(langgraph_client.threads.delete, payload.get("thread_id"))
+
+        elif status == "error":
+            error_msg = validated_payload.values.get("error", "Unknown error")
+            file_id = metadata.get("file_id")
+            user_id = metadata.get("user_id")
+            notebook_id = metadata.get("notebook_id")
+
+            print(f"ERROR: Task Generation Failed for Run {run_id}: {error_msg}")
+
+            # Send error SSE notification if we have file info
+            if file_id and notebook_id:
+                file_record = await file_service.repo.get_by_id_and_user(file_id, user_id)
+                if file_record:
+                    event_data = {
+                        "event": "file_update",
+                        "data": {
+                            "file_id": file_id,
+                            "status": "FAILED",
+                            "filename": file_record.filename,
+                            "notebook_id": str(notebook_id)
+                        }
+                    }
+                    channel = f"sse:notebook_files:{notebook_id}"
+                    await redis_client.publish(channel, json.dumps(event_data))
+
+            # Clean up thread
+            background_tasks.add_task(langgraph_client.threads.delete, payload.get("thread_id"))
+
+        return {"status": "received"}
+    except Exception as e:
+        print(f"CRITICAL: Task Generation Webhook failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Webhook processing failed: {str(e)}")

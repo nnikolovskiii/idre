@@ -1,8 +1,14 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircle, Calendar, Edit2, Archive, RotateCcw } from "lucide-react";
+import { AlertCircle, Calendar, Edit2, Archive, RotateCcw, MoreVertical, Trash2 } from "lucide-react";
 import type { Task } from "./types.ts";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "../../ui/dropdown-menu";
 
 export const PriorityIndicator: React.FC<{ priority: Task["priority"] }> = ({ priority }) => {
     const styles = {
@@ -25,6 +31,7 @@ interface SortableTaskProps {
     onEdit: (task: Task) => void;
     onArchive: (task: Task) => void;
     onUnarchive: (task: Task) => void;
+    onDelete: (task: Task) => void;
     showPriorities?: boolean;
     isAllTasksView?: boolean;
 }
@@ -35,6 +42,7 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
                                                               onEdit,
                                                               onArchive,
                                                               onUnarchive,
+                                                              onDelete,
                                                               showPriorities = true,
                                                               isAllTasksView = false
                                                           }) => {
@@ -54,11 +62,14 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
             ref={setNodeRef}
             style={style}
             className="group relative"
-            {...attributes}
-            {...listeners}
         >
             <div
-                onClick={() => onView(task)}
+                onClick={(e) => {
+                    // Prevent view if clicking on drag handle or dropdown
+                    if (!e.defaultPrevented) {
+                        onView(task);
+                    }
+                }}
                 className={`
                     bg-card hover:bg-accent/40
                     border border-border/60 hover:border-primary/40
@@ -76,6 +87,20 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
                 {/* Header: Options & Priority */}
                 <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2 flex-wrap max-w-[80%]">
+                        {/* Drag Handle */}
+                        <div
+                            {...attributes}
+                            {...listeners}
+                            className="cursor-grab active:cursor-grabbing opacity-40 group-hover:opacity-60 hover:opacity-100 transition-all p-0.5 rounded hover:bg-secondary/20"
+                            title="Drag to move"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="3" cy="3" r="1" fill="currentColor"/>
+                                <circle cx="9" cy="3" r="1" fill="currentColor"/>
+                                <circle cx="3" cy="9" r="1" fill="currentColor"/>
+                                <circle cx="9" cy="9" r="1" fill="currentColor"/>
+                            </svg>
+                        </div>
 
                         {/*
                             MODIFIED: Show Notebook info for All Tasks View
@@ -102,35 +127,53 @@ export const SortableTask: React.FC<SortableTaskProps> = ({
                         {showPriorities !== false && <PriorityIndicator priority={task.priority} />}
                     </div>
 
-                    {/* Hover Actions */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 bg-background/95 shadow-sm border border-border rounded-md p-1 flex gap-1 z-10 backdrop-blur-sm">
-                        {task.archived ? (
-                            <button
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => { e.stopPropagation(); onUnarchive(task); }}
-                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-primary transition-colors"
-                                title="Unarchive"
-                            >
-                                <RotateCcw size={14} />
-                            </button>
-                        ) : (
-                            <button
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => { e.stopPropagation(); onArchive(task); }}
-                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-destructive transition-colors"
-                                title="Archive"
-                            >
-                                <Archive size={14} />
-                            </button>
-                        )}
-                        <button
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-                            className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
-                            title="Edit"
-                        >
-                            <Edit2 size={14} />
-                        </button>
+                    {/* Hover Actions - More Options Button */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 z-10">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="bg-background/95 shadow-sm border border-border rounded-md p-1 hover:bg-secondary transition-colors backdrop-blur-sm"
+                                    title="More options"
+                                >
+                                    <MoreVertical size={14} />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" sideOffset={5}>
+                                {task.archived ? (
+                                    <DropdownMenuItem
+                                        onClick={(e) => { e.stopPropagation(); onUnarchive(task); }}
+                                        className="cursor-pointer"
+                                    >
+                                        <RotateCcw size={14} className="mr-2" />
+                                        Unarchive
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem
+                                        onClick={(e) => { e.stopPropagation(); onArchive(task); }}
+                                        className="cursor-pointer text-destructive focus:text-destructive"
+                                    >
+                                        <Archive size={14} className="mr-2" />
+                                        Archive
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                                    className="cursor-pointer"
+                                >
+                                    <Edit2 size={14} className="mr-2" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); onDelete(task); }}
+                                    className="cursor-pointer text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 size={14} className="mr-2" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 

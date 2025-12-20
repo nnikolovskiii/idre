@@ -314,4 +314,25 @@ export const fileService = {
             throw new Error(`Content rewriting failed: ${response.statusText} (${errorText})`);
         }
     },
+
+    /**
+     * Generate tasks from file content
+     */
+    generateTasks: async (notebook_id: string, file_id: string): Promise<void> => {
+        const response = await fetch(`${FILE_BACKEND_SERVICE_URL}/generate-tasks/${notebook_id}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file_id: file_id,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Task generation failed: ${response.statusText} (${errorText})`);
+        }
+    },
 };

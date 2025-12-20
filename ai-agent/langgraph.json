@@ -11,7 +11,8 @@
     "idea_proposition_graph": "./src/agent/core/configs.py:idea_proposition_compiled_graph",
     "file_name_graph": "./src/agent/core/configs.py:file_name_compiled_graph",
     "pros_cons_graph": "./src/agent/core/configs.py:pros_cons_compiled_graph",
-    "content_rewriter_graph": "./src/agent/core/configs.py:content_rewriter_compiled_graph"
+    "content_rewriter_graph": "./src/agent/core/configs.py:content_rewriter_compiled_graph",
+    "task_generation_graph": "./src/agent/core/configs.py:task_generation_compiled_graph"
   },
   "env": ".env",
   "image_distro": "wolfi"

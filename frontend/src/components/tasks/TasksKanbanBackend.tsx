@@ -24,6 +24,7 @@ import { TaskDragOverlay } from "./kanban/TaskCard";
 import { TaskCreationModal, TaskDetailModal, TaskEditModal, ConfirmationModal } from "./kanban/TaskModals";
 import ArchivedTasksPanel from "./kanban/ArchivedTasksPanel";
 import GanttChartView from "./gantt/GanttChartView";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 interface TasksKanbanProps {
     notebookId: string;
@@ -62,6 +63,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
 
     // Confirmation States
     const [taskToArchive, setTaskToArchive] = useState<Task | null>(null);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
     // Archive State
     const [isArchivedPanelOpen, setIsArchivedPanelOpen] = useState(false);
@@ -207,6 +209,24 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
             await fetchTasks();
             if (isArchivedPanelOpen) await fetchArchivedTasks();
         } catch (err) { setError("Failed to unarchive"); }
+    };
+
+    // --- Delete Task Logic ---
+    const handleDeleteTaskRequest = (task: Task) => {
+        setTaskToDelete(task);
+    };
+
+    const executeDeleteTask = async () => {
+        if (!taskToDelete) return;
+        try {
+            await TasksService.deleteTask(taskToDelete.id);
+            setTaskToDelete(null);
+            await fetchTasks();
+            if (isArchivedPanelOpen) await fetchArchivedTasks();
+        } catch (err) {
+            setError("Failed to delete task");
+            setTaskToDelete(null);
+        }
     };
 
     // --- Drag and Drop Logic ---
@@ -364,6 +384,7 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                                         onEditTask={setEditingTask}
                                         onArchiveTask={handleArchiveTaskRequest}
                                         onUnarchiveTask={handleUnarchiveTask}
+                                        onDeleteTask={handleDeleteTaskRequest}
                                         isMobile={false}
                                         canCreate={canCreate}
                                         showPriorities={showPriorities}
@@ -422,6 +443,16 @@ const TasksKanbanBackend: React.FC<TasksKanbanProps> = ({ notebookId, viewMode =
                 message={`Are you sure you want to archive "${taskToArchive?.title}"? You can view it later in the Archived folder.`}
                 confirmText="Archive"
                 isDestructive={true}
+            />
+            <ConfirmDialog
+                open={!!taskToDelete}
+                title="Delete Task"
+                message={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                type="danger"
+                onConfirm={executeDeleteTask}
+                onCancel={() => setTaskToDelete(null)}
             />
             <ArchivedTasksPanel
                 isOpen={isArchivedPanelOpen}

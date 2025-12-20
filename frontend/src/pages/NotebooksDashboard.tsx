@@ -152,7 +152,7 @@ const CreateNewCard: React.FC<{ theme: 'light' | 'dark' }> = ({ theme }) => {
     return (
         <div
             className={`
-                rounded-xl flex flex-col items-center justify-center h-48 
+                rounded-xl flex flex-col items-center justify-center h-44   
                 border-2 border-dashed cursor-pointer transition-all duration-300
                 hover:shadow-md hover:border-opacity-100 select-none group
                 ${theme === 'dark'
@@ -310,10 +310,10 @@ const NotebooksDashboard: React.FC = () => {
                     <h1 className="text-2xl font-bold text-left">My notebooks</h1>
                 </header>
 
-                <main className="flex-grow flex flex-col">
+                <main className="flex-grow flex flex-col mb-10">
                     {notebooks.length === 0 && !loading && page === 1 ? (
                         <div className="text-center flex flex-col items-center justify-center flex-grow">
-                            <img src={blocks} alt="No notebooks" className="w-90"/>
+                            <img src={blocks} alt="No notebooks" className="w-[350px]"/>
                             <h2 className="text-2xl font-semibold mt-8 text-text-primary">No notebooks found yet ...</h2>
                             <p className="text-lg text-text-secondary mt-2">Start your journey by creating one!</p>
                             <button

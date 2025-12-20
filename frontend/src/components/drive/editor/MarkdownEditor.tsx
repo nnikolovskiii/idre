@@ -160,17 +160,17 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ content, onChange, onSa
     };
 
     return (
-        <div className="flex h-full w-full relative group/editor justify-center">
+        <div className="flex h-full w-full relative group/editor justify-center bg-[#101012] ">
             {/* EDIT PANE */}
             <div className={`
-                h-full relative transition-all
+                h-full relative transition-all 
                 ${viewMode === 'preview' ? 'hidden' : 'block'}
                 ${viewMode === 'split' ? 'w-1/2 border-r border-border max-w-4xl' : 'w-full max-w-5xl'}
             `}>
-                <div className="w-full h-full flex justify-center">
+                <div className=" bg-[#18181a] w-full h-full flex justify-center">
                     <textarea
                         ref={textareaRef}
-                        className="w-full h-full p-8 bg-background text-foreground font-mono resize-none focus:outline-none leading-relaxed"
+                        className="w-full h-full p-8 bg-[#101012] border-x-2 border-x-[#19191b] text-foreground font-mono resize-none focus:outline-none leading-relaxed"
                         style={{
                             maxWidth: '1200px',
                             fontSize: `${fontSize}px`,

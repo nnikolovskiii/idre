@@ -36,20 +36,21 @@ const FileTabs: React.FC<FileTabsProps> = ({
     return (
         <div className="flex h-10 bg-muted/40 border-b border-border shrink-0 select-none">
             {/* TABS CONTAINER */}
-            <div className="flex-1 flex overflow-x-auto no-scrollbar items-end">
+            <div className="flex-1 flex overflow-x-auto no-scrollbar items-end my-auto">
                 {openFiles.map(file => {
                     const isActive = activeFileId === file.file_id;
                     const isPreview = previewFileId === file.file_id;
+                    const isDirty = isFileDirty(file.file_id);
 
                     return (
                         <div
                             key={file.file_id}
                             className={`
-                                group flex items-center gap-2 px-3 min-w-[120px] max-w-[200px] h-full 
-                                text-sm cursor-pointer border-r border-border/20
+                                group flex items-center gap-1 px-2 py-1
+                                text-sm cursor-pointer rounded-md
                                 ${isActive
-                                ? 'bg-background text-foreground border-t-2 border-t-primary'
-                                : 'bg-transparent text-muted-foreground border-t-2 border-t-transparent hover:bg-background/50'
+                                ? 'bg-blue-600/40 border-blue-600 border-[1px] text-foreground'
+                                : 'bg-transparent text-muted-foreground hover:bg-[#101012]'
                             }
                                 ${isPreview ? 'italic' : ''}
                             `}
@@ -61,14 +62,25 @@ const FileTabs: React.FC<FileTabsProps> = ({
                             <span className="truncate flex-1 text-xs">{file.filename}</span>
 
                             <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                                {isFileDirty(file.file_id) ? (
+                                {/*
+                                   Dirty Dot Logic:
+                                   Only show if dirty AND the tab is NOT active.
+                                   If it is active, the X takes priority and is shown always.
+                                */}
+                                {isDirty && !isActive ? (
                                     <div className="w-2 h-2 rounded-full bg-foreground/70 group-hover:hidden" />
                                 ) : null}
+
                                 <button
                                     onClick={(e) => onCloseTab(e, file.file_id)}
                                     className={`
                                         p-0.5 rounded-sm hover:bg-muted-foreground/20 text-muted-foreground/70 hover:text-foreground
-                                        ${isFileDirty(file.file_id) ? 'hidden group-hover:block' : 'opacity-0 group-hover:opacity-100'}
+                                        ${isActive
+                                        ? 'opacity-100' /* Active: Always visible */
+                                        : isDirty
+                                            ? 'hidden group-hover:block' /* Inactive & Dirty: Hidden (shows dot), visible on hover */
+                                            : 'opacity-0 group-hover:opacity-100' /* Inactive & Clean: Invisible, visible on hover */
+                                    }
                                     `}
                                 >
                                     <X size={14} />

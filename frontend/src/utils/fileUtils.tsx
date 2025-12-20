@@ -8,6 +8,6 @@ export const getFileIcon = (filename: string) => {
     if (['mp3', 'wav', 'ogg'].includes(ext)) return <Music size={16} className="text-purple-500" />;
     if (['mp4', 'mov', 'webm'].includes(ext)) return <Video size={16} className="text-red-500" />;
     if (['js', 'ts', 'tsx', 'jsx', 'json', 'py', 'html', 'css', 'sql'].includes(ext)) return <FileCode size={16} className="text-yellow-500" />;
-    if (['txt', 'md', 'doc', 'docx'].includes(ext)) return <FileText size={16} className="text-gray-500" />;
+    if (['txt', 'md', 'doc', 'docx'].includes(ext)) return <FileText size={16} className="text-white" />;
     return <FileIcon size={16} className="text-gray-400" />;
 };

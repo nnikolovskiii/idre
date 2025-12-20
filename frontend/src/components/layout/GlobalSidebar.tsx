@@ -113,8 +113,8 @@ const GlobalSidebar: React.FC<GlobalSidebarProps> = ({
                 <header
                     className={`flex items-center ${collapsed && !isMobile ? "justify-center py-2 pb-3" : "justify-between px-1 py-3 pb-4"}`}>
                     <div
-                        className={`flex items-center gap-2 font-semibold text-lg text-sidebar-foreground ${collapsed && !isMobile ? "hidden" : ""}`}>
-                        <img className={'ml-2.5'}
+                        className={` px-2 py-1 rounded-md  flex items-center gap-2 font-semibold text-lg text-sidebar-foreground ${collapsed && !isMobile ? "hidden" : ""}`}>
+                        <img
                              src={theme === 'dark' ? idreWhiteLogo : idreLogo} alt="IDRE Logo" width={60} height={60}/>
                     </div>
                     {isMobile ? (

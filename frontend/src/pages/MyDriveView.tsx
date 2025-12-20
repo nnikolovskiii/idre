@@ -71,6 +71,8 @@ const MyDriveView = () => {
         transcribingFileId,
         // Rewriting
         rewritingFileId,
+        // Task Generation
+        generatingTasksFileId,
         // Actions
         handleOpenFile,
         handlePinFile,
@@ -87,6 +89,7 @@ const MyDriveView = () => {
         startRecording,
         stopRecording,
         handleRewriteContent,
+        handleGenerateTasks,
         folders, // <--- New
         currentFolderId, // <--- New
         setCurrentFolderId, // <--- New
@@ -232,8 +235,8 @@ const MyDriveView = () => {
                         onZoomOut={handleZoomOut}
                         onZoomReset={handleZoomReset}
                     />
-                    <div className="flex-1 overflow-hidden relative flex justify-center">
-                        <div className="w-full max-w-[1800px] h-full relative">
+                    <div className="flex-1 overflow-hidden relative flex justify-center p-1 rounded-3xl">
+                        <div className="w-full max-w-[1800px] h-full relative rounded-3xl">
                             {renderWorkspace()}
                         </div>
                     </div>
@@ -245,8 +248,10 @@ const MyDriveView = () => {
                     onToggleRecording={isRecording ? stopRecording : startRecording}
                     isTranscribingForFile={activeFileId === transcribingFileId}
                     isRewritingForFile={activeFileId === rewritingFileId}
+                    isGeneratingTasksForFile={activeFileId === generatingTasksFileId}
                     activeFile={activeFile}
                     onRewriteContent={handleRewriteContent}
+                    onGenerateTasks={handleGenerateTasks}
                 />
 
                 {/* --- MODALS --- */}

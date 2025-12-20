@@ -1,16 +1,15 @@
-import {ThemeToggle} from "../ThemeToggle";
-import React, {useState, useEffect, memo, useCallback} from "react";
-import type {ChatSession} from "../../types/chat";
-import {ChevronLeft, X, MessageCircle, FolderOpen, Lightbulb, CheckSquare, PenTool} from "lucide-react";
+import { ThemeToggle } from "../ThemeToggle";
+import React, { useState, useEffect, memo, useCallback } from "react";
+import type { ChatSession } from "../../types/chat";
+// Added Home icon
+import { ChevronLeft, X, MessageCircle, FolderOpen, CheckSquare, Home } from "lucide-react";
 import SettingsDropdown from "./SettingsDropdown";
 import AuthDropdown from "./AuthDropdown";
 import ChatHistory from "./ChatHistory";
-import idreLogo from "../../assets/idre_logo_v2_white.png";
-import idreWhiteLogo from "../../assets/idre_logo_v2_black.png";
-import {useNavigate, useLocation} from "react-router-dom";
-import {useNotebooks} from "../../hooks/useNotebooks";
-import {useTheme} from "../../context/ThemeContext";
-import {Icon, type IconName} from "../Icon.tsx";
+// Note: idre logos kept in imports if needed elsewhere, but removed from header usage
+import { useNavigate, useLocation } from "react-router-dom";
+import { useNotebooks } from "../../hooks/useNotebooks";
+import { Icon, type IconName } from "../Icon.tsx";
 
 interface ChatSidebarProps {
     notebookId?: string;
@@ -58,9 +57,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const [isFetchingNotebook, setIsFetchingNotebook] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const {currentNotebook, getNotebookById} = useNotebooks();
-    const {theme} = useTheme();
-
+    const { currentNotebook, getNotebookById } = useNotebooks();
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth <= 768);
@@ -86,19 +83,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
     const getNotebookIdFromPath = useCallback(() => {
         const parts = location.pathname.split('/').filter(Boolean);
-        // Supports paths like /chat/:notebookId, /files/:notebookId, etc.
         if (parts.length >= 2 && ['chat', 'files', 'whiteboard', 'idea', 'idea-canvas', 'tasks'].includes(parts[0])) {
             return parts[1];
         }
         return null;
     }, [location.pathname]);
 
-    // Fetch notebook data
     useEffect(() => {
         const targetId = propNotebookId || getNotebookIdFromPath();
-
         if (targetId) {
-            // Only fetch if we don't have it, or if the ID doesn't match
             if (!currentNotebook || currentNotebook.id !== targetId) {
                 setIsFetchingNotebook(true);
                 getNotebookById(targetId).finally(() => {
@@ -123,17 +116,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         if (tab === "files") {
             navigate(targetId ? `/files/${targetId}` : '/notebooks');
-        } else if (tab === "whiteboard") {
-            navigate(targetId ? `/whiteboard/${targetId}` : '/notebooks');
-        } else if (tab === "idea") {
-            navigate(targetId ? `/idea-canvas/${targetId}` : '/notebooks');
         } else if (tab === "tasks") {
             navigate(targetId ? `/tasks/${targetId}` : '/notebooks');
         } else if (tab === "chat") {
             if (targetId) {
-                navigate(`/chat/${targetId}`, {
-                    state: {forceTemporaryChat: true}
-                });
+                navigate(`/chat/${targetId}`, { state: { forceTemporaryChat: true } });
             } else {
                 navigate("/notebooks");
             }
@@ -152,186 +139,96 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const activeNotebookId = propNotebookId || getNotebookIdFromPath();
 
     return (
-        <aside
-            className={sidebarClasses}
-            onClick={collapsed && isMobile ? onToggleCollapse : undefined}
-        >
-            <div
-                className={`flex flex-col h-full ${
-                    collapsed && !isMobile ? "p-2 overflow-hidden" : "p-2"
-                }`}
-            >
-                {/* Header */}
-                <header
-                    className={`flex items-center ${
-                        collapsed && !isMobile
-                            ? "justify-center py-2 pb-3"
-                            : "justify-between px-1 py-3 pb-4"
-                    }`}
-                >
-                    <div
+        <aside className={sidebarClasses} onClick={collapsed && isMobile ? onToggleCollapse : undefined}>
+            <div className={`flex flex-col h-full ${collapsed && !isMobile ? "p-2 overflow-hidden" : "p-2"}`}>
+
+                {/* Refactored Header */}
+                <header className={`flex items-center gap-2 mb-4 ${collapsed && !isMobile ? "flex-col py-2" : "px-1 py-3"}`}>
+
+                    {/* Home Button */}
+                    <button
                         onClick={(e) => {
                             e.stopPropagation();
                             navigate("/notebooks");
                         }}
-                        className={`cursor-pointer ${collapsed && !isMobile ? "hidden" : "block"}`}
+                        className="flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-primary transition-colors"
+                        title="Back to Notebooks"
                     >
-                        <img
-                            src={theme === 'dark' ? idreWhiteLogo : idreLogo}
-                            className={'ml-2.5'}
-                            alt="IDRE Logo"
-                            width={60}
-                            height={60}
-                        />
-                    </div>
+                        <Home size={20} />
+                    </button>
 
-                    {isMobile ? (
-                        <button
-                            className="flex items-center justify-center p-2 rounded-md bg-sidebar-accent hover:bg-sidebar-accent/80 transition-all text-sidebar-foreground"
-                            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
-                            title="Close sidebar"
-                        >
-                            <X size={20}/>
-                        </button>
-                    ) : (
-                        <button
-                            className={`flex items-center justify-center p-1 rounded-md text-muted-foreground hover:bg-sidebar-accent transition-transform ${
-                                collapsed ? "rotate-180" : ""
-                            }`}
-                            onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
-                            title="Collapse sidebar"
-                        >
-                            <ChevronLeft size={18}/>
-                        </button>
-                    )}
-                </header>
-
-                <div className="flex-grow flex flex-col gap-3 bg-background min-h-0 items-start">
-
-                    {/* Notebook Info Banner */}
-                    {/* Show if we have a notebook OR if we are fetching one (show skeleton) */}
+                    {/* Notebook Display (Center) */}
                     {activeNotebookId && (
-                        <div className={`
-                            flex items-center gap-3 transition-all duration-200 flex-shrink-0
-                            ${collapsed && !isMobile 
-                                ? "w-full justify-center px-0 mb-4" 
-                                : "w-full px-3 py-3 mb-2 mx-0 bg-sidebar-accent/40 border border-sidebar-border/60 rounded-lg"
-                            }
-                        `}>
+                        <div className={`flex items-center gap-2 min-w-0 flex-1 ${collapsed && !isMobile ? "justify-center" : ""}`}>
                             {currentNotebook ? (
                                 <>
-                                    <div className={`
-                                        flex items-center justify-center flex-shrink-0
-                                        ${collapsed && !isMobile 
-                                            ? "w-8 h-8 rounded-md bg-sidebar-accent text-sidebar-foreground" 
-                                            : "p-1.5 rounded-md bg-background border border-sidebar-border shadow-sm text-sidebar-primary"
-                                        }
-                                    `} title={collapsed ? currentNotebook.title : undefined}>
+                                    <div
+                                        className="flex-shrink-0 p-1.5 rounded-md bg-background border border-sidebar-border shadow-sm"
+                                        title={collapsed ? currentNotebook.title : undefined}
+                                    >
                                         <Icon
                                             name={(currentNotebook.emoji as IconName) || 'book'}
-                                            className={collapsed && !isMobile ? "w-5 h-5" : "w-4 h-4"}
+                                            style={{ color: currentNotebook.bg_color || 'inherit' }}
+                                            className="w-4 h-4"
                                         />
                                     </div>
-
                                     {!collapsed && (
-                                        <div className="flex flex-col overflow-hidden min-w-0">
-                                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1">
-                                                Notebook
-                                            </span>
-                                            <span className="text-sm font-bold text-sidebar-foreground truncate leading-tight">
-                                                {currentNotebook.title}
-                                            </span>
-                                        </div>
+                                        <span className="text-sm font-bold truncate leading-tight" style={{ color: currentNotebook.bg_color || 'inherit' }}>
+                                            {currentNotebook.title}
+                                        </span>
                                     )}
                                 </>
-                            ) : isFetchingNotebook ? (
-                                // Loading Skeleton
-                                <>
-                                    <div className={`
-                                        flex-shrink-0 animate-pulse bg-sidebar-border rounded-md
-                                        ${collapsed && !isMobile ? "w-8 h-8" : "w-8 h-8"}
-                                    `}/>
-                                    {!collapsed && (
-                                        <div className="flex flex-col gap-1 w-full animate-pulse">
-                                            <div className="h-2 w-12 bg-sidebar-border rounded"/>
-                                            <div className="h-4 w-24 bg-sidebar-border rounded"/>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                // Fallback if ID exists but fetch failed/returned null (optional)
-                                <div className="text-xs text-muted-foreground">Notebook not found</div>
+                            ) : isFetchingNotebook && (
+                                <div className="animate-pulse bg-sidebar-border rounded-md w-8 h-8" />
                             )}
                         </div>
                     )}
 
+                    {/* Toggle/Close Button */}
+                    <button
+                        className={`flex items-center justify-center p-2 rounded-md text-muted-foreground hover:bg-sidebar-accent transition-all ${
+                            collapsed && !isMobile ? "rotate-180" : ""
+                        }`}
+                        onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
+                        title={collapsed ? "Expand" : "Collapse"}
+                    >
+                        {isMobile ? <X size={20} /> : <ChevronLeft size={18} />}
+                    </button>
+                </header>
+
+                <div className="flex-grow flex flex-col gap-3 bg-background min-h-0 items-start">
                     {/* Navigation Tabs */}
-                    <section className="flex flex-col gap-2 flex-shrink-0 w-full">
-                        <div className="flex flex-col gap-1">
-                            <button
-                                className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left transition-all ${
-                                    activeTab === "chat"
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                        : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                } ${collapsed && !isMobile ? "justify-center" : ""}`}
-                                onClick={(e) => handleTabChange(e, "chat")}
-                                title="Chat History"
-                            >
-                                <MessageCircle size={16}/>
-                                {!collapsed && <span>Chat</span>}
-                            </button>
-                            <button
-                                className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
-                                    activeTab === "files"
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                        : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                } ${collapsed && !isMobile ? "justify-center" : ""}`}
-                                onClick={(e) => handleTabChange(e, "files")}
-                                title="Files"
-                            >
-                                <FolderOpen size={16}/>
-                                {!collapsed && <span>Files</span>}
-                            </button>
-                            <button
-                                className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
-                                    activeTab === "whiteboard"
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                        : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                } ${collapsed && !isMobile ? "justify-center" : ""}`}
-                                onClick={(e) => handleTabChange(e, "whiteboard")}
-                                title="Whiteboard"
-                            >
-                                <PenTool size={16}/>
-                                {!collapsed && <span>Whiteboard</span>}
-                            </button>
-                            <button
-                                className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
-                                    activeTab === "idea"
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                        : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                } ${collapsed && !isMobile ? "justify-center" : ""}`}
-                                onClick={(e) => handleTabChange(e, "idea")}
-                                title="Idea Canvas"
-                            >
-                                <Lightbulb size={16}/>
-                                {!collapsed && <span>Idea Canvas</span>}
-                            </button>
-                            <button
-                                className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium text-left hover:text-sidebar-primary transition-all ${
-                                    activeTab === "tasks"
-                                        ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border"
-                                        : "text-sidebar-foreground hover:bg-sidebar-accent"
-                                } ${collapsed && !isMobile ? "justify-center" : ""}`}
-                                onClick={(e) => handleTabChange(e, "tasks")}
-                                title="Tasks"
-                            >
-                                <CheckSquare size={16}/>
-                                {!collapsed && <span>Tasks</span>}
-                            </button>
-                        </div>
+                    <section className="flex flex-col gap-1 flex-shrink-0 w-full">
+                        <button
+                            className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium transition-all ${
+                                activeTab === "chat" ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                            onClick={(e) => handleTabChange(e, "chat")}
+                        >
+                            <MessageCircle size={16} />
+                            {!collapsed && <span>Chat</span>}
+                        </button>
+                        <button
+                            className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium transition-all ${
+                                activeTab === "files" ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                            onClick={(e) => handleTabChange(e, "files")}
+                        >
+                            <FolderOpen size={16} />
+                            {!collapsed && <span>Files</span>}
+                        </button>
+                        <button
+                            className={`flex items-center gap-3 py-2.5 px-3 rounded-md text-sm font-medium transition-all ${
+                                activeTab === "tasks" ? "bg-sidebar-accent text-sidebar-primary font-semibold border border-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            } ${collapsed && !isMobile ? "justify-center" : ""}`}
+                            onClick={(e) => handleTabChange(e, "tasks")}
+                        >
+                            <CheckSquare size={16} />
+                            {!collapsed && <span>Tasks</span>}
+                        </button>
                     </section>
 
-                    {/* Chat History List - Hidden when collapsed */}
+                    {/* Chat History List */}
                     {(!collapsed || isMobile) && (
                         <>
                             <div className="w-full border-t border-sidebar-border my-1"></div>
@@ -362,13 +259,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             onToggleCollapse={onToggleCollapse}
                             onSettingsClick={onSettingsClick}
                         />
-                        <div
-                            className={`flex items-center ${
-                                collapsed && !isMobile
-                                    ? "flex-col justify-center gap-4 py-2"
-                                    : "justify-between p-2"
-                            }`}
-                        >
+                        <div className={`flex items-center ${collapsed && !isMobile ? "flex-col justify-center gap-4 py-2" : "justify-between p-2"}`}>
                             <AuthDropdown
                                 collapsed={collapsed}
                                 user={user}
@@ -378,7 +269,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                 onLoginClick={onLoginClick}
                                 onRegisterClick={onRegisterClick}
                             />
-                            <ThemeToggle/>
+                            <ThemeToggle />
                         </div>
                     </div>
                 </footer>

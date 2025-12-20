@@ -1,13 +1,21 @@
 import React from "react";
-import { Mic, Square, Loader2, Bot, Sparkles, RefreshCw } from "lucide-react";
+import { Square, Loader2 } from "lucide-react";
+import aiTechnologiesImg from "../../assets/ai-technology (1).png"
+import pencilImg from "../../assets/pencil (1).png"
+import microphoneImg from "../../assets/microphone-black-shape.png"
+import clipboardImg from "../../assets/checklist (1).png"
+
+
 
 interface AISidebarProps {
     isRecording: boolean;
     onToggleRecording: () => void;
     isTranscribingForFile?: boolean;
     isRewritingForFile?: boolean;
+    isGeneratingTasksForFile?: boolean;
     activeFile: any;
     onRewriteContent?: () => void;
+    onGenerateTasks?: () => void;
     className?: string;
 }
 
@@ -16,8 +24,10 @@ const AISidebar: React.FC<AISidebarProps> = ({
     onToggleRecording,
     isTranscribingForFile,
     isRewritingForFile,
+    isGeneratingTasksForFile,
     activeFile,
     onRewriteContent,
+    onGenerateTasks,
     className = ""
 }) => {
     // Only show AI actions for text files
@@ -30,8 +40,7 @@ const AISidebar: React.FC<AISidebarProps> = ({
         <div className={`w-16 bg-muted/20 border-l border-border flex flex-col items-center py-4 gap-4 ${className}`}>
             {/* AI Header */}
             <div className="flex flex-col items-center gap-1">
-                <Bot size={20} className="text-primary" />
-                <span className="text-xs text-muted-foreground font-medium">AI</span>
+                <img src={aiTechnologiesImg} className="w-7 " />
             </div>
 
             <div className="w-px h-4 bg-border/30"></div>
@@ -56,7 +65,7 @@ const AISidebar: React.FC<AISidebarProps> = ({
                             <div className="absolute inset-0 rounded-xl bg-red-500/20 animate-pulse"></div>
                         </>
                     ) : (
-                        <Mic size={20} />
+                        <img src={microphoneImg} className="w-6" />
                     )}
 
                     {/* Tooltip */}
@@ -81,7 +90,7 @@ const AISidebar: React.FC<AISidebarProps> = ({
                     {isRewritingForFile ? (
                         <Loader2 size={20} className="animate-spin text-blue-500" />
                     ) : (
-                        <RefreshCw size={20} />
+                        <img src={pencilImg} className="w-6" />
                     )}
 
                     {/* Tooltip */}
@@ -91,17 +100,31 @@ const AISidebar: React.FC<AISidebarProps> = ({
                 </button>
             )}
 
-            {/* Future AI buttons can be added here */}
-            <div className="flex-1 flex flex-col gap-2">
-                {/* Placeholder for future AI features */}
+            {/* Task Generation Button */}
+            {isTextFile && hasContent && (
                 <button
-                    className="p-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 opacity-50 cursor-not-allowed"
-                    title="Coming soon"
-                    disabled
+                    onClick={onGenerateTasks}
+                    className={`group relative p-3 rounded-xl transition-all duration-200 ${
+                        isGeneratingTasksForFile
+                            ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20 shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                    title={isGeneratingTasksForFile ? "Generating Tasks..." : "Generate Tasks"}
+                    disabled={isGeneratingTasksForFile}
                 >
-                    <Sparkles size={20} />
+                    {isGeneratingTasksForFile ? (
+                        <Loader2 size={20} className="animate-spin text-green-500" />
+                    ) : (
+                        <img src={clipboardImg} className="w-6" />
+                    )}
+
+                    {/* Tooltip */}
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-popover border border-border rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        {isGeneratingTasksForFile ? "Generating..." : "Generate Tasks"}
+                    </div>
                 </button>
-            </div>
+            )}
+
         </div>
     );
 };

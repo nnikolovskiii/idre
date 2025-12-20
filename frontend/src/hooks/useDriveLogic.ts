@@ -46,7 +46,7 @@ export const useDriveLogic = (notebookId: string | undefined) => {
     const [sidebarWidth, setSidebarWidth] = useState(260);
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
-    const [fontSize, setFontSize] = useState(16); // Base font size in pixels
+    const [fontSize, setFontSize] = useState(14); // Base font size in pixels
 
     // --- RECORDING STATE ---
     const [isRecording, setIsRecording] = useState(false);
@@ -57,6 +57,9 @@ export const useDriveLogic = (notebookId: string | undefined) => {
 
     // --- REWRITING STATE ---
     const [rewritingFileId, setRewritingFileId] = useState<string | null>(null);
+
+    // --- TASK GENERATION STATE ---
+    const [generatingTasksFileId, setGeneratingTasksFileId] = useState<string | null>(null);
 
     // --- PERSISTENCE REF ---
     const hasRestoredTabs = useRef(false);
@@ -683,6 +686,15 @@ export const useDriveLogic = (notebookId: string | undefined) => {
                         setRewritingFileId(null);
                         alert("Content rewriting failed.");
                     }
+
+                    // 5. Clear loading spinner for task generation
+                    if (updateData.file_id === generatingTasksFileId && updateData.status === 'COMPLETED') {
+                        setGeneratingTasksFileId(null);
+                    }
+                    else if (updateData.status === 'FAILED' && updateData.file_id === generatingTasksFileId) {
+                        setGeneratingTasksFileId(null);
+                        alert("Task generation failed.");
+                    }
                 }
             } catch (e) {
                 console.error("Error parsing SSE event", e);
@@ -690,7 +702,7 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         };
         // Removed fileContents from dependency array to prevent reconnection loops
         return () => eventSource.close();
-    }, [notebookId, transcribingFileId, rewritingFileId]);
+    }, [notebookId, transcribingFileId, rewritingFileId, generatingTasksFileId]);
 
     // --- REWRITE CONTENT FUNCTION ---
     const handleRewriteContent = useCallback(async () => {
@@ -712,6 +724,29 @@ export const useDriveLogic = (notebookId: string | undefined) => {
             console.error('Failed to rewrite content:', error);
             alert('Failed to rewrite content. Please try again.');
             setRewritingFileId(null);
+        }
+    }, [activeFileId, activeFile, notebookId, fileContents]);
+
+    // --- GENERATE TASKS FUNCTION ---
+    const handleGenerateTasks = useCallback(async () => {
+        if (!activeFileId || !activeFile || !notebookId) {
+            alert('No active file to generate tasks from');
+            return;
+        }
+
+        const content = fileContents[activeFileId] || activeFile.content || '';
+        if (!content.trim()) {
+            alert('File has no content to generate tasks from');
+            return;
+        }
+
+        try {
+            setGeneratingTasksFileId(activeFileId);
+            await fileService.generateTasks(notebookId, activeFileId);
+        } catch (error) {
+            console.error('Failed to generate tasks:', error);
+            alert('Failed to generate tasks. Please try again.');
+            setGeneratingTasksFileId(null);
         }
     }, [activeFileId, activeFile, notebookId, fileContents]);
 
@@ -813,6 +848,8 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         transcribingFileId,
         // Rewriting
         rewritingFileId,
+        // Task Generation
+        generatingTasksFileId,
         // Actions
         handleOpenFile,
         handlePinFile,
@@ -829,6 +866,7 @@ export const useDriveLogic = (notebookId: string | undefined) => {
         startRecording,
         stopRecording,
         handleRewriteContent,
+        handleGenerateTasks,
         // Folders
         folders,
         currentFolderId,
